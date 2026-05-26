@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Typecheck (all packages)
+        run: pnpm -r typecheck
+
+      - name: Build packages (sdk + mcp + cli)
+        run: pnpm --filter "@quad/sdk" --filter "@quad/mcp" --filter "@quad/cli" build
+
+      - name: Build web (with placeholder envs)
+        env:
+          SESSION_SECRET: ci-only-not-a-real-secret-12345678901234
+          SUPER_ADMIN_EMAIL: ci@example.com
+          DATABASE_URL: postgres://x:x@localhost:5432/x
+          BUCKET_NAME: ci
+          BUCKET_ENDPOINT: http://localhost:9000
+          BUCKET_ACCESS_KEY_ID: x
+          BUCKET_SECRET_KEY: x
+        run: pnpm --filter @quad/web build
+
+      - name: SDK bundle is served by the web app (/sdk/index.js)
+        run: |
+          test -f apps/web/public/sdk/index.js || (echo "SDK not copied to public/sdk/"; exit 1)
+          SIZE=$(stat -c%s apps/web/public/sdk/index.js 2>/dev/null || stat -f%z apps/web/public/sdk/index.js)
+          echo "served SDK bundle: ${SIZE} bytes"
+          test "$SIZE" -gt 10000
+
+      - name: Forbid server-side LLM calls beyond Whisper STT
+        run: |
+          BAD=$(grep -rn 'api\.openai\.com/v1/\(chat\|images\|embeddings\|moderations\|responses\|assistants\)' apps/web/src packages/ 2>/dev/null || true)
+          if [ -n "$BAD" ]; then
+            echo "❌ Forbidden non-Whisper OpenAI call:"
+            echo "$BAD"
+            exit 1
+          fi
+          echo "✓ Only Whisper STT is used server-side"
+
+      - name: Forbid runtime deps in @quad/sdk
+        run: |
+          DEPS=$(node -p "Object.keys(require('./packages/sdk/package.json').dependencies || {}).length")
+          if [ "$DEPS" -ne 0 ]; then
+            echo "❌ @quad/sdk added a runtime dependency. Keep it zero-dep."
+            node -p "require('./packages/sdk/package.json').dependencies"
+            exit 1
+          fi
+          echo "✓ @quad/sdk has zero runtime dependencies"

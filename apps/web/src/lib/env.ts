@@ -1,0 +1,78 @@
+import { z } from "zod";
+
+/**
+ * Quad environment schema. Validated once on process start; the app fails fast
+ * if required values are missing. Optional values gate features (no STT
+ * without OPENAI_API_KEY, no email without EMAIL_PROVIDER_KEY).
+ */
+const Schema = z.object({
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+
+  APP_URL: z.string().url().default("http://localhost:3010"),
+
+  SESSION_SECRET: z
+    .string()
+    .min(32, "SESSION_SECRET must be >=32 chars; generate with `openssl rand -base64 48`")
+    .refine(
+      (v) => v !== "replace-me-with-openssl-rand-base64-48",
+      "SESSION_SECRET still set to the placeholder from .env.example",
+    ),
+
+  SUPER_ADMIN_EMAIL: z.string().email("SUPER_ADMIN_EMAIL must be a valid email"),
+
+  INSTANCE_SIGNUP_OPEN: z
+    .string()
+    .optional()
+    .transform((v) => v === "true"),
+
+  DATABASE_URL: z.string().url().refine((v) => v.startsWith("postgres://") || v.startsWith("postgresql://"), {
+    message: "DATABASE_URL must be a Postgres URL",
+  }),
+
+  BUCKET_NAME: z.string().min(1),
+  BUCKET_ENDPOINT: z.string().url(),
+  BUCKET_ACCESS_KEY_ID: z.string().min(1),
+  BUCKET_SECRET_KEY: z.string().min(1),
+  BUCKET_REGION: z.string().default("auto"),
+  BUCKET_PUBLIC_URL: z.string().url().optional(),
+
+  OPENAI_API_KEY: z.string().optional(),
+  WHISPER_MONTHLY_MINUTES_CAP: z
+    .string()
+    .optional()
+    .transform((v) => (v ? Number.parseInt(v, 10) : 0)),
+
+  EMAIL_PROVIDER: z.enum(["resend", "none"]).default("none"),
+  EMAIL_PROVIDER_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default("Quad <noreply@example.com>"),
+});
+
+export type Env = z.infer<typeof Schema>;
+
+let cached: Env | undefined;
+
+function load(): Env {
+  const parsed = Schema.safeParse(process.env);
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map((i) => `  - ${i.path.join(".") || "(root)"}: ${i.message}`)
+      .join("\n");
+    throw new Error(`Invalid environment:\n${issues}`);
+  }
+  return parsed.data;
+}
+
+export function env(): Env {
+  if (!cached) cached = load();
+  return cached;
+}
+
+// Feature gates derived from optional env vars.
+export const features = {
+  stt(): boolean {
+    return !!env().OPENAI_API_KEY;
+  },
+  email(): boolean {
+    return env().EMAIL_PROVIDER !== "none" && !!env().EMAIL_PROVIDER_KEY;
+  },
+};

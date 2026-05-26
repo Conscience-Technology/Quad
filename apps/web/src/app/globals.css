@@ -1,0 +1,165 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css");
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-jp-dynamic-subset.css");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -----------------------------------------------------------------------------
+ * Minimal Cosmos — Quad design tokens (spec section 12)
+ * Dark-only in Phase 1. Tokens are exposed as CSS variables and also mapped
+ * to Tailwind utility classes via tailwind.config.ts (e.g. `bg-space-void`).
+ * --------------------------------------------------------------------------- */
+:root {
+  --color-space-void: #06070c;
+  --color-space-bg: #0a0c14;
+  --color-space-surface: #11141d;
+  --color-space-elevated: #181c27;
+  --color-space-hover: #161b27;
+  --color-space-border: #1f2433;
+  --color-space-border-strong: #2a3146;
+
+  --color-star-100: #f5f7ff;
+  --color-star-300: #c8cde0;
+  --color-star-500: #8a90a8;
+  --color-star-700: #4a4f63;
+
+  --color-nebula-violet: #8b7cf6;
+  --color-nebula-cyan: #67e8f9;
+  --color-nebula-rose: #fb7185;
+  --color-nebula-amber: #fbbf24;
+  --color-nebula-green: #4ade80;
+
+  /* Motion — heavy ease-out so things start fast and settle smoothly. */
+  --ease-cosmos: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-quick: 90ms;
+  --duration-base: 140ms;
+  --duration-slow: 220ms;
+}
+
+/* Snappy defaults on every clickable surface. Listed properties (not `all`)
+ * to avoid re-layout cost; transform feedback gives an instant "tap" feel. */
+a, button, [role="button"], summary, label {
+  transition:
+    color var(--duration-quick) var(--ease-cosmos),
+    background-color var(--duration-quick) var(--ease-cosmos),
+    border-color var(--duration-quick) var(--ease-cosmos),
+    opacity var(--duration-quick) var(--ease-cosmos),
+    transform 80ms var(--ease-cosmos),
+    box-shadow var(--duration-base) var(--ease-cosmos);
+}
+a:active:not([aria-disabled="true"]),
+button:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]) {
+  transform: translateY(0.5px) scale(0.995);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a, button, [role="button"], summary, label { transition: none; }
+  a:active, button:active, [role="button"]:active { transform: none; }
+}
+
+/* Selection */
+::selection { background: rgba(139, 124, 246, 0.35); color: var(--color-star-100); }
+
+/* Scrollbar — thin, almost invisible until hover */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 200ms var(--ease-cosmos);
+}
+*:hover::-webkit-scrollbar-thumb { background: var(--color-space-border-strong); }
+
+/* Focus rings — subtle violet glow */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-space-void), 0 0 0 3px var(--color-nebula-violet);
+  border-radius: 4px;
+}
+
+html,
+body {
+  background: var(--color-space-void);
+  color: var(--color-star-100);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss06", "tnum";
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(70vmax 70vmax at 100% 0%, rgba(139, 124, 246, 0.10), transparent 60%),
+    radial-gradient(60vmax 60vmax at 0% 100%, rgba(103, 232, 249, 0.08), transparent 60%),
+    radial-gradient(30vmax 30vmax at 30% 40%, rgba(251, 113, 133, 0.04), transparent 65%);
+  z-index: -2;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(245, 247, 255, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 28% 73%, rgba(245, 247, 255, 0.5), transparent 60%),
+    radial-gradient(1px 1px at 41% 36%, rgba(245, 247, 255, 0.4), transparent 60%),
+    radial-gradient(1px 1px at 58% 84%, rgba(245, 247, 255, 0.6), transparent 60%),
+    radial-gradient(1px 1px at 67% 22%, rgba(245, 247, 255, 0.5), transparent 60%),
+    radial-gradient(1px 1px at 82% 58%, rgba(245, 247, 255, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 91% 14%, rgba(245, 247, 255, 0.4), transparent 60%),
+    radial-gradient(1.5px 1.5px at 7% 56%, rgba(245, 247, 255, 0.8), transparent 60%),
+    radial-gradient(1.5px 1.5px at 35% 11%, rgba(245, 247, 255, 0.7), transparent 60%),
+    radial-gradient(1.5px 1.5px at 50% 50%, rgba(199, 209, 255, 0.6), transparent 60%),
+    radial-gradient(1.5px 1.5px at 72% 89%, rgba(245, 247, 255, 0.7), transparent 60%),
+    radial-gradient(1.5px 1.5px at 88% 32%, rgba(245, 247, 255, 0.6), transparent 60%),
+    radial-gradient(2px 2px at 21% 92%, rgba(199, 209, 255, 0.55), transparent 60%),
+    radial-gradient(2px 2px at 64% 7%, rgba(245, 247, 255, 0.55), transparent 60%),
+    radial-gradient(2px 2px at 95% 68%, rgba(199, 209, 255, 0.5), transparent 60%);
+  animation: q-drift 240s linear infinite;
+}
+
+@keyframes q-twinkle {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+@keyframes q-drift {
+  0%   { background-position: 0px 0px; }
+  100% { background-position: -120px -90px; }
+}
+
+html::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    radial-gradient(2px 2px at 17% 31%, rgba(139, 124, 246, 0.9), transparent 65%),
+    radial-gradient(2px 2px at 47% 78%, rgba(103, 232, 249, 0.85), transparent 65%),
+    radial-gradient(2px 2px at 78% 24%, rgba(245, 247, 255, 0.95), transparent 65%),
+    radial-gradient(2.5px 2.5px at 33% 62%, rgba(245, 247, 255, 0.85), transparent 65%),
+    radial-gradient(2.5px 2.5px at 86% 81%, rgba(139, 124, 246, 0.85), transparent 65%);
+  animation: q-twinkle 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

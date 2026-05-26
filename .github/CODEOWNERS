@@ -1,0 +1,15 @@
+# Every PR requires a review from a code owner.
+# Until the project grows a maintainer team, that's @twkris.
+* @twkris
+
+# Areas that warrant extra care.
+/spec.md                   @twkris
+/apps/web/src/db/          @twkris
+/apps/web/src/server/      @twkris
+/apps/web/src/lib/auth/    @twkris
+/apps/web/src/lib/mcp-auth.ts  @twkris
+/apps/web/src/lib/sdk-auth.ts  @twkris
+/docker/                   @twkris
+/deploy/                   @twkris
+/.github/                  @twkris
+/SECURITY.md               @twkris

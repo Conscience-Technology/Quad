@@ -1,0 +1,25 @@
+{
+  "name": "quad",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Quad — Reporter's multimodal bug context, streamed straight to your AI coding agent.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.10",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @quad/web dev",
+    "build": "pnpm -r build",
+    "start": "pnpm --filter @quad/web start",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @quad/web db:generate",
+    "db:migrate": "pnpm --filter @quad/web db:migrate",
+    "db:studio": "pnpm --filter @quad/web db:studio"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
