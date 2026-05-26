@@ -1,7 +1,8 @@
 /**
  * Shadow-DOM widget: right-edge toggle + overlay panel + outline + pin form +
- * toast. Pure DOM manipulation, zero deps.
+ * toast + recent-reports list. Pure DOM manipulation, zero deps.
  */
+import * as Local from "./local-pins";
 import { WIDGET_CSS } from "./styles";
 
 export type WidgetCallbacks = {
@@ -102,12 +103,91 @@ export class Widget {
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
+      <section class="q-reports">
+        <div class="header">
+          <span class="label">Your reports</span>
+          <span class="count"></span>
+        </div>
+        <div class="list"></div>
+      </section>
     `;
     p.appendChild(header);
     p.appendChild(body);
 
     this.wireOverlayBody(body);
+    this.wireReportsList(body);
     return p;
+  }
+
+  // ---- Reports list -------------------------------------------------------
+
+  private wireReportsList(body: HTMLDivElement): void {
+    const section = body.querySelector<HTMLDivElement>(".q-reports")!;
+    const countEl = section.querySelector<HTMLSpanElement>(".count")!;
+    const listEl = section.querySelector<HTMLDivElement>(".list")!;
+
+    const render = () => {
+      const all = Local.list();
+      const route = location.pathname;
+      // Group: pins on the current route surface first
+      const hereOnly = all.filter((p) => p.route === route);
+      const elsewhere = all.filter((p) => p.route !== route);
+      countEl.textContent = String(all.length);
+
+      if (all.length === 0) {
+        listEl.innerHTML = `<p class="empty">No reports yet. Pin an element or submit one above.</p>`;
+        return;
+      }
+
+      const rowHtml = (p: Local.LocalPin, sameRoute: boolean) => {
+        const visible = Local.isVisible(p.id);
+        const eyeLabel = sameRoute
+          ? visible ? "●" : "○"
+          : "↗";
+        const eyeTitle = sameRoute
+          ? visible ? "Hide on page" : "Show on page"
+          : `On ${p.route}`;
+        const text = (p.body || "(no comment)").replace(/[<>]/g, "");
+        return `
+          <div class="item">
+            <div class="body">
+              <span class="text">${text}</span>
+              <span class="meta">${p.selector.slice(0, 40)} · ${formatAgo(p.createdAt)}</span>
+            </div>
+            <button class="eye" data-id="${p.id}" data-same="${sameRoute ? "1" : "0"}"
+                    title="${eyeTitle}" aria-pressed="${visible ? "true" : "false"}"
+                    ${sameRoute ? "" : "disabled style=\"opacity:0.4\""}>
+              ${eyeLabel}
+            </button>
+          </div>
+        `;
+      };
+
+      listEl.innerHTML =
+        hereOnly.map((p) => rowHtml(p, true)).join("") +
+        elsewhere.map((p) => rowHtml(p, false)).join("");
+
+      listEl.querySelectorAll<HTMLButtonElement>("button.eye").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (btn.dataset.same !== "1") {
+            // navigate to that route to reveal
+            const id = btn.dataset.id!;
+            const pin = Local.list().find((p) => p.id === id);
+            if (pin) {
+              Local.setVisible(pin.id, true);
+              location.href = pin.pageUrl;
+            }
+            return;
+          }
+          const id = btn.dataset.id!;
+          Local.setVisible(id, !Local.isVisible(id));
+        });
+      });
+    };
+
+    render();
+    Local.subscribe(render);
   }
 
   private wireOverlayBody(body: HTMLDivElement): void {
@@ -334,4 +414,15 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function formatAgo(ts: number): string {
+  const s = Math.max(1, Math.floor((Date.now() - ts) / 1000));
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
 }
