@@ -42,7 +42,7 @@ In Railway → **Variables**:
 |---|---|---|
 | `SESSION_SECRET` | output of `openssl rand -base64 48` (or on Windows: `[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))`) | **required** |
 | `SUPER_ADMIN_EMAIL` | your email | Sign up with this address to become super admin (auto-activated). Anyone else who signs up lands in `pending` until you approve them at `/admin/users`. |
-| `APP_URL` | your Railway public URL | e.g. `https://quad-production-xxxx.up.railway.app` |
+| `API_URL` | your Railway public URL | e.g. `https://quad-production-xxxx.up.railway.app` |
 | `OPENAI_API_KEY` | *(optional)* | enables Whisper STT |
 
 ### 1-6. Health check

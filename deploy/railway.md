@@ -19,11 +19,11 @@ migrations on startup (see `apps/web/src/db/migrate.ts`).
 Add → **Storage Bucket**. Railway auto-injects:
 
 ```
-BUCKET_NAME
-BUCKET_ENDPOINT
-BUCKET_ACCESS_KEY_ID
-BUCKET_SECRET_KEY
-BUCKET_REGION
+BUCKET
+ENDPOINT
+ACCESS_KEY_ID
+SECRET_ACCESS_KEY
+REGION
 ```
 
 Quad reads them directly — no extra config.
@@ -36,7 +36,7 @@ Variables → Add:
 | ------------------------- | ------------------------------------------------------------------------------------- |
 | `SESSION_SECRET`          | `openssl rand -base64 48` &nbsp;·&nbsp; Windows PowerShell: `[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))` |
 | `SUPER_ADMIN_EMAIL`       | The email you'll sign up with. That account becomes Super Admin automatically (and is auto-activated). Anyone else who signs up lands in `pending` and you approve them at `/admin/users`. |
-| `APP_URL`                 | The public Railway URL (e.g. `https://quad-production-abcd.up.railway.app`)           |
+| `API_URL`                 | The public Railway URL (e.g. `https://quad-production-abcd.up.railway.app`)           |
 | `PORT`                    | `3010` (Railway also injects its own PORT; this is fine to leave as the docker default) |
 | `OPENAI_API_KEY`          | Optional. If unset, STT (Whisper) is disabled. No other OpenAI endpoint is used.      |
 | `WHISPER_MONTHLY_MINUTES_CAP` | Optional. `0` = no cap. Otherwise STT auto-suspends past N minutes per month.    |

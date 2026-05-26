@@ -44,10 +44,10 @@ jobs:
           SESSION_SECRET: ci-only-not-a-real-secret-12345678901234
           SUPER_ADMIN_EMAIL: ci@example.com
           DATABASE_URL: postgres://x:x@localhost:5432/x
-          BUCKET_NAME: ci
-          BUCKET_ENDPOINT: http://localhost:9000
-          BUCKET_ACCESS_KEY_ID: x
-          BUCKET_SECRET_KEY: x
+          BUCKET: ci
+          ENDPOINT: http://localhost:9000
+          ACCESS_KEY_ID: x
+          SECRET_ACCESS_KEY: x
         run: pnpm --filter @quad/web build
 
       - name: SDK bundle is served by the web app (/sdk/index.js)
@@ -96,3 +96,4 @@ jobs:
             process.exit(1);
           }
           console.log('OK - @quad/sdk has zero runtime dependencies');
+

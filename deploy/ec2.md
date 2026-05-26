@@ -32,16 +32,16 @@ cp .env.example .env
 ```ini
 SESSION_SECRET=...
 SUPER_ADMIN_EMAIL=you@example.com
-APP_URL=https://quad.yourdomain.com
+API_URL=https://quad.yourdomain.com
 NODE_ENV=production
 
 DATABASE_URL=postgres://USER:PASS@your-rds-host:5432/quad
 
-BUCKET_NAME=your-bucket-name
-BUCKET_ENDPOINT=https://s3.us-east-1.amazonaws.com
-BUCKET_ACCESS_KEY_ID=AKIA...
-BUCKET_SECRET_KEY=...
-BUCKET_REGION=us-east-1
+BUCKET=your-bucket-name
+ENDPOINT=https://s3.us-east-1.amazonaws.com
+ACCESS_KEY_ID=AKIA...
+SECRET_ACCESS_KEY=...
+REGION=us-east-1
 # Optional: set if you front the bucket with CloudFront
 # BUCKET_PUBLIC_URL=https://cdn.yourdomain.com
 

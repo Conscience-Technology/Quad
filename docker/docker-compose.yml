@@ -67,13 +67,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3010
-      APP_URL: http://localhost:3010
+      API_URL: http://localhost:3010
       DATABASE_URL: postgres://quad:quad@postgres:5432/quad
-      BUCKET_NAME: quad
-      BUCKET_ENDPOINT: http://minio:9000
-      BUCKET_ACCESS_KEY_ID: minioadmin
-      BUCKET_SECRET_KEY: minioadmin
-      BUCKET_REGION: auto
+      BUCKET: quad
+      ENDPOINT: http://minio:9000
+      ACCESS_KEY_ID: minioadmin
+      SECRET_ACCESS_KEY: minioadmin
+      REGION: auto
       BUCKET_PUBLIC_URL: http://localhost:9000/quad
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:?set SUPER_ADMIN_EMAIL in .env}
