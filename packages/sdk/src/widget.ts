@@ -106,7 +106,10 @@ export class Widget {
       <section class="q-reports">
         <div class="header">
           <span class="label">Your reports</span>
-          <span class="count"></span>
+          <span class="right">
+            <button class="show-all" type="button" aria-pressed="false">Show all on this page</button>
+            <span class="count"></span>
+          </span>
         </div>
         <div class="list"></div>
       </section>
@@ -125,6 +128,7 @@ export class Widget {
     const section = body.querySelector<HTMLDivElement>(".q-reports")!;
     const countEl = section.querySelector<HTMLSpanElement>(".count")!;
     const listEl = section.querySelector<HTMLDivElement>(".list")!;
+    const showAllBtn = section.querySelector<HTMLButtonElement>(".show-all")!;
 
     const render = () => {
       const all = Local.list();
@@ -133,6 +137,13 @@ export class Widget {
       const hereOnly = all.filter((p) => p.route === route);
       const elsewhere = all.filter((p) => p.route !== route);
       countEl.textContent = String(all.length);
+
+      // Master toggle reflects current state of pins on this route
+      const allRevealed = hereOnly.length > 0 && hereOnly.every((p) => Local.isVisible(p.id));
+      showAllBtn.setAttribute("aria-pressed", allRevealed ? "true" : "false");
+      showAllBtn.textContent = allRevealed ? "Hide all" : "Show all on this page";
+      showAllBtn.disabled = hereOnly.length === 0;
+      showAllBtn.style.opacity = hereOnly.length === 0 ? "0.4" : "1";
 
       if (all.length === 0) {
         listEl.innerHTML = `<p class="empty">No reports yet. Pin an element or submit one above.</p>`;
@@ -185,6 +196,13 @@ export class Widget {
         });
       });
     };
+
+    showAllBtn.addEventListener("click", () => {
+      const route = location.pathname;
+      const here = Local.list().filter((p) => p.route === route);
+      const allOn = here.length > 0 && here.every((p) => Local.isVisible(p.id));
+      for (const p of here) Local.setVisible(p.id, !allOn);
+    });
 
     render();
     Local.subscribe(render);

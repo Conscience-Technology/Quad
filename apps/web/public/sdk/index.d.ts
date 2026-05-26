@@ -1,4 +1,4 @@
-import { Q as QuadOptions } from './types-ClhDTouE.js';
+import { Q as QuadOptions } from './types-CJ24_5ap.js';
 
 type CaptureMode = "screen+mic" | "mic-only";
 
@@ -34,6 +34,10 @@ declare class QuadApi {
         mode?: CaptureMode;
     }): Promise<void>;
     stopRecord(): Promise<void>;
+    /** One-shot on init: fetch this reporter's pins from the server, merge into
+     * localStorage (so panel reflects them on a fresh device / private window),
+     * then apply the showPins policy. Fail silent — never block boot. */
+    private bootstrapPins;
     /** Minimal native confirm so we don't ship a custom modal just for this. */
     private askCaptureMode;
     private toggleBugMode;

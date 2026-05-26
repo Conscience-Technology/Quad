@@ -23,6 +23,15 @@ export type QuadOptions = {
   mask?: string[]; // CSS selectors to mask in screenshots/recordings
   commitSha?: string; // host app's git commit SHA (for source-map resolution)
   position?: "right" | "left"; // default "right"
+  /**
+   * Default visibility of your own pins on the host page.
+   *  "off"            (default) nothing is drawn until the reporter
+   *                   manually toggles a pin from the panel.
+   *  "self-on-route"  auto-reveal your pins on the route they belong to.
+   *  "self-all"       auto-reveal your pins everywhere (only those on the
+   *                   current route can render — others sit dormant).
+   */
+  showPins?: "off" | "self-on-route" | "self-all";
 };
 
 export type ConsoleEntry = {

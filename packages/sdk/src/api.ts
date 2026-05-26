@@ -20,6 +20,18 @@ export type IngestPinInput = {
   reporterAnonKey?: string;
 };
 
+export type ServerPin = {
+  id: string;
+  createdAt: string;
+  route: string | null;
+  pageUrl: string | null;
+  selector: string | null;
+  domPath: string | null;
+  componentPath: string | null;
+  body: string;
+  status: string;
+};
+
 export type IngestSessionInput = {
   title: string;
   body: string;
@@ -47,6 +59,33 @@ export class Api {
 
   async createPin(input: IngestPinInput): Promise<{ id: string }> {
     return this.postJson("/api/ingest/pin", input);
+  }
+
+  /** Cross-device sync of the caller's own pins. Self-only. */
+  async listMyPins(params: {
+    reporterAnon?: string;
+    reporterId?: string;
+    route?: string;
+    sinceMs?: number;
+    limit?: number;
+  }): Promise<{ pins: ServerPin[] }> {
+    const qs = new URLSearchParams();
+    if (params.reporterAnon) qs.set("reporter_anon", params.reporterAnon);
+    if (params.reporterId) qs.set("reporter_id", params.reporterId);
+    if (params.route) qs.set("route", params.route);
+    if (params.sinceMs != null) qs.set("since_ms", String(params.sinceMs));
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    const res = await fetch(this.url(`/api/ingest/pins?${qs.toString()}`), {
+      method: "GET",
+      headers: {
+        "x-quad-key": this.cfg.apiKey,
+        "x-quad-sdk-version": this.cfg.version,
+      },
+      mode: "cors",
+      credentials: "omit",
+    });
+    if (!res.ok) throw new Error(`listMyPins ${res.status}`);
+    return res.json() as Promise<{ pins: ServerPin[] }>;
   }
 
   async createSession(input: IngestSessionInput): Promise<{ id: string }> {

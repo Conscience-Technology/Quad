@@ -11,6 +11,7 @@ export class RevealLayer {
   private rafId: number | null = null;
   private mo: MutationObserver | null = null;
   private unsubLocal: () => void;
+  private openPopover: HTMLDivElement | null = null;
 
   constructor(private shadow: ShadowRoot) {
     this.unsubLocal = Local.subscribe(() => this.schedule());
@@ -118,7 +119,7 @@ export class RevealLayer {
 
     const tag = document.createElement("div");
     tag.className = "q-reveal-tag";
-    tag.title = pin.body;
+    tag.style.cursor = "pointer";
     tag.innerHTML = `
       <span class="dot">✦</span>
       <span class="body">${escapeHtml(pin.body.slice(0, 60))}</span>
@@ -127,12 +128,84 @@ export class RevealLayer {
     const x = tag.querySelector("button.x");
     x?.addEventListener("click", (e) => {
       e.stopPropagation();
+      this.closePopover();
       Local.setVisible(pin.id, false);
+    });
+    tag.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.togglePopover(pin, tag);
     });
     this.shadow.appendChild(tag);
 
     return { outline, tag };
   }
+
+  // ---- click-popover (full body / metadata) -------------------------------
+
+  private togglePopover(pin: Local.LocalPin, anchor: HTMLDivElement): void {
+    if (this.openPopover && this.openPopover.dataset.id === pin.id) {
+      this.closePopover();
+      return;
+    }
+    this.closePopover();
+
+    const pop = document.createElement("div");
+    pop.className = "q-reveal-popover";
+    pop.dataset.id = pin.id;
+    pop.innerHTML = `
+      <div class="head">
+        <span class="who">your report</span>
+        <span class="when">${formatAgo(pin.createdAt)}</span>
+      </div>
+      <p class="body">${escapeHtml(pin.body)}</p>
+      <div class="meta">
+        ${pin.componentPath ? `<div><span>component</span><code>${escapeHtml(pin.componentPath)}</code></div>` : ""}
+        <div><span>selector</span><code>${escapeHtml(pin.selector)}</code></div>
+        <div><span>route</span><code>${escapeHtml(pin.route)}</code></div>
+      </div>
+      <div class="actions">
+        <button class="hide">Hide on page</button>
+      </div>
+    `;
+    const rect = anchor.getBoundingClientRect();
+    const top = rect.bottom + 8;
+    const left = Math.max(8, Math.min(window.innerWidth - 332, rect.left));
+    pop.style.left = `${left}px`;
+    pop.style.top = `${top}px`;
+    this.shadow.appendChild(pop);
+    this.openPopover = pop;
+
+    pop.querySelector(".hide")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.closePopover();
+      Local.setVisible(pin.id, false);
+    });
+
+    // Dismiss on outside click
+    const onDocClick = (e: MouseEvent) => {
+      const path = (e.composedPath?.() ?? []) as EventTarget[];
+      if (!path.includes(pop) && !path.includes(anchor)) {
+        this.closePopover();
+        document.removeEventListener("click", onDocClick, true);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
+  }
+
+  private closePopover(): void {
+    this.openPopover?.remove();
+    this.openPopover = null;
+  }
+}
+
+function formatAgo(ts: number): string {
+  const s = Math.max(1, Math.floor((Date.now() - ts) / 1000));
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
 function escapeHtml(s: string): string {
