@@ -87,7 +87,9 @@ jobs:
       - name: Forbid runtime deps in @quad/sdk
         shell: node {0}
         run: |
-          const deps = require('./packages/sdk/package.json').dependencies || {};
+          const fs = require('node:fs'), path = require('node:path');
+          const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'packages/sdk/package.json'), 'utf8'));
+          const deps = pkg.dependencies || {};
           if (Object.keys(deps).length !== 0) {
             console.error('@quad/sdk added a runtime dependency. Keep it zero-dep.');
             console.error(deps);
