@@ -119,7 +119,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             onChange={(v) => setPassword(v)}
             required
             autoComplete={mode === "login" ? "current-password" : "new-password"}
-            placeholder={mode === "signup" ? "10+ characters" : ""}
+            placeholder={mode === "signup" ? "8+ characters" : ""}
           />
         </Field>
       </div>

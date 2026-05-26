@@ -12,7 +12,7 @@ const OPTIONS = {
   parallelism: 1,
 } as const;
 
-const MIN_LENGTH = 10;
+const MIN_LENGTH = 8;
 
 const COMMON_PATTERNS = [
   /^password/i,

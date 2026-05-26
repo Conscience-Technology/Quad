@@ -22,7 +22,7 @@ import { authedProcedure, publicProcedure, router } from "../trpc";
 import { invitationsLib } from "./members";
 
 const EmailSchema = z.string().email().toLowerCase().trim();
-const PasswordSchema = z.string().min(10).max(256);
+const PasswordSchema = z.string().min(8).max(256);
 const NameSchema = z.string().min(1).max(100).optional();
 
 export const authRouter = router({
