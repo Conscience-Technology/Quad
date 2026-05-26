@@ -10,6 +10,8 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { schema } from "~/db";
+import { sendEmail, inviteEmail } from "~/lib/email";
+import { env, features } from "~/lib/env";
 import { projectAdminProcedure, projectMemberProcedure } from "../auth-procedures";
 import { authedProcedure, router } from "../trpc";
 
@@ -86,16 +88,39 @@ export const membersRouter = router({
         invitedByUserId: ctx.user.id,
         expiresAt: new Date(Date.now() + INVITE_TTL_MS),
       });
+      // Fetch project name + inviter name for the email template.
+      const [project] = await ctx.db
+        .select({ name: schema.projects.name })
+        .from(schema.projects)
+        .where(eq(schema.projects.id, input.projectId))
+        .limit(1);
+      const inviteUrl = `${env().APP_URL}/signup?invite=${encodeURIComponent(token)}`;
+
+      let emailSent = false;
+      if (features.email()) {
+        const tpl = inviteEmail({
+          projectName: project?.name ?? "a Quad project",
+          inviteUrl,
+          invitedBy: ctx.user.name ?? ctx.user.email,
+        });
+        const res = await sendEmail({
+          to: input.email,
+          subject: tpl.subject,
+          html: tpl.html,
+        });
+        emailSent = res.ok;
+      }
+
       await ctx.db.insert(schema.auditLog).values({
         whoKind: "user",
         whoId: ctx.user.id,
         action: "member.invite",
         target: input.projectId,
-        meta: { email: input.email, role: input.role },
+        meta: { email: input.email, role: input.role, emailSent },
       });
-      // TODO Phase 1+: send invitation email when EMAIL_PROVIDER_KEY is set.
-      // For now, return the token in the response (admin can copy the URL).
-      return { kind: "invited" as const, inviteToken: token };
+      // Always return the token too — admin can copy the URL if email is
+      // disabled or didn't reach the inbox.
+      return { kind: "invited" as const, inviteToken: token, emailSent };
     }),
 
   /** Active user requests to join an existing project by id. */
