@@ -1,0 +1,27 @@
+{
+  "name": "@quad/cli",
+  "version": "0.0.0",
+  "description": "Quad CLI — login, pull tasks, attach OS recordings, upload sourcemaps.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "quad": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo skip"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  }
+}
