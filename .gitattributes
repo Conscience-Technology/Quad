@@ -1,0 +1,32 @@
+# Normalize line endings — always LF on disk.
+* text=auto eol=lf
+
+# Shell + config files must stay LF even on Windows checkouts.
+*.sh             text eol=lf
+*.mjs            text eol=lf
+*.ts             text eol=lf
+*.tsx            text eol=lf
+*.json           text eol=lf
+*.yml            text eol=lf
+*.yaml           text eol=lf
+Makefile         text eol=lf
+Dockerfile*      text eol=lf
+
+# Binary assets shouldn't be diffed.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.mp4  binary
+*.webm binary
+*.mp3  binary
+
+# Linguist tweaks — keep the language stats honest.
+spec.md         linguist-documentation
+HOWTO.md        linguist-documentation
+deploy/*.md     linguist-documentation
+apps/web/drizzle/*.sql linguist-generated
+pnpm-lock.yaml  linguist-generated

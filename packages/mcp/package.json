@@ -1,0 +1,27 @@
+{
+  "name": "@quad/mcp",
+  "version": "0.0.0",
+  "description": "MCP server for Quad. Streams reporter context into Claude Code.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "quad-mcp": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo skip"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  }
+}
