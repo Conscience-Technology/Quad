@@ -34,7 +34,7 @@ Variables → Add:
 
 | Key                       | Notes                                                                                 |
 | ------------------------- | ------------------------------------------------------------------------------------- |
-| `SESSION_SECRET`          | `openssl rand -base64 48`                                                             |
+| `SESSION_SECRET`          | `openssl rand -base64 48` &nbsp;·&nbsp; Windows PowerShell: `[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))` |
 | `SUPER_ADMIN_EMAIL`       | The email you'll sign up with. That account becomes Super Admin automatically.        |
 | `APP_URL`                 | The public Railway URL (e.g. `https://quad-production-abcd.up.railway.app`)           |
 | `PORT`                    | `3010` (Railway also injects its own PORT; this is fine to leave as the docker default) |

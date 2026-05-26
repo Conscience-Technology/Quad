@@ -5,7 +5,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { join, relative, sep as pathSep } from "node:path";
 import { Command } from "commander";
 
 type Config = { endpoint: string; apiKey: string };
@@ -198,10 +198,15 @@ program
 program
   .command("attach <bug-id> [file...]")
   .description("Attach a local file (OS recording) to a bug or task")
-  .option("--latest <dir>", "attach the most-recent video in <dir>")
-  .action(async (bugId: string, files: string[], o: { latest?: string }) => {
+  .option("--latest [dir]", "attach the most-recent video. Defaults to the OS screenshots/recordings folder.")
+  .action(async (bugId: string, files: string[], o: { latest?: string | boolean }) => {
     const cfg = await loadConfig();
-    const list = files.length > 0 ? files : o.latest ? [await mostRecentVideo(o.latest)] : [];
+    let resolved: string[] = files;
+    if (resolved.length === 0 && o.latest !== undefined) {
+      const dir = typeof o.latest === "string" ? o.latest : defaultRecordingDir();
+      resolved = [await mostRecentVideo(dir)];
+    }
+    const list = resolved;
     if (list.length === 0) { console.error("no file"); process.exit(2); }
     for (const f of list) {
       const st = await stat(f);
@@ -311,16 +316,36 @@ async function collectFiles(root: string, exts: string[]): Promise<string[]> {
   return out;
 }
 
+function defaultRecordingDir(): string {
+  const home = homedir();
+  switch (process.platform) {
+    case "darwin":
+      return home; // Cmd+Shift+5 saves to Desktop; users often re-save to ~/Movies
+    case "win32":
+      // Win+G "Captures" lives under Videos\Captures
+      return join(home, "Videos", "Captures");
+    default:
+      return join(home, "Videos");
+  }
+}
+
 async function mostRecentVideo(dir: string): Promise<string> {
-  const expanded = dir.replace(/^~/, homedir());
-  const entries = await readdir(expanded);
-  const candidates = entries.filter((n) =>
-    /\.(mp4|mov|webm|mkv)$/i.test(n) || /Screen[ _]Recording.*\.mov$/i.test(n),
+  // Expand ~ on POSIX and convert forward/back slashes on Windows.
+  const raw = dir.startsWith("~") ? dir.replace(/^~/, homedir()) : dir;
+  const root = process.platform === "win32"
+    ? raw.replace(/\//g, pathSep)
+    : raw;
+  const entries = await readdir(root);
+  const candidates = entries.filter(
+    (n) =>
+      /\.(mp4|mov|webm|mkv)$/i.test(n) ||
+      /Screen[ _]Recording.*\.mov$/i.test(n) ||
+      /^.*\.(mp4|mov)$/i.test(n), // Win+G captures: <Game> <date>.mp4
   );
-  if (candidates.length === 0) throw new Error(`no video files in ${expanded}`);
+  if (candidates.length === 0) throw new Error(`no video files in ${root}`);
   const withStat = await Promise.all(
     candidates.map(async (n) => {
-      const full = join(expanded, n);
+      const full = join(root, n);
       const st = await stat(full);
       return { full, mtime: st.mtimeMs };
     }),

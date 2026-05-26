@@ -94,10 +94,10 @@ export class Widget {
     body.className = "body";
     body.innerHTML = `
       <p>To point at a specific element, use <strong>Bug Mode + Option/Alt+Click</strong>.</p>
-      <p>This panel is for freeform reports. Drop videos/screenshots below or paste (Cmd+V).</p>
+      <p>This panel is for freeform reports. Drop videos/screenshots below or paste (⌘/Ctrl+V).</p>
       <div class="drop" data-over="false">
         Drop a file here or click to select<br/>
-        <small>Record with Cmd+Shift+5 (Mac) or Win+G (Windows), then drop here</small>
+        <small>Record with ⌘⇧5 on macOS, Win+G on Windows, then drop the file here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
       <textarea placeholder="What went wrong?"></textarea>

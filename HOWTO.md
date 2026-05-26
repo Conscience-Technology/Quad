@@ -40,7 +40,7 @@ In Railway → **Variables**:
 
 | Key | Value | Notes |
 |---|---|---|
-| `SESSION_SECRET` | output of `openssl rand -base64 48` | **required** |
+| `SESSION_SECRET` | output of `openssl rand -base64 48` (or on Windows: `[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))`) | **required** |
 | `SUPER_ADMIN_EMAIL` | your email | Sign up with this address to become super admin |
 | `APP_URL` | your Railway public URL | e.g. `https://quad-production-xxxx.up.railway.app` |
 | `INSTANCE_SIGNUP_OPEN` | `false` | only invitees + super admin can sign up |
@@ -234,6 +234,13 @@ npx quad comment <task-id> "Fix is up for review"
 Attach an OS recording:
 
 ```bash
+# Most-recent video, OS-aware default folder:
+#   macOS:    ~              (Cmd+Shift+5 → desktop)
+#   Windows:  %USERPROFILE%\Videos\Captures   (Win+G "Captures")
+#   Linux:    ~/Videos
+npx quad attach <bug-id> --latest
+
+# Or pass any folder explicitly:
 npx quad attach <bug-id> --latest ~/Movies
 ```
 
