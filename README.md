@@ -4,6 +4,8 @@
 
 # Quad
 
+<img src=".github/assets/hero.svg" alt="Reporter pins an element, captures a session, maintainer confirms, Claude Code opens a PR" width="100%" />
+
 **The bug reporter that ships its reporter's context straight to your AI coding agent.**
 
 Reporter video, audio, DOM and network — on one ms-aligned timeline — flow

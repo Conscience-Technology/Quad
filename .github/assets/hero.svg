@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 220" width="880" height="220" role="img" aria-label="Quad flow: pin → capture → confirm → fix">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0c14"/>
+      <stop offset="1" stop-color="#06070c"/>
+    </linearGradient>
+    <radialGradient id="neb1" cx="0%" cy="0%" r="80%">
+      <stop offset="0" stop-color="#8b7cf6" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#8b7cf6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="neb2" cx="100%" cy="100%" r="80%">
+      <stop offset="0" stop-color="#67e8f9" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#67e8f9" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glowV" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Backdrop -->
+  <rect width="880" height="220" fill="url(#bg)"/>
+  <rect width="880" height="220" fill="url(#neb1)"/>
+  <rect width="880" height="220" fill="url(#neb2)"/>
+
+  <!-- Twinkling stars (subtle) -->
+  <g fill="#f5f7ff">
+    <circle cx="60"  cy="34"  r="0.9" opacity="0.55"><animate attributeName="opacity" values="0.55;0.2;0.55" dur="4s" repeatCount="indefinite"/></circle>
+    <circle cx="320" cy="20"  r="0.8" opacity="0.45"><animate attributeName="opacity" values="0.45;0.15;0.45" dur="5s" repeatCount="indefinite"/></circle>
+    <circle cx="610" cy="40"  r="0.9" opacity="0.55"><animate attributeName="opacity" values="0.55;0.2;0.55" dur="4.5s" repeatCount="indefinite"/></circle>
+    <circle cx="820" cy="28"  r="0.8" opacity="0.4"><animate attributeName="opacity" values="0.4;0.15;0.4" dur="6s" repeatCount="indefinite"/></circle>
+    <circle cx="180" cy="190" r="0.8" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="5.5s" repeatCount="indefinite"/></circle>
+    <circle cx="480" cy="195" r="0.9" opacity="0.5"><animate attributeName="opacity" values="0.5;0.18;0.5" dur="4.2s" repeatCount="indefinite"/></circle>
+    <circle cx="730" cy="180" r="0.8" opacity="0.4"><animate attributeName="opacity" values="0.4;0.12;0.4" dur="6.2s" repeatCount="indefinite"/></circle>
+  </g>
+
+  <!-- 4 stages, evenly spaced -->
+  <!-- ── 1. PIN ── -->
+  <g transform="translate(40 50)">
+    <!-- step number -->
+    <text x="0" y="-12" font-family="ui-monospace,monospace" font-size="9" fill="#4a4f63" letter-spacing="1.5">01 · REPORTER</text>
+    <!-- panel -->
+    <rect x="0" y="0" width="170" height="120" rx="10" fill="#11141d" stroke="#1f2433" stroke-width="1"/>
+    <!-- mock element being pinned -->
+    <rect x="22" y="36" width="92" height="22" rx="4" fill="#181c27"/>
+    <text x="42" y="51" font-family="ui-sans-serif,system-ui,sans-serif" font-size="10" fill="#8a90a8">Pay $129</text>
+    <!-- violet pinning outline -->
+    <rect x="20" y="34" width="96" height="26" rx="5" fill="none" stroke="#8b7cf6" stroke-width="1.5" filter="url(#glowV)">
+      <animate attributeName="opacity" values="0;1;1" dur="1.2s" begin="0s" fill="freeze"/>
+    </rect>
+    <!-- floating pin form -->
+    <g transform="translate(56 70)">
+      <rect width="100" height="32" rx="4" fill="#181c27" stroke="#8b7cf6" stroke-width="0.8" opacity="0"  >
+        <animate attributeName="opacity" values="0;1" dur="0.4s" begin="1.2s" fill="freeze"/>
+      </rect>
+      <text x="8" y="12" font-family="ui-monospace,monospace" font-size="7" fill="#4a4f63" opacity="0">
+        button.pay-now
+        <animate attributeName="opacity" values="0;1" dur="0.4s" begin="1.4s" fill="freeze"/>
+      </text>
+      <text x="8" y="24" font-family="ui-sans-serif,system-ui,sans-serif" font-size="9" fill="#c8cde0" opacity="0">
+        blank screen on click
+        <animate attributeName="opacity" values="0;1" dur="0.4s" begin="1.6s" fill="freeze"/>
+      </text>
+    </g>
+    <!-- caption -->
+    <text x="0" y="140" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600" fill="#f5f7ff">⌥ Click an element</text>
+    <text x="0" y="156" font-family="ui-sans-serif,system-ui,sans-serif" font-size="10" fill="#8a90a8">Figma-style pin in your app</text>
+  </g>
+
+  <!-- arrow 1→2 -->
+  <g stroke="#2a3146" stroke-width="1.2" fill="none">
+    <line x1="218" y1="110" x2="252" y2="110"/>
+    <polyline points="248,106 254,110 248,114" stroke-linejoin="round"/>
+  </g>
+
+  <!-- ── 2. CAPTURE ── -->
+  <g transform="translate(260 50)">
+    <text x="0" y="-12" font-family="ui-monospace,monospace" font-size="9" fill="#4a4f63" letter-spacing="1.5">02 · CAPTURE</text>
+    <rect x="0" y="0" width="170" height="120" rx="10" fill="#11141d" stroke="#1f2433" stroke-width="1"/>
+    <!-- video frame strip -->
+    <g transform="translate(14 24)">
+      <rect x="0"  y="0" width="34" height="22" rx="2" fill="#181c27"/>
+      <rect x="38" y="0" width="34" height="22" rx="2" fill="#181c27"/>
+      <rect x="76" y="0" width="34" height="22" rx="2" fill="#181c27"/>
+      <rect x="114" y="0" width="34" height="22" rx="2" fill="#181c27"/>
+      <text x="0" y="34" font-family="ui-monospace,monospace" font-size="6" fill="#4a4f63">key frames</text>
+    </g>
+    <!-- transcript line -->
+    <g transform="translate(14 60)">
+      <text font-family="ui-sans-serif,system-ui,sans-serif" font-size="9" fill="#c8cde0">
+        <tspan x="0" y="0">"this button</tspan>
+        <tspan x="0" y="12">goes blank"</tspan>
+      </text>
+      <text font-family="ui-monospace,monospace" font-size="6" fill="#4a4f63" x="0" y="26">whisper · 0:02</text>
+    </g>
+    <!-- record indicator -->
+    <circle cx="148" cy="14" r="3" fill="#fb7185" filter="url(#glowV)">
+      <animate attributeName="opacity" values="1;0.3;1" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <text x="0" y="140" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600" fill="#f5f7ff">⌘⇧R — screen + voice</text>
+    <text x="0" y="156" font-family="ui-sans-serif,system-ui,sans-serif" font-size="10" fill="#8a90a8">Aligned timeline of everything</text>
+  </g>
+
+  <!-- arrow 2→3 -->
+  <g stroke="#2a3146" stroke-width="1.2" fill="none">
+    <line x1="438" y1="110" x2="472" y2="110"/>
+    <polyline points="468,106 474,110 468,114" stroke-linejoin="round"/>
+  </g>
+
+  <!-- ── 3. CONFIRM ── -->
+  <g transform="translate(480 50)">
+    <text x="0" y="-12" font-family="ui-monospace,monospace" font-size="9" fill="#4a4f63" letter-spacing="1.5">03 · MAINTAINER</text>
+    <rect x="0" y="0" width="170" height="120" rx="10" fill="#11141d" stroke="#1f2433" stroke-width="1"/>
+    <!-- 4-column board -->
+    <g transform="translate(12 18)">
+      <rect width="32" height="78" rx="3" fill="#0a0c14" stroke="#1f2433" stroke-width="0.8"/>
+      <rect x="38" width="32" height="78" rx="3" fill="#0a0c14" stroke="#1f2433" stroke-width="0.8"/>
+      <rect x="76" width="32" height="78" rx="3" fill="#0a0c14" stroke="#8b7cf6" stroke-width="1.2"/>
+      <rect x="114" width="32" height="78" rx="3" fill="#0a0c14" stroke="#1f2433" stroke-width="0.8"/>
+      <text x="0" y="-4" font-family="ui-monospace,monospace" font-size="5.5" fill="#4a4f63">inbox</text>
+      <text x="38" y="-4" font-family="ui-monospace,monospace" font-size="5.5" fill="#4a4f63">triage</text>
+      <text x="76" y="-4" font-family="ui-monospace,monospace" font-size="5.5" fill="#8b7cf6">confirm</text>
+      <text x="114" y="-4" font-family="ui-monospace,monospace" font-size="5.5" fill="#4a4f63">done</text>
+      <!-- cards in confirm -->
+      <rect x="78" y="8"  width="28" height="10" rx="1.5" fill="#181c27"/>
+      <rect x="78" y="20" width="28" height="10" rx="1.5" fill="#181c27"/>
+      <rect x="78" y="32" width="28" height="10" rx="1.5" fill="#8b7cf6" opacity="0.25"/>
+    </g>
+    <text x="0" y="140" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600" fill="#f5f7ff">✓ Confirm → Task</text>
+    <text x="0" y="156" font-family="ui-sans-serif,system-ui,sans-serif" font-size="10" fill="#8a90a8">Brief frozen, queued for the agent</text>
+  </g>
+
+  <!-- arrow 3→4 -->
+  <g stroke="#2a3146" stroke-width="1.2" fill="none">
+    <line x1="658" y1="110" x2="692" y2="110"/>
+    <polyline points="688,106 694,110 688,114" stroke-linejoin="round"/>
+  </g>
+
+  <!-- ── 4. AGENT FIX ── -->
+  <g transform="translate(700 50)">
+    <text x="0" y="-12" font-family="ui-monospace,monospace" font-size="9" fill="#4a4f63" letter-spacing="1.5">04 · CLAUDE CODE</text>
+    <rect x="0" y="0" width="140" height="120" rx="10" fill="#11141d" stroke="#1f2433" stroke-width="1"/>
+    <!-- terminal-ish lines -->
+    <g font-family="ui-monospace,monospace" font-size="7.5" fill="#c8cde0">
+      <text x="12" y="22" fill="#67e8f9">$ quad_pick_task</text>
+      <text x="12" y="36">▸ brief + frames</text>
+      <text x="12" y="48">▸ timeline.json</text>
+      <text x="12" y="62" fill="#8b7cf6">▸ editing PayNow.tsx:42</text>
+      <text x="12" y="78" fill="#4ade80">✓ gh pr create</text>
+      <text x="12" y="92" fill="#4a4f63">#417 opened</text>
+    </g>
+    <text x="0" y="140" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600" fill="#f5f7ff">🤖 One MCP call → PR</text>
+    <text x="0" y="156" font-family="ui-sans-serif,system-ui,sans-serif" font-size="10" fill="#8a90a8">Vision sees the frames directly</text>
+  </g>
+</svg>
