@@ -13,7 +13,7 @@ export function MembersPanel({ projectId }: { projectId: string }) {
   const invite = trpc.members.invite.useMutation({
     onSuccess: async (res) => {
       if (res.kind === "invited" && res.inviteToken) {
-        setLastInvite({ email, token: res.inviteToken });
+        setLastInvite({ email, token: res.inviteToken, emailSent: res.emailSent ?? false });
       } else {
         setLastInvite(null);
       }
@@ -36,7 +36,7 @@ export function MembersPanel({ projectId }: { projectId: string }) {
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
-  const [lastInvite, setLastInvite] = useState<{ email: string; token: string } | null>(null);
+  const [lastInvite, setLastInvite] = useState<{ email: string; token: string; emailSent: boolean } | null>(null);
 
   const inviteUrl = lastInvite
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/signup?invite=${encodeURIComponent(lastInvite.token)}`
@@ -91,7 +91,12 @@ export function MembersPanel({ projectId }: { projectId: string }) {
           </div>
           <Code className="block break-all">{inviteUrl}</Code>
           <p className="text-xs text-[var(--color-star-500)]">
-            Expires in 14 days. Email delivery requires EMAIL_PROVIDER_KEY (Phase 2).
+            Expires in 14 days.
+            {lastInvite.emailSent ? (
+              <span className="text-[var(--color-nebula-green)]"> ✓ Invitation email sent.</span>
+            ) : (
+              <span> Email not sent (EMAIL_PROVIDER_KEY unset) — copy the link above to share manually.</span>
+            )}
           </p>
         </Surface>
       )}
