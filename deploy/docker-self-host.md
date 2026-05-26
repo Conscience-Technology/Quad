@@ -1,25 +1,35 @@
-# Self-host via Docker Compose (any Linux/Mac box)
+# Self-host via Docker Compose (Linux / macOS / Windows)
 
 Bundle: Postgres + MinIO (S3-compatible) + the Quad app, all on one host.
 
 ## Prereqs
 
-- Docker + Docker Compose v2
+- Docker + Docker Compose v2 (Docker Desktop on macOS / Windows)
 - 1 GB RAM + 5 GB disk free for the base bundle (videos add more)
 - `ffmpeg` is built into the app image (no need to install on the host)
 
 ## 1. Clone + configure
 
+**macOS / Linux**
+
 ```bash
-git clone https://github.com/<you>/quad.git
-cd quad
+git clone https://github.com/Conscience-Technology/Quad.git
+cd Quad
 cp .env.example .env
+```
+
+**Windows (PowerShell)**
+
+```powershell
+git clone https://github.com/Conscience-Technology/Quad.git
+cd Quad
+Copy-Item .env.example .env
 ```
 
 Edit `.env`:
 
 ```ini
-SESSION_SECRET=...                 # openssl rand -base64 48
+SESSION_SECRET=...                 # see below
 SUPER_ADMIN_EMAIL=you@example.com  # promotes this email to Super Admin
 APP_URL=http://localhost:3010      # or your reverse-proxied URL
 INSTANCE_SIGNUP_OPEN=false         # public signup off by default
@@ -27,11 +37,30 @@ OPENAI_API_KEY=                    # optional, enables Whisper STT
 EMAIL_PROVIDER=none                # set to `resend` + EMAIL_PROVIDER_KEY to send invites
 ```
 
+Generate a 48-byte `SESSION_SECRET`:
+
+```bash
+# macOS / Linux
+openssl rand -base64 48
+```
+
+```powershell
+# Windows PowerShell (no openssl required)
+[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+```
+
+> If you'd rather skip the manual steps, `./scripts/quickstart.sh`
+> (macOS / Linux) or `pwsh ./scripts/quickstart.ps1` (Windows) does
+> everything in step 1 + 2 for you.
+
 ## 2. Bring it up
 
 ```bash
 docker compose --env-file .env -f docker/docker-compose.yml up -d
 ```
+
+(Same command on every OS — Docker Compose v2 ships in Docker Desktop on
+macOS and Windows.)
 
 This starts:
 

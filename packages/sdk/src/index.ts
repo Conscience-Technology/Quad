@@ -41,6 +41,7 @@ class QuadApi {
   private bugMode?: BugMode;
   private capture?: CaptureSession;
   private reveal?: RevealLayer;
+  private optKey: "Option" | "Alt" = "Alt";
   private user?: QuadOptions["user"];
   private context: Record<string, unknown> = {};
   private consoleRing = new Ring<ConsoleEntry>(50);
@@ -85,6 +86,8 @@ class QuadApi {
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
       onPin: (el, x, y) => this.openPinForm(el, x, y),
     });
+    // Mac users see ⌥ / Option, Windows + Linux see Alt. Same physical key.
+    this.optKey = /Mac|iPhone|iPad/i.test(navigator?.platform ?? "") ? "Option" : "Alt";
     this.reveal = new RevealLayer(this.widget.root);
 
     // Cross-device sync: pull this reporter's own pins from the server,
@@ -114,7 +117,7 @@ class QuadApi {
         // Toggle bug mode on so the next Option+Click captures the pin; the
         // pin is then attached to the bug_report independently from the capture.
         if (!this.bugMode?.isOn()) this.toggleBugMode();
-        this.widget?.toast("Option+Click an element to pin it");
+        this.widget?.toast(`${this.optKey}+Click an element to pin it`);
       },
     });
 
@@ -275,7 +278,9 @@ class QuadApi {
   private toggleBugMode(): void {
     if (!this.bugMode) return;
     this.bugMode.setOn(!this.bugMode.isOn());
-    this.widget?.toast(this.bugMode.isOn() ? "Bug Mode ON — Option+Click to pin" : "Bug Mode OFF");
+    this.widget?.toast(
+      this.bugMode.isOn() ? `Bug Mode ON — ${this.optKey}+Click to pin` : "Bug Mode OFF",
+    );
   }
 
   private toggleOverlay(): void {

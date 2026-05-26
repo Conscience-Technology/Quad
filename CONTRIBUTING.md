@@ -26,11 +26,15 @@ These are in the [spec](./spec.md) too. Worth re-reading before a PR.
 
 ## Local setup
 
-Prereqs: Node 20+, pnpm 9+, Docker.
+Prereqs: Node 20+, pnpm 9+, Docker (Docker Desktop on macOS / Windows).
+CI runs on `ubuntu-latest` **and** `windows-latest` — please keep both
+green.
+
+**macOS / Linux**
 
 ```bash
-git clone https://github.com/<you>/quad.git
-cd quad
+git clone https://github.com/Conscience-Technology/Quad.git
+cd Quad
 pnpm install
 cp .env.example .env
 # Edit SESSION_SECRET (openssl rand -base64 48) + SUPER_ADMIN_EMAIL.
@@ -43,6 +47,29 @@ DATABASE_URL=postgres://quad:quad@localhost:5432/quad pnpm --filter @quad/web db
 
 # Run the app:
 set -a && source .env && set +a
+pnpm --filter @quad/web dev   # http://localhost:3010
+```
+
+**Windows (PowerShell)**
+
+```powershell
+git clone https://github.com/Conscience-Technology/Quad.git
+cd Quad
+pnpm install
+Copy-Item .env.example .env
+# Edit SESSION_SECRET + SUPER_ADMIN_EMAIL. Generate the secret with:
+#   [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+
+docker compose --env-file .env -f docker/docker-compose.yml up -d postgres minio minio-init
+
+$env:DATABASE_URL = "postgres://quad:quad@localhost:5432/quad"
+pnpm --filter @quad/web db:migrate
+
+# Load .env into the current PowerShell session, then run dev:
+Get-Content .env | Where-Object { $_ -match '^\s*[^#].*=' } | ForEach-Object {
+  $k,$v = $_ -split '=', 2
+  Set-Item -Path "Env:$($k.Trim())" -Value $v.Trim()
+}
 pnpm --filter @quad/web dev   # http://localhost:3010
 ```
 

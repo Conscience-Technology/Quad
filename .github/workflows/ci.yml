@@ -12,8 +12,12 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -47,28 +51,48 @@ jobs:
         run: pnpm --filter @quad/web build
 
       - name: SDK bundle is served by the web app (/sdk/index.js)
+        shell: node {0}
         run: |
-          test -f apps/web/public/sdk/index.js || (echo "SDK not copied to public/sdk/"; exit 1)
-          SIZE=$(stat -c%s apps/web/public/sdk/index.js 2>/dev/null || stat -f%z apps/web/public/sdk/index.js)
-          echo "served SDK bundle: ${SIZE} bytes"
-          test "$SIZE" -gt 10000
+          const fs = require('node:fs');
+          const p = 'apps/web/public/sdk/index.js';
+          if (!fs.existsSync(p)) { console.error('SDK not copied to public/sdk/'); process.exit(1); }
+          const size = fs.statSync(p).size;
+          console.log(`served SDK bundle: ${size} bytes`);
+          if (size < 10000) process.exit(1);
 
       - name: Forbid server-side LLM calls beyond Whisper STT
+        shell: node {0}
         run: |
-          BAD=$(grep -rn 'api\.openai\.com/v1/\(chat\|images\|embeddings\|moderations\|responses\|assistants\)' apps/web/src packages/ 2>/dev/null || true)
-          if [ -n "$BAD" ]; then
-            echo "❌ Forbidden non-Whisper OpenAI call:"
-            echo "$BAD"
-            exit 1
-          fi
-          echo "✓ Only Whisper STT is used server-side"
+          const fs = require('node:fs'), path = require('node:path');
+          const FORBIDDEN = /api\.openai\.com\/v1\/(chat|images|embeddings|moderations|responses|assistants)/;
+          const walk = (dir) => {
+            for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, ent.name);
+              if (ent.isDirectory()) {
+                if (ent.name === 'node_modules' || ent.name === 'dist' || ent.name === '.next') continue;
+                walk(full);
+              } else if (/\.(t|j)sx?$/.test(ent.name)) {
+                const txt = fs.readFileSync(full, 'utf8');
+                if (FORBIDDEN.test(txt)) {
+                  console.error('Forbidden non-Whisper OpenAI call in', full);
+                  process.exit(1);
+                }
+              }
+            }
+          };
+          walk('apps/web/src');
+          walk('packages');
+          console.log('OK - only Whisper STT is used server-side');
 
       - name: Forbid runtime deps in @quad/sdk
+        shell: node {0}
         run: |
-          DEPS=$(node -p "Object.keys(require('./packages/sdk/package.json').dependencies || {}).length")
-          if [ "$DEPS" -ne 0 ]; then
-            echo "❌ @quad/sdk added a runtime dependency. Keep it zero-dep."
-            node -p "require('./packages/sdk/package.json').dependencies"
-            exit 1
-          fi
-          echo "✓ @quad/sdk has zero runtime dependencies"
+          const fs = require('node:fs'), path = require('node:path');
+          const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'packages/sdk/package.json'), 'utf8'));
+          const deps = pkg.dependencies || {};
+          if (Object.keys(deps).length !== 0) {
+            console.error('@quad/sdk added a runtime dependency. Keep it zero-dep.');
+            console.error(deps);
+            process.exit(1);
+          }
+          console.log('OK - @quad/sdk has zero runtime dependencies');

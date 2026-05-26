@@ -26,16 +26,28 @@ user saw* and *what the agent fixes*.
 
 ## Run anywhere (60 seconds)
 
+**macOS / Linux**
+
 ```bash
 git clone https://github.com/Conscience-Technology/Quad.git
 cd Quad
 ./scripts/quickstart.sh
 ```
 
+**Windows (PowerShell)**
+
+```powershell
+git clone https://github.com/Conscience-Technology/Quad.git
+cd Quad
+pwsh ./scripts/quickstart.ps1
+# or, if you only have Windows PowerShell 5.x:
+# powershell -ExecutionPolicy Bypass -File .\scripts\quickstart.ps1
+```
+
 The script:
 
 1. creates `.env` from `.env.example`
-2. generates a `SESSION_SECRET` (`openssl rand -base64 48`)
+2. generates a `SESSION_SECRET`
 3. prompts for your super admin email
 4. boots Postgres + MinIO + Quad via `docker compose`
 
@@ -51,10 +63,10 @@ super admin. Create your first project and copy the SDK key.
 
 ```
 ┌─ Reporter (your Next.js app) ────────────────────────────────────────┐
-│  ⌨ Cmd+Shift+B → Bug Mode                                            │
-│  Option+Click an element                                          │
+│  ⌨ ⌘⇧B  /  Ctrl+Shift+B  → Bug Mode                                  │
+│  ⌥/Alt + Click an element                                            │
 │      pin + selector + componentPath + source file:line               │
-│  Cmd+Shift+R → Capture session                                    │
+│  ⌘⇧R  /  Ctrl+Shift+R  → Capture session                             │
 │      screen + mic + STT + DOM event trail on one ms-aligned timeline │
 └──────────────────────────────────────────────────────────────────────┘
                                   │
@@ -103,7 +115,7 @@ code does this map to?"* — both are baked into the bundle.
 
 | Path | Time | Best for |
 |---|---|---|
-| **Local Docker** — `./scripts/quickstart.sh` | 1 min | Dogfood, dev, CI |
+| **Local Docker** — `./scripts/quickstart.sh` (Mac/Linux) or `pwsh ./scripts/quickstart.ps1` (Windows) | 1 min | Dogfood, dev, CI |
 | **Railway** — [one-click](https://railway.com/new/template?template=https%3A%2F%2Fgithub.com%2FConscience-Technology%2FQuad) | 5 min | Recommended. Postgres + Storage Bucket + app in one project. [`deploy/railway.md`](./deploy/railway.md) |
 | ▲ **Vercel** | 10 min | Works for the dashboard; FFmpeg + Whisper preprocessing has caveats. [`deploy/vercel.md`](./deploy/vercel.md) |
 | ️ **EC2 + RDS + S3** | 15 min | Full AWS. [`deploy/ec2.md`](./deploy/ec2.md) |
