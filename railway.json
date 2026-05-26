@@ -5,7 +5,7 @@
     "buildCommand": "CI=1 pnpm install --frozen-lockfile=false --prod=false --config.confirm-modules-purge=false && pnpm --filter @quad/web build"
   },
   "deploy": {
-    "startCommand": "pnpm --filter @quad/web start",
+    "startCommand": "pnpm --filter @quad/web db:migrate && pnpm --filter @quad/web start",
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5,
