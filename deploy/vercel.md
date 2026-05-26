@@ -46,7 +46,6 @@ APP_URL=https://your-quad.vercel.app
 SESSION_SECRET=...                     # openssl rand -base64 48
                                        # Windows: [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
 SUPER_ADMIN_EMAIL=you@example.com
-INSTANCE_SIGNUP_OPEN=false
 
 DATABASE_URL=postgres://...            # from your Postgres provider
 
@@ -59,7 +58,6 @@ BUCKET_REGION=auto
 BUCKET_PUBLIC_URL=                     # optional, only if you front the bucket with a CDN
 
 OPENAI_API_KEY=                        # optional, for Whisper STT
-EMAIL_PROVIDER=none
 ```
 
 ## 3. Migrations

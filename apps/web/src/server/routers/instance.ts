@@ -13,7 +13,6 @@ export const instanceRouter = router({
     const inst = await getOrCreateInstance();
     return {
       name: inst.name,
-      signupOpen: inst.signupOpen,
       sttEnabled: !!inst.openaiApiKeyEncrypted,
     };
   }),
@@ -22,7 +21,6 @@ export const instanceRouter = router({
     .input(
       z.object({
         name: z.string().min(1).max(64).optional(),
-        signupOpen: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -31,7 +29,6 @@ export const instanceRouter = router({
         .update(schema.instance)
         .set({
           ...(input.name !== undefined ? { name: input.name } : {}),
-          ...(input.signupOpen !== undefined ? { signupOpen: input.signupOpen } : {}),
           updatedAt: new Date(),
         })
         .where(eq(schema.instance.id, 1))

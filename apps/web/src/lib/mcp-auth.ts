@@ -47,7 +47,7 @@ export async function authMcpRequest(req: Request): Promise<
     .where(eq(schema.users.id, apiKey.userId))
     .limit(1);
   const user = userRows[0];
-  if (!user || !user.isActive) {
+  if (!user || user.status !== "active") {
     return { ok: false, err: { status: 401, error: "user inactive" } };
   }
 

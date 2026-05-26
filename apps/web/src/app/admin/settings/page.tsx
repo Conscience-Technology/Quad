@@ -15,10 +15,7 @@ export default async function AdminSettings() {
         <p className="text-sm text-[var(--color-star-500)] font-mono">{inst.name}</p>
       </header>
 
-      <SettingsForm
-        defaultName={inst.name}
-        defaultSignupOpen={inst.signupOpen}
-      />
+      <SettingsForm defaultName={inst.name} />
 
       <Surface className="space-y-2">
         <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">
@@ -29,7 +26,6 @@ export default async function AdminSettings() {
         <Row k="SUPER_ADMIN_EMAIL" v={e.SUPER_ADMIN_EMAIL} />
         <Row k="STT (Whisper)" v={e.OPENAI_API_KEY ? "Enabled" : "Disabled (OPENAI_API_KEY missing)"} />
         <Row k="WHISPER_MONTHLY_MINUTES_CAP" v={String(e.WHISPER_MONTHLY_MINUTES_CAP) + (e.WHISPER_MONTHLY_MINUTES_CAP === 0 ? " (unlimited)" : " min")} />
-        <Row k="EMAIL" v={e.EMAIL_PROVIDER === "none" ? "Disabled" : `${e.EMAIL_PROVIDER} (${e.EMAIL_PROVIDER_KEY ? "key set" : "no key"})`} />
         <Row k="BUCKET_ENDPOINT" v={e.BUCKET_ENDPOINT} />
         <Row k="BUCKET_NAME" v={e.BUCKET_NAME} />
       </Surface>

@@ -32,9 +32,7 @@ Edit `.env`:
 SESSION_SECRET=...                 # see below
 SUPER_ADMIN_EMAIL=you@example.com  # promotes this email to Super Admin
 APP_URL=http://localhost:3010      # or your reverse-proxied URL
-INSTANCE_SIGNUP_OPEN=false         # public signup off by default
 OPENAI_API_KEY=                    # optional, enables Whisper STT
-EMAIL_PROVIDER=none                # set to `resend` + EMAIL_PROVIDER_KEY to send invites
 ```
 
 Generate a 48-byte `SESSION_SECRET`:

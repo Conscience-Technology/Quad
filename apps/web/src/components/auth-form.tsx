@@ -18,6 +18,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   const utils = trpc.useUtils();
 
+  const [pendingNotice, setPendingNotice] = useState(false);
+
   const onDone = async (
     res: { id: string; email: string; isSuperAdmin: boolean },
   ) => {
@@ -31,7 +33,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
     onError: (e) => setError(e.message),
   });
   const signup = trpc.auth.signup.useMutation({
-    onSuccess: onDone,
+    onSuccess: (res) => {
+      if (res.status === "pending") {
+        setPendingNotice(true);
+        return;
+      }
+      void onDone(res);
+    },
     onError: (e) => setError(e.message),
   });
 
@@ -50,6 +58,24 @@ export function AuthForm({ mode }: { mode: Mode }) {
       });
     }
   };
+
+  if (pendingNotice) {
+    return (
+      <div className="space-y-4 w-full max-w-sm text-center">
+        <h1 className="text-2xl tracking-tight text-[var(--color-star-100)]">
+          Almost there
+        </h1>
+        <p className="text-sm text-[var(--color-star-300)]">
+          Your account is created. The instance admin needs to approve it
+          before you can sign in.
+        </p>
+        <p className="text-xs text-[var(--color-star-500)]">
+          You can close this tab. We&apos;ll let you in once they&apos;ve clicked
+          approve.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} className="space-y-6 w-full max-w-sm">

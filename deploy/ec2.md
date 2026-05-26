@@ -34,7 +34,6 @@ SESSION_SECRET=...
 SUPER_ADMIN_EMAIL=you@example.com
 APP_URL=https://quad.yourdomain.com
 NODE_ENV=production
-INSTANCE_SIGNUP_OPEN=false
 
 DATABASE_URL=postgres://USER:PASS@your-rds-host:5432/quad
 
@@ -47,7 +46,6 @@ BUCKET_REGION=us-east-1
 # BUCKET_PUBLIC_URL=https://cdn.yourdomain.com
 
 OPENAI_API_KEY=
-EMAIL_PROVIDER=none
 ```
 
 ## 3. Run only the app container

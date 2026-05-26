@@ -41,11 +41,9 @@ In Railway → **Variables**:
 | Key | Value | Notes |
 |---|---|---|
 | `SESSION_SECRET` | output of `openssl rand -base64 48` (or on Windows: `[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))`) | **required** |
-| `SUPER_ADMIN_EMAIL` | your email | Sign up with this address to become super admin |
+| `SUPER_ADMIN_EMAIL` | your email | Sign up with this address to become super admin (auto-activated). Anyone else who signs up lands in `pending` until you approve them at `/admin/users`. |
 | `APP_URL` | your Railway public URL | e.g. `https://quad-production-xxxx.up.railway.app` |
-| `INSTANCE_SIGNUP_OPEN` | `false` | only invitees + super admin can sign up |
 | `OPENAI_API_KEY` | *(optional)* | enables Whisper STT |
-| `EMAIL_PROVIDER` | `none` | run without invitation emails for now |
 
 ### 1-6. Health check
 
@@ -283,11 +281,12 @@ Mobile browsers don't — screenshots + voice still work.
 
 `OPENAI_API_KEY` is unset. Add it in Railway → redeploy.
 
-### "Public signup is closed on this instance"
+### "Your account is waiting for the instance admin to approve it"
 
-Toggle `INSTANCE_SIGNUP_OPEN=true` temporarily; or have an owner invite
-people via `/projects/[slug]/members` (generates an invite URL good for
-14 days).
+The super admin needs to visit `/admin/users` and click **Approve** on
+the new sign-up. Or have a project admin invite the user via
+`/projects/[slug]/members` — invite-link signups skip the pending state
+and are auto-activated.
 
 ### MCP server can't connect
 

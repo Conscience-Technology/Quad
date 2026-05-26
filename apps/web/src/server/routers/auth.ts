@@ -2,10 +2,13 @@
  * Auth router: signup, login, logout, me.
  *
  * Self-hosted invariants enforced here:
- *  - First-boot user matching SUPER_ADMIN_EMAIL is promoted automatically.
- *  - With INSTANCE_SIGNUP_OPEN=false, signup is restricted to the super admin
- *    email and accepted invitation tokens (invitation token flow lands in the
- *    member router).
+ *  - Anyone can sign up. New users land in status='pending'.
+ *  - The user whose email matches SUPER_ADMIN_EMAIL is auto-promoted to
+ *    super admin AND set to status='active' on first signup. Login is
+ *    refused for non-active accounts.
+ *  - Project-member invitations (URL-only, no email send) accepted at
+ *    signup time short-circuit the pending state: the new account is
+ *    created as 'active' since a super admin already delegated trust.
  */
 import { TRPCError } from "@trpc/server";
 import { and, eq, gt, isNull } from "drizzle-orm";
@@ -46,13 +49,6 @@ export const authRouter = router({
       const superAdminEmail = env().SUPER_ADMIN_EMAIL.toLowerCase().trim();
       const isSuperAdmin = input.email === superAdminEmail;
 
-      if (!isSuperAdmin && !env().INSTANCE_SIGNUP_OPEN && !input.invitationToken) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Public signup is closed on this instance. An invitation is required.",
-        });
-      }
-
       const existing = await ctx.db
         .select({ id: schema.users.id })
         .from(schema.users)
@@ -65,6 +61,8 @@ export const authRouter = router({
         });
       }
 
+      const initialStatus: "pending" | "active" =
+        isSuperAdmin || input.invitationToken ? "active" : "pending";
       const passwordHash = await hashPassword(input.password);
       const [user] = await ctx.db
         .insert(schema.users)
@@ -73,6 +71,8 @@ export const authRouter = router({
           passwordHash,
           name: input.name ?? null,
           isSuperAdmin,
+          status: initialStatus,
+          approvedAt: initialStatus === "active" ? new Date() : null,
         })
         .returning();
       if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -110,16 +110,23 @@ export const authRouter = router({
         }
       }
 
-      await setSessionCookie(user.id);
+      if (initialStatus === "active") {
+        await setSessionCookie(user.id);
+      }
       await ctx.db.insert(schema.auditLog).values({
         whoKind: "user",
         whoId: user.id,
         action: "signup",
         target: user.id,
-        meta: { isSuperAdmin, viaInvite: !!input.invitationToken },
+        meta: { isSuperAdmin, viaInvite: !!input.invitationToken, status: initialStatus },
       });
 
-      return { id: user.id, email: user.email, isSuperAdmin: user.isSuperAdmin };
+      return {
+        id: user.id,
+        email: user.email,
+        isSuperAdmin: user.isSuperAdmin,
+        status: user.status,
+      };
     }),
 
   login: publicProcedure
@@ -133,8 +140,7 @@ export const authRouter = router({
         .where(eq(schema.users.email, input.email))
         .limit(1);
       const user = rows[0];
-      if (!user || !user.isActive) {
-        // Same response shape on missing / inactive / wrong pw -> harder to enumerate.
+      if (!user || user.status === "suspended") {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Invalid email or password",
@@ -145,6 +151,12 @@ export const authRouter = router({
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Invalid email or password",
+        });
+      }
+      if (user.status === "pending") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Your account is waiting for the instance admin to approve it.",
         });
       }
 

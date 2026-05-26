@@ -35,15 +35,11 @@ Variables → Add:
 | Key                       | Notes                                                                                 |
 | ------------------------- | ------------------------------------------------------------------------------------- |
 | `SESSION_SECRET`          | `openssl rand -base64 48` &nbsp;·&nbsp; Windows PowerShell: `[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))` |
-| `SUPER_ADMIN_EMAIL`       | The email you'll sign up with. That account becomes Super Admin automatically.        |
+| `SUPER_ADMIN_EMAIL`       | The email you'll sign up with. That account becomes Super Admin automatically (and is auto-activated). Anyone else who signs up lands in `pending` and you approve them at `/admin/users`. |
 | `APP_URL`                 | The public Railway URL (e.g. `https://quad-production-abcd.up.railway.app`)           |
 | `PORT`                    | `3010` (Railway also injects its own PORT; this is fine to leave as the docker default) |
-| `INSTANCE_SIGNUP_OPEN`    | `false` (default) — only the super admin email + invitees can sign up                 |
 | `OPENAI_API_KEY`          | Optional. If unset, STT (Whisper) is disabled. No other OpenAI endpoint is used.      |
 | `WHISPER_MONTHLY_MINUTES_CAP` | Optional. `0` = no cap. Otherwise STT auto-suspends past N minutes per month.    |
-| `EMAIL_PROVIDER`          | `resend` to send invite mails, `none` to disable.                                     |
-| `EMAIL_PROVIDER_KEY`      | Resend API key (if `EMAIL_PROVIDER=resend`).                                          |
-| `EMAIL_FROM`              | e.g. `Quad <noreply@your-domain.com>`                                                 |
 
 ## 5. Health check + first login
 
