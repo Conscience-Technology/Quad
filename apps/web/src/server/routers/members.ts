@@ -87,7 +87,7 @@ export const membersRouter = router({
         invitedByUserId: ctx.user.id,
         expiresAt: new Date(Date.now() + INVITE_TTL_MS),
       });
-      const inviteUrl = `${env().APP_URL}/signup?invite=${encodeURIComponent(token)}`;
+      const inviteUrl = `${env().API_URL}/signup?invite=${encodeURIComponent(token)}`;
 
       await ctx.db.insert(schema.auditLog).values({
         whoKind: "user",

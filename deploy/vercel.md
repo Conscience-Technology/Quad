@@ -41,7 +41,7 @@ Vercel → Settings → Environment Variables:
 
 ```ini
 NODE_ENV=production
-APP_URL=https://your-quad.vercel.app
+API_URL=https://your-quad.vercel.app
 
 SESSION_SECRET=...                     # openssl rand -base64 48
                                        # Windows: [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
@@ -50,11 +50,11 @@ SUPER_ADMIN_EMAIL=you@example.com
 DATABASE_URL=postgres://...            # from your Postgres provider
 
 # S3-compatible (Cloudflare R2 shown — replace with your provider)
-BUCKET_NAME=quad
-BUCKET_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-BUCKET_ACCESS_KEY_ID=...
-BUCKET_SECRET_KEY=...
-BUCKET_REGION=auto
+BUCKET=quad
+ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+ACCESS_KEY_ID=...
+SECRET_ACCESS_KEY=...
+REGION=auto
 BUCKET_PUBLIC_URL=                     # optional, only if you front the bucket with a CDN
 
 OPENAI_API_KEY=                        # optional, for Whisper STT

@@ -22,12 +22,12 @@ export default async function AdminSettings() {
           Runtime (read-only, controlled by .env)
         </p>
         <Row k="NODE_ENV" v={e.NODE_ENV} />
-        <Row k="APP_URL" v={e.APP_URL} />
+        <Row k="API_URL" v={e.API_URL} />
         <Row k="SUPER_ADMIN_EMAIL" v={e.SUPER_ADMIN_EMAIL} />
         <Row k="STT (Whisper)" v={e.OPENAI_API_KEY ? "Enabled" : "Disabled (OPENAI_API_KEY missing)"} />
         <Row k="WHISPER_MONTHLY_MINUTES_CAP" v={String(e.WHISPER_MONTHLY_MINUTES_CAP) + (e.WHISPER_MONTHLY_MINUTES_CAP === 0 ? " (unlimited)" : " min")} />
-        <Row k="BUCKET_ENDPOINT" v={e.BUCKET_ENDPOINT} />
-        <Row k="BUCKET_NAME" v={e.BUCKET_NAME} />
+        <Row k="ENDPOINT" v={e.ENDPOINT} />
+        <Row k="BUCKET" v={e.BUCKET} />
       </Surface>
     </div>
   );

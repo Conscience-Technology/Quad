@@ -8,7 +8,7 @@ import { z } from "zod";
 const Schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
-  APP_URL: z.string().url().default("http://localhost:3010"),
+  API_URL: z.string().url().default("http://localhost:3010"),
 
   SESSION_SECRET: z
     .string()
@@ -24,11 +24,11 @@ const Schema = z.object({
     message: "DATABASE_URL must be a Postgres URL",
   }),
 
-  BUCKET_NAME: z.string().min(1),
-  BUCKET_ENDPOINT: z.string().url(),
-  BUCKET_ACCESS_KEY_ID: z.string().min(1),
-  BUCKET_SECRET_KEY: z.string().min(1),
-  BUCKET_REGION: z.string().default("auto"),
+  BUCKET: z.string().min(1),
+  ENDPOINT: z.string().url(),
+  ACCESS_KEY_ID: z.string().min(1),
+  SECRET_ACCESS_KEY: z.string().min(1),
+  REGION: z.string().default("auto"),
   BUCKET_PUBLIC_URL: z.string().url().optional(),
 
   OPENAI_API_KEY: z.string().optional(),
@@ -53,10 +53,10 @@ const BUILD_PLACEHOLDERS: Record<string, string> = {
   SESSION_SECRET: "build-time-placeholder-not-a-real-secret-1234",
   SUPER_ADMIN_EMAIL: "build@example.com",
   DATABASE_URL: "postgres://placeholder:placeholder@localhost:5432/placeholder",
-  BUCKET_NAME: "placeholder",
-  BUCKET_ENDPOINT: "http://localhost:9000",
-  BUCKET_ACCESS_KEY_ID: "placeholder",
-  BUCKET_SECRET_KEY: "placeholder",
+  BUCKET: "placeholder",
+  ENDPOINT: "http://localhost:9000",
+  ACCESS_KEY_ID: "placeholder",
+  SECRET_ACCESS_KEY: "placeholder",
 };
 
 function load(): Env {

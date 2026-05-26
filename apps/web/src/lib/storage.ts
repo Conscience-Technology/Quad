@@ -16,11 +16,11 @@ function client(): S3Client {
   if (cached) return cached;
   const e = env();
   cached = new S3Client({
-    region: e.BUCKET_REGION,
-    endpoint: e.BUCKET_ENDPOINT,
+    region: e.REGION,
+    endpoint: e.ENDPOINT,
     credentials: {
-      accessKeyId: e.BUCKET_ACCESS_KEY_ID,
-      secretAccessKey: e.BUCKET_SECRET_KEY,
+      accessKeyId: e.ACCESS_KEY_ID,
+      secretAccessKey: e.SECRET_ACCESS_KEY,
     },
     forcePathStyle: true, // MinIO + R2 require this
   });
@@ -45,7 +45,7 @@ export async function presignUpload(
 ): Promise<PresignUploadOutput> {
   const e = env();
   const post = await createPresignedPost(client(), {
-    Bucket: e.BUCKET_NAME,
+    Bucket: e.BUCKET,
     Key: input.key,
     Conditions: [
       ["content-length-range", 1, input.maxSizeBytes],
@@ -62,7 +62,7 @@ export async function presignDownload(
   expiresInSeconds = 300,
 ): Promise<string> {
   const e = env();
-  const cmd = new GetObjectCommand({ Bucket: e.BUCKET_NAME, Key: key });
+  const cmd = new GetObjectCommand({ Bucket: e.BUCKET, Key: key });
   return getSignedUrl(client(), cmd, { expiresIn: expiresInSeconds });
 }
 
@@ -78,7 +78,7 @@ export async function putBytes(
   const body = typeof bytes === "string" ? Buffer.from(bytes, "utf8") : bytes;
   await client().send(
     new PutObjectCommand({
-      Bucket: e.BUCKET_NAME,
+      Bucket: e.BUCKET,
       Key: key,
       Body: body,
       ContentType: contentType,
@@ -90,7 +90,7 @@ export async function putBytes(
 export async function getBytes(key: string): Promise<Uint8Array> {
   const e = env();
   const r = await client().send(
-    new GetObjectCommand({ Bucket: e.BUCKET_NAME, Key: key }),
+    new GetObjectCommand({ Bucket: e.BUCKET, Key: key }),
   );
   if (!r.Body) throw new Error(`empty body for ${key}`);
   // Node stream -> bytes

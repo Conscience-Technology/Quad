@@ -31,7 +31,7 @@ Edit `.env`:
 ```ini
 SESSION_SECRET=...                 # see below
 SUPER_ADMIN_EMAIL=you@example.com  # promotes this email to Super Admin
-APP_URL=http://localhost:3010      # or your reverse-proxied URL
+API_URL=http://localhost:3010      # or your reverse-proxied URL
 OPENAI_API_KEY=                    # optional, enables Whisper STT
 ```
 
@@ -75,7 +75,7 @@ Admin.
 The app listens on `:3010`. Front it with TLS. Two env updates required:
 
 ```ini
-APP_URL=https://quad.yourdomain.com
+API_URL=https://quad.yourdomain.com
 NODE_ENV=production
 ```
 
