@@ -42,8 +42,27 @@ export type Env = z.infer<typeof Schema>;
 
 let cached: Env | undefined;
 
+// During `next build` (which runs server code while collecting page data),
+// the real DATABASE_URL / BUCKET_* / SESSION_SECRET / SUPER_ADMIN_EMAIL may not
+// be available yet — they're only injected at deploy time on platforms like
+// Railway. We fill harmless placeholders so the build can finish, then
+// validate strictly at runtime ("phase-production-server").
+const BUILD_PLACEHOLDERS: Record<string, string> = {
+  SESSION_SECRET: "build-time-placeholder-not-a-real-secret-1234",
+  SUPER_ADMIN_EMAIL: "build@example.com",
+  DATABASE_URL: "postgres://x:x@localhost:5432/x",
+  BUCKET_NAME: "build",
+  BUCKET_ENDPOINT: "http://localhost:9000",
+  BUCKET_ACCESS_KEY_ID: "x",
+  BUCKET_SECRET_KEY: "x",
+};
+
 function load(): Env {
-  const parsed = Schema.safeParse(process.env);
+  const source: Record<string, string | undefined> =
+    process.env.NEXT_PHASE === "phase-production-build"
+      ? { ...BUILD_PLACEHOLDERS, ...process.env }
+      : process.env;
+  const parsed = Schema.safeParse(source);
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join(".") || "(root)"}: ${i.message}`)
