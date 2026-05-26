@@ -86,6 +86,10 @@ class QuadApi {
       onPin: (el, x, y) => this.openPinForm(el, x, y),
     });
     this.reveal = new RevealLayer(this.widget.root);
+
+    // Cross-device sync: pull this reporter's own pins from the server,
+    // merge into localStorage, then apply showPins policy.
+    void this.bootstrapPins();
     this.capture = new CaptureSession(this.widget.root, this.widget.host, {
       onUploadVideo: (b) => this.api!.uploadBlob(b, `capture-${Date.now()}.webm`, "video"),
       onUploadAudio: (b) => this.api!.uploadBlob(b, `voice-${Date.now()}.webm`, "audio"),
@@ -213,6 +217,47 @@ class QuadApi {
   async stopRecord(): Promise<void> {
     if (!this.capture?.isActive()) return;
     await this.capture.stop();
+  }
+
+  /** One-shot on init: fetch this reporter's pins from the server, merge into
+   * localStorage (so panel reflects them on a fresh device / private window),
+   * then apply the showPins policy. Fail silent — never block boot. */
+  private async bootstrapPins(): Promise<void> {
+    if (!this.api) return;
+    try {
+      const anon = this.ensureAnonKey();
+      const res = await this.api.listMyPins({
+        reporterAnon: anon,
+        reporterId: this.user?.id,
+        limit: 50,
+      });
+      const existing = new Set(Local.list().map((p) => p.id));
+      for (const p of res.pins) {
+        if (existing.has(p.id)) continue;
+        if (!p.selector) continue;
+        Local.add({
+          id: p.id,
+          createdAt: new Date(p.createdAt).getTime(),
+          route: p.route ?? "/",
+          pageUrl: p.pageUrl ?? "",
+          selector: p.selector,
+          domPath: p.domPath ?? undefined,
+          componentPath: p.componentPath ?? undefined,
+          body: p.body,
+        });
+      }
+    } catch {
+      /* fail silent — local pins still work */
+    }
+
+    // Apply showPins policy after server merge.
+    const policy = this.opts.showPins ?? "off";
+    if (policy === "off") return;
+    const route = location.pathname;
+    for (const p of Local.list()) {
+      const matches = policy === "self-all" || p.route === route;
+      if (matches && !Local.isVisible(p.id)) Local.setVisible(p.id, true);
+    }
   }
 
   /** Minimal native confirm so we don't ship a custom modal just for this. */

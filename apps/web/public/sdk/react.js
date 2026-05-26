@@ -20,6 +20,26 @@ var Api = class {
   async createPin(input) {
     return this.postJson("/api/ingest/pin", input);
   }
+  /** Cross-device sync of the caller's own pins. Self-only. */
+  async listMyPins(params) {
+    const qs = new URLSearchParams();
+    if (params.reporterAnon) qs.set("reporter_anon", params.reporterAnon);
+    if (params.reporterId) qs.set("reporter_id", params.reporterId);
+    if (params.route) qs.set("route", params.route);
+    if (params.sinceMs != null) qs.set("since_ms", String(params.sinceMs));
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    const res = await fetch(this.url(`/api/ingest/pins?${qs.toString()}`), {
+      method: "GET",
+      headers: {
+        "x-quad-key": this.cfg.apiKey,
+        "x-quad-sdk-version": this.cfg.version
+      },
+      mode: "cors",
+      credentials: "omit"
+    });
+    if (!res.ok) throw new Error(`listMyPins ${res.status}`);
+    return res.json();
+  }
   async createSession(input) {
     return this.postJson("/api/ingest/session", input);
   }
@@ -802,6 +822,7 @@ var RevealLayer = class {
   rafId = null;
   mo = null;
   unsubLocal;
+  openPopover = null;
   destroy() {
     this.unsubLocal();
     window.removeEventListener("scroll", this.schedule, true);
@@ -882,7 +903,7 @@ var RevealLayer = class {
     this.shadow.appendChild(outline);
     const tag = document.createElement("div");
     tag.className = "q-reveal-tag";
-    tag.title = pin.body;
+    tag.style.cursor = "pointer";
     tag.innerHTML = `
       <span class="dot">\u2726</span>
       <span class="body">${escapeHtml(pin.body.slice(0, 60))}</span>
@@ -891,12 +912,76 @@ var RevealLayer = class {
     const x = tag.querySelector("button.x");
     x?.addEventListener("click", (e) => {
       e.stopPropagation();
+      this.closePopover();
       setVisible(pin.id, false);
+    });
+    tag.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.togglePopover(pin, tag);
     });
     this.shadow.appendChild(tag);
     return { outline, tag };
   }
+  // ---- click-popover (full body / metadata) -------------------------------
+  togglePopover(pin, anchor) {
+    if (this.openPopover && this.openPopover.dataset.id === pin.id) {
+      this.closePopover();
+      return;
+    }
+    this.closePopover();
+    const pop = document.createElement("div");
+    pop.className = "q-reveal-popover";
+    pop.dataset.id = pin.id;
+    pop.innerHTML = `
+      <div class="head">
+        <span class="who">your report</span>
+        <span class="when">${formatAgo(pin.createdAt)}</span>
+      </div>
+      <p class="body">${escapeHtml(pin.body)}</p>
+      <div class="meta">
+        ${pin.componentPath ? `<div><span>component</span><code>${escapeHtml(pin.componentPath)}</code></div>` : ""}
+        <div><span>selector</span><code>${escapeHtml(pin.selector)}</code></div>
+        <div><span>route</span><code>${escapeHtml(pin.route)}</code></div>
+      </div>
+      <div class="actions">
+        <button class="hide">Hide on page</button>
+      </div>
+    `;
+    const rect = anchor.getBoundingClientRect();
+    const top = rect.bottom + 8;
+    const left = Math.max(8, Math.min(window.innerWidth - 332, rect.left));
+    pop.style.left = `${left}px`;
+    pop.style.top = `${top}px`;
+    this.shadow.appendChild(pop);
+    this.openPopover = pop;
+    pop.querySelector(".hide")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.closePopover();
+      setVisible(pin.id, false);
+    });
+    const onDocClick = (e) => {
+      const path = e.composedPath?.() ?? [];
+      if (!path.includes(pop) && !path.includes(anchor)) {
+        this.closePopover();
+        document.removeEventListener("click", onDocClick, true);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
+  }
+  closePopover() {
+    this.openPopover?.remove();
+    this.openPopover = null;
+  }
 };
+function formatAgo(ts) {
+  const s = Math.max(1, Math.floor((Date.now() - ts) / 1e3));
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -1178,6 +1263,7 @@ var WIDGET_CSS = (
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+  gap: 8px;
 }
 .q-reports .label {
   font-size: 10px;
@@ -1185,11 +1271,32 @@ var WIDGET_CSS = (
   text-transform: uppercase;
   color: var(--star-500);
 }
+.q-reports .right { display: inline-flex; align-items: center; gap: 8px; }
 .q-reports .count {
   font-size: 10px;
   font-family: ui-monospace, monospace;
   color: var(--star-500);
 }
+.q-reports .show-all {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--star-500);
+  padding: 3px 8px;
+  font-size: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 120ms var(--ease), border-color 120ms var(--ease), background 120ms var(--ease);
+}
+.q-reports .show-all:hover:not(:disabled) {
+  color: var(--star-100);
+  border-color: var(--star-500);
+}
+.q-reports .show-all[aria-pressed="true"] {
+  color: var(--violet);
+  border-color: var(--violet);
+  background: rgba(139, 124, 246, 0.08);
+}
+.q-reports .show-all:disabled { cursor: not-allowed; }
 .q-reports .empty {
   font-size: 12px;
   color: var(--star-500);
@@ -1287,6 +1394,95 @@ var WIDGET_CSS = (
   line-height: 1;
 }
 .q-reveal-tag .x:hover { color: var(--star-100); }
+
+/* Reveal popover (click-through to full body + metadata) */
+.q-reveal-popover {
+  position: fixed;
+  z-index: 2147483597;
+  width: 320px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--violet);
+  border-radius: 6px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  color: var(--star-300);
+  animation: q-fadein 140ms var(--ease);
+}
+.q-reveal-popover .head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.q-reveal-popover .who {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--violet);
+}
+.q-reveal-popover .when {
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  color: var(--star-500);
+}
+.q-reveal-popover .body {
+  margin: 0 0 10px;
+  color: var(--star-100);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.q-reveal-popover .meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+.q-reveal-popover .meta > div {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.q-reveal-popover .meta span {
+  width: 70px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--star-500);
+  flex-shrink: 0;
+}
+.q-reveal-popover .meta code {
+  flex: 1;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--star-300);
+  word-break: break-all;
+  background: var(--void);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.q-reveal-popover .actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.q-reveal-popover .hide {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--star-500);
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 120ms var(--ease), border-color 120ms var(--ease);
+}
+.q-reveal-popover .hide:hover {
+  color: var(--star-100);
+  border-color: var(--star-500);
+}
 `
 );
 
@@ -1372,7 +1568,10 @@ var Widget = class {
       <section class="q-reports">
         <div class="header">
           <span class="label">Your reports</span>
-          <span class="count"></span>
+          <span class="right">
+            <button class="show-all" type="button" aria-pressed="false">Show all on this page</button>
+            <span class="count"></span>
+          </span>
         </div>
         <div class="list"></div>
       </section>
@@ -1388,12 +1587,18 @@ var Widget = class {
     const section = body.querySelector(".q-reports");
     const countEl = section.querySelector(".count");
     const listEl = section.querySelector(".list");
+    const showAllBtn = section.querySelector(".show-all");
     const render = () => {
       const all = list();
       const route = location.pathname;
       const hereOnly = all.filter((p) => p.route === route);
       const elsewhere = all.filter((p) => p.route !== route);
       countEl.textContent = String(all.length);
+      const allRevealed = hereOnly.length > 0 && hereOnly.every((p) => isVisible(p.id));
+      showAllBtn.setAttribute("aria-pressed", allRevealed ? "true" : "false");
+      showAllBtn.textContent = allRevealed ? "Hide all" : "Show all on this page";
+      showAllBtn.disabled = hereOnly.length === 0;
+      showAllBtn.style.opacity = hereOnly.length === 0 ? "0.4" : "1";
       if (all.length === 0) {
         listEl.innerHTML = `<p class="empty">No reports yet. Pin an element or submit one above.</p>`;
         return;
@@ -1407,7 +1612,7 @@ var Widget = class {
           <div class="item">
             <div class="body">
               <span class="text">${text}</span>
-              <span class="meta">${p.selector.slice(0, 40)} \xB7 ${formatAgo(p.createdAt)}</span>
+              <span class="meta">${p.selector.slice(0, 40)} \xB7 ${formatAgo2(p.createdAt)}</span>
             </div>
             <button class="eye" data-id="${p.id}" data-same="${sameRoute ? "1" : "0"}"
                     title="${eyeTitle}" aria-pressed="${visible ? "true" : "false"}"
@@ -1435,6 +1640,12 @@ var Widget = class {
         });
       });
     };
+    showAllBtn.addEventListener("click", () => {
+      const route = location.pathname;
+      const here = list().filter((p) => p.route === route);
+      const allOn = here.length > 0 && here.every((p) => isVisible(p.id));
+      for (const p of here) setVisible(p.id, !allOn);
+    });
     render();
     subscribe(render);
   }
@@ -1635,7 +1846,7 @@ var Widget = class {
 function escapeHtml2(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function formatAgo(ts) {
+function formatAgo2(ts) {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1e3));
   if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
@@ -1697,6 +1908,7 @@ var QuadApi = class {
       onPin: (el, x, y) => this.openPinForm(el, x, y)
     });
     this.reveal = new RevealLayer(this.widget.root);
+    void this.bootstrapPins();
     this.capture = new CaptureSession(this.widget.root, this.widget.host, {
       onUploadVideo: (b) => this.api.uploadBlob(b, `capture-${Date.now()}.webm`, "video"),
       onUploadAudio: (b) => this.api.uploadBlob(b, `voice-${Date.now()}.webm`, "audio"),
@@ -1812,6 +2024,43 @@ var QuadApi = class {
   async stopRecord() {
     if (!this.capture?.isActive()) return;
     await this.capture.stop();
+  }
+  /** One-shot on init: fetch this reporter's pins from the server, merge into
+   * localStorage (so panel reflects them on a fresh device / private window),
+   * then apply the showPins policy. Fail silent — never block boot. */
+  async bootstrapPins() {
+    if (!this.api) return;
+    try {
+      const anon = this.ensureAnonKey();
+      const res = await this.api.listMyPins({
+        reporterAnon: anon,
+        reporterId: this.user?.id,
+        limit: 50
+      });
+      const existing = new Set(list().map((p) => p.id));
+      for (const p of res.pins) {
+        if (existing.has(p.id)) continue;
+        if (!p.selector) continue;
+        add({
+          id: p.id,
+          createdAt: new Date(p.createdAt).getTime(),
+          route: p.route ?? "/",
+          pageUrl: p.pageUrl ?? "",
+          selector: p.selector,
+          domPath: p.domPath ?? void 0,
+          componentPath: p.componentPath ?? void 0,
+          body: p.body
+        });
+      }
+    } catch {
+    }
+    const policy = this.opts.showPins ?? "off";
+    if (policy === "off") return;
+    const route = location.pathname;
+    for (const p of list()) {
+      const matches = policy === "self-all" || p.route === route;
+      if (matches && !isVisible(p.id)) setVisible(p.id, true);
+    }
   }
   /** Minimal native confirm so we don't ship a custom modal just for this. */
   async askCaptureMode() {
