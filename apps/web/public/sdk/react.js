@@ -645,6 +645,80 @@ ${a.stack ?? ""}`;
   };
 }
 
+// src/local-pins.ts
+var KEY = "quad.local_pins.v1";
+var MAX = 50;
+function read() {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function write(pins) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(pins.slice(-MAX)));
+  } catch {
+  }
+}
+function list() {
+  return read().sort((a, b) => b.createdAt - a.createdAt);
+}
+function add(pin) {
+  const all = read();
+  all.push(pin);
+  write(all);
+  notify();
+}
+var VKEY = "quad.local_pins.visible.v1";
+function readVisible() {
+  if (typeof localStorage === "undefined") return /* @__PURE__ */ new Set();
+  try {
+    const raw = localStorage.getItem(VKEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return /* @__PURE__ */ new Set();
+  }
+}
+function writeVisible(s) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(VKEY, JSON.stringify([...s]));
+  } catch {
+  }
+}
+function isVisible(id) {
+  return readVisible().has(id);
+}
+function setVisible(id, v) {
+  const s = readVisible();
+  if (v) s.add(id);
+  else s.delete(id);
+  writeVisible(s);
+  notify();
+}
+function visibleIds() {
+  return [...readVisible()];
+}
+var listeners = /* @__PURE__ */ new Set();
+function subscribe(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+function notify() {
+  for (const fn of listeners) {
+    try {
+      fn();
+    } catch {
+    }
+  }
+}
+
 // src/network-tap.ts
 function installNetworkTap(ring, ignoreUrlSubstr = []) {
   if (typeof fetch !== "function") return () => {
@@ -709,6 +783,122 @@ function buildPin(el, body) {
     outerHtmlPreview: outerHtmlPreview(el, 200),
     body
   };
+}
+
+// src/reveal.ts
+var RevealLayer = class {
+  constructor(shadow) {
+    this.shadow = shadow;
+    this.unsubLocal = subscribe(() => this.schedule());
+    window.addEventListener("scroll", this.schedule, true);
+    window.addEventListener("resize", this.schedule);
+    setInterval(() => this.schedule(), 800);
+    this.mo = new MutationObserver(() => this.schedule());
+    this.mo.observe(document.body, { childList: true, subtree: true });
+    this.schedule();
+  }
+  shadow;
+  outlines = /* @__PURE__ */ new Map();
+  rafId = null;
+  mo = null;
+  unsubLocal;
+  destroy() {
+    this.unsubLocal();
+    window.removeEventListener("scroll", this.schedule, true);
+    window.removeEventListener("resize", this.schedule);
+    this.mo?.disconnect();
+    for (const { outline, tag } of this.outlines.values()) {
+      outline.remove();
+      tag.remove();
+    }
+    this.outlines.clear();
+  }
+  schedule = () => {
+    if (this.rafId != null) return;
+    this.rafId = requestAnimationFrame(() => {
+      this.rafId = null;
+      this.render();
+    });
+  };
+  render() {
+    const visible = new Set(visibleIds());
+    const route = location.pathname;
+    const pins = list().filter(
+      (p) => visible.has(p.id) && p.route === route
+    );
+    const wanted = new Set(pins.map((p) => p.id));
+    for (const [id, { outline, tag }] of this.outlines) {
+      if (!wanted.has(id)) {
+        outline.remove();
+        tag.remove();
+        this.outlines.delete(id);
+      }
+    }
+    for (const pin of pins) {
+      const el = this.findElement(pin);
+      let entry = this.outlines.get(pin.id);
+      if (!el) {
+        if (entry) {
+          entry.outline.style.display = "none";
+          entry.tag.style.display = "none";
+        }
+        continue;
+      }
+      const rect = el.getBoundingClientRect();
+      if (!entry) {
+        entry = this.makeOutline(pin);
+        this.outlines.set(pin.id, entry);
+      }
+      const { outline, tag } = entry;
+      outline.style.display = "block";
+      outline.style.left = `${rect.left}px`;
+      outline.style.top = `${rect.top}px`;
+      outline.style.width = `${rect.width}px`;
+      outline.style.height = `${rect.height}px`;
+      tag.style.display = "block";
+      const above = rect.top - 26 > 0;
+      tag.style.left = `${rect.left}px`;
+      tag.style.top = `${above ? rect.top - 26 : rect.bottom + 6}px`;
+    }
+  }
+  findElement(pin) {
+    try {
+      const a = document.querySelector(pin.selector);
+      if (a) return a;
+    } catch {
+    }
+    if (pin.domPath) {
+      try {
+        const b = document.querySelector(pin.domPath);
+        if (b) return b;
+      } catch {
+      }
+    }
+    return null;
+  }
+  makeOutline(pin) {
+    const outline = document.createElement("div");
+    outline.className = "q-reveal-outline";
+    this.shadow.appendChild(outline);
+    const tag = document.createElement("div");
+    tag.className = "q-reveal-tag";
+    tag.title = pin.body;
+    tag.innerHTML = `
+      <span class="dot">\u2726</span>
+      <span class="body">${escapeHtml(pin.body.slice(0, 60))}</span>
+      <button class="x" title="Hide">\xD7</button>
+    `;
+    const x = tag.querySelector("button.x");
+    x?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setVisible(pin.id, false);
+    });
+    this.shadow.appendChild(tag);
+    return { outline, tag };
+  }
+};
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 // src/styles.ts
@@ -976,6 +1166,127 @@ var WIDGET_CSS = (
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Reports list inside the overlay panel */
+.q-reports {
+  border-top: 1px solid var(--border);
+  margin: 16px -18px 0;
+  padding: 12px 18px 4px;
+}
+.q-reports .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.q-reports .label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--star-500);
+}
+.q-reports .count {
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  color: var(--star-500);
+}
+.q-reports .empty {
+  font-size: 12px;
+  color: var(--star-500);
+  padding: 12px 0;
+}
+.q-reports .item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.q-reports .item:first-of-type { border-top: 0; }
+.q-reports .item .body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.q-reports .item .text {
+  font-size: 12px;
+  color: var(--star-100);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.q-reports .item .meta {
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  color: var(--star-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.q-reports .item .eye {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--star-500);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: color 120ms var(--ease), background 120ms var(--ease);
+}
+.q-reports .item .eye:hover { background: var(--surface); color: var(--star-100); }
+.q-reports .item .eye[aria-pressed="true"] {
+  color: var(--violet);
+  background: rgba(139, 124, 246, 0.10);
+}
+
+/* Reveal layer (pins shown on the host page when toggled visible) */
+.q-reveal-outline {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483595;
+  border: 1.5px dashed var(--violet);
+  border-radius: 3px;
+  box-shadow: 0 0 12px rgba(139, 124, 246, 0.3);
+  background: rgba(139, 124, 246, 0.06);
+  transition: all 120ms var(--ease);
+}
+.q-reveal-tag {
+  position: fixed;
+  z-index: 2147483596;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--violet);
+  border-radius: 4px;
+  padding: 3px 6px 3px 8px;
+  max-width: 360px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  font-size: 11px;
+  color: var(--star-300);
+}
+.q-reveal-tag .dot { color: var(--violet); font-size: 10px; }
+.q-reveal-tag .body {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.q-reveal-tag .x {
+  background: none;
+  border: 0;
+  color: var(--star-500);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.q-reveal-tag .x:hover { color: var(--star-100); }
 `
 );
 
@@ -1058,11 +1369,74 @@ var Widget = class {
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
+      <section class="q-reports">
+        <div class="header">
+          <span class="label">Your reports</span>
+          <span class="count"></span>
+        </div>
+        <div class="list"></div>
+      </section>
     `;
     p.appendChild(header);
     p.appendChild(body);
     this.wireOverlayBody(body);
+    this.wireReportsList(body);
     return p;
+  }
+  // ---- Reports list -------------------------------------------------------
+  wireReportsList(body) {
+    const section = body.querySelector(".q-reports");
+    const countEl = section.querySelector(".count");
+    const listEl = section.querySelector(".list");
+    const render = () => {
+      const all = list();
+      const route = location.pathname;
+      const hereOnly = all.filter((p) => p.route === route);
+      const elsewhere = all.filter((p) => p.route !== route);
+      countEl.textContent = String(all.length);
+      if (all.length === 0) {
+        listEl.innerHTML = `<p class="empty">No reports yet. Pin an element or submit one above.</p>`;
+        return;
+      }
+      const rowHtml = (p, sameRoute) => {
+        const visible = isVisible(p.id);
+        const eyeLabel = sameRoute ? visible ? "\u25CF" : "\u25CB" : "\u2197";
+        const eyeTitle = sameRoute ? visible ? "Hide on page" : "Show on page" : `On ${p.route}`;
+        const text = (p.body || "(no comment)").replace(/[<>]/g, "");
+        return `
+          <div class="item">
+            <div class="body">
+              <span class="text">${text}</span>
+              <span class="meta">${p.selector.slice(0, 40)} \xB7 ${formatAgo(p.createdAt)}</span>
+            </div>
+            <button class="eye" data-id="${p.id}" data-same="${sameRoute ? "1" : "0"}"
+                    title="${eyeTitle}" aria-pressed="${visible ? "true" : "false"}"
+                    ${sameRoute ? "" : 'disabled style="opacity:0.4"'}>
+              ${eyeLabel}
+            </button>
+          </div>
+        `;
+      };
+      listEl.innerHTML = hereOnly.map((p) => rowHtml(p, true)).join("") + elsewhere.map((p) => rowHtml(p, false)).join("");
+      listEl.querySelectorAll("button.eye").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (btn.dataset.same !== "1") {
+            const id2 = btn.dataset.id;
+            const pin = list().find((p) => p.id === id2);
+            if (pin) {
+              setVisible(pin.id, true);
+              location.href = pin.pageUrl;
+            }
+            return;
+          }
+          const id = btn.dataset.id;
+          setVisible(id, !isVisible(id));
+        });
+      });
+    };
+    render();
+    subscribe(render);
   }
   wireOverlayBody(body) {
     const drop = body.querySelector(".drop");
@@ -1183,7 +1557,7 @@ var Widget = class {
     const form = document.createElement("div");
     form.className = "q-pin-form";
     form.innerHTML = `
-      <div class="selector">${escapeHtml(selector)}</div>
+      <div class="selector">${escapeHtml2(selector)}</div>
       <textarea placeholder="What went wrong here? (Cmd/Ctrl+Enter to submit)"></textarea>
       <div class="actions">
         <button class="ghost" type="button">Cancel</button>
@@ -1258,8 +1632,18 @@ var Widget = class {
     }, ttlMs);
   }
 };
-function escapeHtml(s) {
+function escapeHtml2(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function formatAgo(ts) {
+  const s = Math.max(1, Math.floor((Date.now() - ts) / 1e3));
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
 }
 
 // src/index.ts
@@ -1274,6 +1658,7 @@ var QuadApi = class {
   widget;
   bugMode;
   capture;
+  reveal;
   user;
   context = {};
   consoleRing = new Ring(50);
@@ -1311,6 +1696,7 @@ var QuadApi = class {
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
       onPin: (el, x, y) => this.openPinForm(el, x, y)
     });
+    this.reveal = new RevealLayer(this.widget.root);
     this.capture = new CaptureSession(this.widget.root, this.widget.host, {
       onUploadVideo: (b) => this.api.uploadBlob(b, `capture-${Date.now()}.webm`, "video"),
       onUploadAudio: (b) => this.api.uploadBlob(b, `voice-${Date.now()}.webm`, "audio"),
@@ -1370,6 +1756,7 @@ var QuadApi = class {
     this.installed = true;
   }
   close() {
+    this.reveal?.destroy();
     this.bugMode?.destroy();
     this.widget?.destroy();
     for (const fn of this.cleanupFns) {
@@ -1449,11 +1836,21 @@ var QuadApi = class {
       onSubmit: async (body) => {
         if (!this.api) return;
         const pin = buildPin(el, body);
-        await this.api.createPin({
+        const result = await this.api.createPin({
           pin,
           meta: this.snapshotMeta(),
           reporter: this.user,
           reporterAnonKey: this.ensureAnonKey()
+        });
+        add({
+          id: result.id,
+          createdAt: Date.now(),
+          route: pin.route,
+          pageUrl: pin.pageUrl,
+          selector: pin.selector,
+          domPath: pin.domPath,
+          componentPath: pin.componentPath,
+          body: pin.body
         });
       },
       onCancel: () => {

@@ -6,8 +6,10 @@ import { Api } from "./api";
 import { BugMode } from "./bug-mode";
 import { CaptureSession, type CaptureMode } from "./capture";
 import { installConsoleTap } from "./console-tap";
+import * as Local from "./local-pins";
 import { installNetworkTap } from "./network-tap";
 import { buildPin } from "./pin";
+import { RevealLayer } from "./reveal";
 import { matchesKey, parse } from "./shortcuts";
 import { Widget } from "./widget";
 import {
@@ -38,6 +40,7 @@ class QuadApi {
   private widget?: Widget;
   private bugMode?: BugMode;
   private capture?: CaptureSession;
+  private reveal?: RevealLayer;
   private user?: QuadOptions["user"];
   private context: Record<string, unknown> = {};
   private consoleRing = new Ring<ConsoleEntry>(50);
@@ -82,6 +85,7 @@ class QuadApi {
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
       onPin: (el, x, y) => this.openPinForm(el, x, y),
     });
+    this.reveal = new RevealLayer(this.widget.root);
     this.capture = new CaptureSession(this.widget.root, this.widget.host, {
       onUploadVideo: (b) => this.api!.uploadBlob(b, `capture-${Date.now()}.webm`, "video"),
       onUploadAudio: (b) => this.api!.uploadBlob(b, `voice-${Date.now()}.webm`, "audio"),
@@ -147,6 +151,7 @@ class QuadApi {
   }
 
   close(): void {
+    this.reveal?.destroy();
     this.bugMode?.destroy();
     this.widget?.destroy();
     for (const fn of this.cleanupFns) {
@@ -239,11 +244,23 @@ class QuadApi {
       onSubmit: async (body) => {
         if (!this.api) return;
         const pin = buildPin(el, body);
-        await this.api.createPin({
+        const result = await this.api.createPin({
           pin,
           meta: this.snapshotMeta(),
           reporter: this.user,
           reporterAnonKey: this.ensureAnonKey(),
+        });
+        // Cache locally so the reporter can find / reveal it later, but
+        // don't show it on the page until they toggle it from the panel.
+        Local.add({
+          id: result.id,
+          createdAt: Date.now(),
+          route: pin.route,
+          pageUrl: pin.pageUrl,
+          selector: pin.selector,
+          domPath: pin.domPath,
+          componentPath: pin.componentPath,
+          body: pin.body,
         });
       },
       onCancel: () => {
