@@ -3,7 +3,7 @@ import { z } from "zod";
 /**
  * Quad environment schema. Validated once on process start; the app fails fast
  * if required values are missing. Optional values gate features (no STT
- * without OPENAI_API_KEY, no email without EMAIL_PROVIDER_KEY).
+ * without OPENAI_API_KEY).
  */
 const Schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -19,11 +19,6 @@ const Schema = z.object({
     ),
 
   SUPER_ADMIN_EMAIL: z.string().email("SUPER_ADMIN_EMAIL must be a valid email"),
-
-  INSTANCE_SIGNUP_OPEN: z
-    .string()
-    .optional()
-    .transform((v) => v === "true"),
 
   DATABASE_URL: z.string().url().refine((v) => v.startsWith("postgres://") || v.startsWith("postgresql://"), {
     message: "DATABASE_URL must be a Postgres URL",
@@ -41,10 +36,6 @@ const Schema = z.object({
     .string()
     .optional()
     .transform((v) => (v ? Number.parseInt(v, 10) : 0)),
-
-  EMAIL_PROVIDER: z.enum(["resend", "none"]).default("none"),
-  EMAIL_PROVIDER_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default("Quad <noreply@example.com>"),
 });
 
 export type Env = z.infer<typeof Schema>;
@@ -71,8 +62,5 @@ export function env(): Env {
 export const features = {
   stt(): boolean {
     return !!env().OPENAI_API_KEY;
-  },
-  email(): boolean {
-    return env().EMAIL_PROVIDER !== "none" && !!env().EMAIL_PROVIDER_KEY;
   },
 };

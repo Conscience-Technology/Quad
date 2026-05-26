@@ -1,4 +1,5 @@
-import { count } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
+import Link from "next/link";
 import { db, schema } from "~/db";
 import { getOrCreateInstance } from "~/lib/instance";
 import { env } from "~/lib/env";
@@ -10,12 +11,15 @@ export default async function AdminOverview() {
   const [{ value: userCount } = { value: 0 }] = await db
     .select({ value: count() })
     .from(schema.users);
+  const [{ value: pendingCount } = { value: 0 }] = await db
+    .select({ value: count() })
+    .from(schema.users)
+    .where(and(eq(schema.users.status, "pending")));
   const [{ value: projectCount } = { value: 0 }] = await db
     .select({ value: count() })
     .from(schema.projects);
 
   const sttEnabled = !!env().OPENAI_API_KEY;
-  const signupOpen = env().INSTANCE_SIGNUP_OPEN;
 
   return (
     <div className="space-y-10 max-w-2xl">
@@ -28,7 +32,13 @@ export default async function AdminOverview() {
         <Stat label="Users" value={String(userCount)} />
         <Stat label="Projects" value={String(projectCount)} />
         <Stat label="STT (Whisper)" value={sttEnabled ? "Enabled" : "Disabled"} hint={sttEnabled ? undefined : "OPENAI_API_KEY missing"} />
-        <Stat label="Public signup" value={signupOpen ? "open" : "closed"} />
+        <Link href="/admin/users" className="block">
+          <Stat
+            label="Pending approval"
+            value={String(pendingCount)}
+            hint={pendingCount > 0 ? "click to review" : undefined}
+          />
+        </Link>
       </section>
 
       <section className="space-y-3 pt-6 border-t border-[var(--color-space-border)]">

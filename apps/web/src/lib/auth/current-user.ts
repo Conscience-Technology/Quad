@@ -17,7 +17,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       .where(eq(schema.users.id, session.userId))
       .limit(1);
     const user = rows[0];
-    if (user && user.isActive) return user;
+    if (user && user.status === "active") return user;
   }
   // In development, bypass login entirely by auto-provisioning + returning the
   // super-admin user. Never engages in production.
@@ -50,7 +50,8 @@ async function ensureDevSuperAdmin(): Promise<CurrentUser> {
       passwordHash,
       name: "Dev",
       isSuperAdmin: true,
-      isActive: true,
+      status: "active",
+      approvedAt: new Date(),
     })
     .returning();
   if (!created) throw new Error("dev super admin insert failed");

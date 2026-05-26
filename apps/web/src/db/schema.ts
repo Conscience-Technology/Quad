@@ -35,6 +35,12 @@ export const projectMemberStatus = pgEnum("project_member_status", [
   "pending",
 ]);
 
+export const userStatus = pgEnum("user_status", [
+  "pending",
+  "active",
+  "suspended",
+]);
+
 export const apiKeyScope = pgEnum("api_key_scope", ["sdk", "mcp"]);
 export const apiKeyEnv = pgEnum("api_key_env", ["development", "production"]);
 
@@ -107,7 +113,6 @@ export const transcriptProvider = pgEnum("transcript_provider", [
 export const instance = pgTable("instance", {
   id: integer("id").primaryKey().default(1), // singleton lock; always 1
   name: text("name").notNull().default("Quad"),
-  signupOpen: boolean("signup_open").notNull().default(false),
   // Encrypted at rest with SESSION_SECRET-derived key. Optional; if unset, STT
   // pipeline is disabled.
   openaiApiKeyEncrypted: text("openai_api_key_encrypted"),
@@ -133,7 +138,9 @@ export const users = pgTable(
     passwordHash: text("password_hash").notNull(),
     name: text("name"),
     isSuperAdmin: boolean("is_super_admin").notNull().default(false),
-    isActive: boolean("is_active").notNull().default(true),
+    status: userStatus("status").notNull().default("pending"),
+    approvedByUserId: uuid("approved_by_user_id"),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
