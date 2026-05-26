@@ -1,0 +1,1 @@
+ALTER TABLE "instance" DROP COLUMN IF EXISTS "signup_open";

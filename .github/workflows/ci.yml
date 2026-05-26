@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Typecheck (all packages)
+        run: pnpm -r typecheck
+
+      - name: Build packages (sdk + mcp + cli)
+        run: pnpm --filter "@quad/sdk" --filter "@quad/mcp" --filter "@quad/cli" build
+
+      - name: Build web (with placeholder envs)
+        env:
+          SESSION_SECRET: ci-only-not-a-real-secret-12345678901234
+          SUPER_ADMIN_EMAIL: ci@example.com
+          DATABASE_URL: postgres://x:x@localhost:5432/x
+          BUCKET: ci
+          ENDPOINT: http://localhost:9000
+          ACCESS_KEY_ID: x
+          SECRET_ACCESS_KEY: x
+        run: pnpm --filter @quad/web build
+
+      - name: SDK bundle is served by the web app (/sdk/index.js)
+        shell: node {0}
+        run: |
+          const fs = require('node:fs');
+          const p = 'apps/web/public/sdk/index.js';
+          if (!fs.existsSync(p)) { console.error('SDK not copied to public/sdk/'); process.exit(1); }
+          const size = fs.statSync(p).size;
+          console.log(`served SDK bundle: ${size} bytes`);
+          if (size < 10000) process.exit(1);
+
+      - name: Forbid server-side LLM calls beyond Whisper STT
+        shell: node {0}
+        run: |
+          const fs = require('node:fs'), path = require('node:path');
+          const FORBIDDEN = /api\.openai\.com\/v1\/(chat|images|embeddings|moderations|responses|assistants)/;
+          const walk = (dir) => {
+            for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, ent.name);
+              if (ent.isDirectory()) {
+                if (ent.name === 'node_modules' || ent.name === 'dist' || ent.name === '.next') continue;
+                walk(full);
+              } else if (/\.(t|j)sx?$/.test(ent.name)) {
+                const txt = fs.readFileSync(full, 'utf8');
+                if (FORBIDDEN.test(txt)) {
+                  console.error('Forbidden non-Whisper OpenAI call in', full);
+                  process.exit(1);
+                }
+              }
+            }
+          };
+          walk('apps/web/src');
+          walk('packages');
+          console.log('OK - only Whisper STT is used server-side');
+
+      - name: Forbid runtime deps in @quad/sdk
+        shell: node {0}
+        run: |
+          const fs = require('node:fs'), path = require('node:path');
+          const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'packages/sdk/package.json'), 'utf8'));
+          const deps = pkg.dependencies || {};
+          if (Object.keys(deps).length !== 0) {
+            console.error('@quad/sdk added a runtime dependency. Keep it zero-dep.');
+            console.error(deps);
+            process.exit(1);
+          }
+          console.log('OK - @quad/sdk has zero runtime dependencies');
+

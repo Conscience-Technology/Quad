@@ -1,0 +1,87 @@
+# Quad — one-shot local self-host
+# Usage:
+#   1. cp .env.example .env  (then fill SESSION_SECRET and SUPER_ADMIN_EMAIL)
+#   2. docker compose -f docker/docker-compose.yml up
+#   3. open http://localhost:3010
+
+name: quad
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: quad
+      POSTGRES_PASSWORD: quad
+      POSTGRES_DB: quad
+    ports:
+      - "5432:5432"
+    volumes:
+      - quad-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "quad"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - quad-minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/quad &&
+      mc anonymous set none local/quad
+      "
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3010
+      API_URL: http://localhost:3010
+      DATABASE_URL: postgres://quad:quad@postgres:5432/quad
+      BUCKET: quad
+      ENDPOINT: http://minio:9000
+      ACCESS_KEY_ID: minioadmin
+      SECRET_ACCESS_KEY: minioadmin
+      REGION: auto
+      BUCKET_PUBLIC_URL: http://localhost:9000/quad
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:?set SUPER_ADMIN_EMAIL in .env}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      WHISPER_MONTHLY_MINUTES_CAP: ${WHISPER_MONTHLY_MINUTES_CAP:-0}
+    ports:
+      - "3010:3010"
+
+volumes:
+  quad-pg:
+  quad-minio:
