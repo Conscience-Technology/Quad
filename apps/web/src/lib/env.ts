@@ -41,33 +41,53 @@ const Schema = z.object({
 export type Env = z.infer<typeof Schema>;
 
 let cached: Env | undefined;
+let placeholderWarningEmitted = false;
 
-// During `next build` (which runs server code while collecting page data),
-// the real DATABASE_URL / BUCKET_* / SESSION_SECRET / SUPER_ADMIN_EMAIL may not
-// be available yet — they're only injected at deploy time on platforms like
-// Railway. We fill harmless placeholders so the build can finish, then
-// validate strictly at runtime ("phase-production-server").
+// Fail-fast keys are validated at module-load time on every import, including
+// during `next build` when page modules are evaluated to collect static
+// metadata. Real values aren't always present at build time on platforms like
+// Railway (BUCKET_* especially), so we backfill clearly-marked placeholders.
+// The actual S3 / Postgres / cookie code will surface a more specific error
+// at the first real request if the operator forgot to set a real value.
 const BUILD_PLACEHOLDERS: Record<string, string> = {
   SESSION_SECRET: "build-time-placeholder-not-a-real-secret-1234",
   SUPER_ADMIN_EMAIL: "build@example.com",
-  DATABASE_URL: "postgres://x:x@localhost:5432/x",
-  BUCKET_NAME: "build",
+  DATABASE_URL: "postgres://placeholder:placeholder@localhost:5432/placeholder",
+  BUCKET_NAME: "placeholder",
   BUCKET_ENDPOINT: "http://localhost:9000",
-  BUCKET_ACCESS_KEY_ID: "x",
-  BUCKET_SECRET_KEY: "x",
+  BUCKET_ACCESS_KEY_ID: "placeholder",
+  BUCKET_SECRET_KEY: "placeholder",
 };
 
 function load(): Env {
-  const source: Record<string, string | undefined> =
-    process.env.NEXT_PHASE === "phase-production-build"
-      ? { ...BUILD_PLACEHOLDERS, ...process.env }
-      : process.env;
+  const filled: Record<string, string | undefined> = {};
+  let usedPlaceholder = false;
+  for (const k of Object.keys(BUILD_PLACEHOLDERS)) {
+    if (!process.env[k] || process.env[k] === "") {
+      const fallback = BUILD_PLACEHOLDERS[k];
+      if (fallback !== undefined) {
+        filled[k] = fallback;
+        usedPlaceholder = true;
+      }
+    }
+  }
+  const source: Record<string, string | undefined> = { ...filled, ...process.env };
   const parsed = Schema.safeParse(source);
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join(".") || "(root)"}: ${i.message}`)
       .join("\n");
     throw new Error(`Invalid environment:\n${issues}`);
+  }
+  if (usedPlaceholder && !placeholderWarningEmitted) {
+    placeholderWarningEmitted = true;
+    if (process.env.NEXT_PHASE !== "phase-production-build") {
+      console.warn(
+        "[quad] using placeholder env values for missing keys. " +
+          "S3/DB will fail on first real request. Set: " +
+          Object.keys(BUILD_PLACEHOLDERS).filter((k) => !process.env[k]).join(", "),
+      );
+    }
   }
   return parsed.data;
 }
