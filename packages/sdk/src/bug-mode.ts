@@ -25,19 +25,27 @@ export class BugMode {
     private handlers: BugModeHandlers,
   ) {
     this.pinCombo = pinCombo;
-    document.addEventListener("mousemove", this.onMove, true);
-    document.addEventListener("click", this.onClick, true);
+    // Listeners are attached only while Bug Mode is ON so the host app
+    // doesn't pay any mousemove cost when nothing is happening.
   }
 
   destroy(): void {
-    document.removeEventListener("mousemove", this.onMove, true);
-    document.removeEventListener("click", this.onClick, true);
+    this.setOn(false);
   }
 
   setOn(on: boolean): void {
+    if (on === this.on) {
+      this.widget.setBugMode(on);
+      return;
+    }
     this.on = on;
     this.widget.setBugMode(on);
-    if (!on) {
+    if (on) {
+      document.addEventListener("mousemove", this.onMove, true);
+      document.addEventListener("click", this.onClick, true);
+    } else {
+      document.removeEventListener("mousemove", this.onMove, true);
+      document.removeEventListener("click", this.onClick, true);
       this.hovered = null;
       this.widget.hideOutline();
     }

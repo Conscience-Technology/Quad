@@ -13,34 +13,57 @@ export class RevealLayer {
   private unsubLocal: () => void;
   private openPopover: HTMLDivElement | null = null;
 
+  private pollId: ReturnType<typeof setInterval> | null = null;
+  private active = false;
+
   constructor(private shadow: ShadowRoot) {
-    this.unsubLocal = Local.subscribe(() => this.schedule());
-    window.addEventListener("scroll", this.schedule, true);
-    window.addEventListener("resize", this.schedule);
-
-    // Re-attach on SPA route change. We don't patch history here because
-    // event-trail.ts already does that for capture sessions — instead we
-    // just poll cheap state every 500ms (the panel is already open at that
-    // point; cost is trivial).
-    setInterval(() => this.schedule(), 800);
-
-    // React to DOM updates
-    this.mo = new MutationObserver(() => this.schedule());
-    this.mo.observe(document.body, { childList: true, subtree: true });
-
-    this.schedule();
+    this.unsubLocal = Local.subscribe(() => this.syncActive());
+    // Scroll/resize are cheap and only do work when active (schedule()
+    // early-returns when nothing is drawn).
+    window.addEventListener("scroll", this.schedule, { capture: true, passive: true });
+    window.addEventListener("resize", this.schedule, { passive: true });
+    this.syncActive();
   }
 
   destroy(): void {
     this.unsubLocal();
     window.removeEventListener("scroll", this.schedule, true);
     window.removeEventListener("resize", this.schedule);
-    this.mo?.disconnect();
+    this.deactivate();
     for (const { outline, tag } of this.outlines.values()) {
       outline.remove();
       tag.remove();
     }
     this.outlines.clear();
+  }
+
+  /**
+   * Attach/detach the expensive observers (MutationObserver, route poll)
+   * based on whether the user actually has any pins revealed. Most host
+   * pages have zero, so this keeps Quad from interfering with the host's
+   * render loop in the common case.
+   */
+  private syncActive(): void {
+    const hasVisible = Local.visibleIds().length > 0;
+    if (hasVisible && !this.active) {
+      this.active = true;
+      this.mo = new MutationObserver(() => this.schedule());
+      this.mo.observe(document.body, { childList: true, subtree: true });
+      this.pollId = setInterval(() => this.schedule(), 800);
+    } else if (!hasVisible && this.active) {
+      this.deactivate();
+    }
+    this.schedule();
+  }
+
+  private deactivate(): void {
+    this.active = false;
+    this.mo?.disconnect();
+    this.mo = null;
+    if (this.pollId != null) {
+      clearInterval(this.pollId);
+      this.pollId = null;
+    }
   }
 
   private schedule = (): void => {
@@ -53,6 +76,8 @@ export class RevealLayer {
 
   private render(): void {
     const visible = new Set(Local.visibleIds());
+    // Fast-path: nothing visible AND nothing currently drawn → no-op.
+    if (visible.size === 0 && this.outlines.size === 0) return;
     const route = location.pathname;
     const pins = Local.list().filter(
       (p) => visible.has(p.id) && p.route === route,
