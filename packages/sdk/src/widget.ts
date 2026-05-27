@@ -57,7 +57,7 @@ export class Widget {
   private makeToggle(): HTMLDivElement {
     const d = document.createElement("div");
     d.className = "q-toggle";
-    d.title = "Quad — report a bug (Cmd+Shift+Q)";
+    d.title = "Quad — report a bug (Alt+Shift+Q)";
     for (let i = 0; i < 4; i++) {
       const dot = document.createElement("span");
       dot.className = "dot";

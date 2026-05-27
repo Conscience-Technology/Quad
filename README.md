@@ -63,10 +63,10 @@ super admin. Create your first project and copy the SDK key.
 
 ```
 ┌─ Reporter (your Next.js app) ────────────────────────────────────────┐
-│  ⌨ ⌘⇧B  /  Ctrl+Shift+B  → Bug Mode                                  │
+│  ⌨ ⌥⇧B  /  Alt+Shift+B  → Bug Mode                                   │
 │  ⌥/Alt + Click an element                                            │
 │      pin + selector + componentPath + source file:line               │
-│  ⌘⇧R  /  Ctrl+Shift+R  → Capture session                             │
+│  ⌥⇧R  /  Alt+Shift+R  → Capture session                              │
 │      screen + mic + STT + DOM event trail on one ms-aligned timeline │
 └──────────────────────────────────────────────────────────────────────┘
                                   │

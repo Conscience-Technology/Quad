@@ -3,18 +3,18 @@
  * complex over time lives in internal modules.
  */
 
-export type QuadShortcut = string; // e.g. "mod+shift+b", "alt+click"
+export type QuadShortcut = string; // e.g. "alt+shift+b", "alt+click"
 
 export type QuadOptions = {
   apiKey: string;
   endpoint?: string; // defaults to same-origin
   user?: { id: string; email?: string; name?: string };
   shortcut?: Partial<{
-    bugMode: QuadShortcut; // default "mod+shift+b"
+    bugMode: QuadShortcut; // default "alt+shift+b"
     pin: QuadShortcut; // default "alt+click"
-    capture: QuadShortcut; // default "mod+shift+r"
-    voice: QuadShortcut; // default "mod+shift+v"
-    overlay: QuadShortcut; // default "mod+shift+q"
+    capture: QuadShortcut; // default "alt+shift+r"
+    voice: QuadShortcut; // default "alt+shift+v"
+    overlay: QuadShortcut; // default "alt+shift+q"
   }>;
   captureConsole?: boolean; // default true
   captureNetwork?: boolean; // default true

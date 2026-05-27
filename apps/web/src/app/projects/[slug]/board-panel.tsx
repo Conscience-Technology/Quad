@@ -128,7 +128,7 @@ export function BoardPanel({
       {cells.every((c) => c.length === 0) && !queries[0]?.isLoading && (
         <EmptyState
           title="No bug reports yet"
-          description="Drop the SDK into your host app to start receiving reports. Cmd+Shift+B toggles Bug Mode; Option+Click pins an element."
+          description="Drop the SDK into your host app to start receiving reports. Alt+Shift+B toggles Bug Mode; Option+Click pins an element."
         />
       )}
     </div>

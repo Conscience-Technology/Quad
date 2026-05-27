@@ -69,13 +69,16 @@ class QuadApi {
       );
     }
 
-    // Shortcuts
+    // Shortcuts. `alt+shift+*` is an empty chord on macOS/Windows/Linux —
+    // the previous `mod+shift+*` defaults collided with browser shortcuts
+    // (Cmd+Shift+B = Chrome bookmarks bar, Cmd+Shift+R = force reload,
+    // Cmd+Shift+Q = quit Chrome on macOS).
     const shortcuts = {
-      bugMode: parse(opts.shortcut?.bugMode ?? "mod+shift+b"),
+      bugMode: parse(opts.shortcut?.bugMode ?? "alt+shift+b"),
       pin: parse(opts.shortcut?.pin ?? "alt+click"),
-      overlay: parse(opts.shortcut?.overlay ?? "mod+shift+q"),
-      capture: parse(opts.shortcut?.capture ?? "mod+shift+r"),
-      voice: parse(opts.shortcut?.voice ?? "mod+shift+v"),
+      overlay: parse(opts.shortcut?.overlay ?? "alt+shift+q"),
+      capture: parse(opts.shortcut?.capture ?? "alt+shift+r"),
+      voice: parse(opts.shortcut?.voice ?? "alt+shift+v"),
     };
 
     // Widget + bug mode

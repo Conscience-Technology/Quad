@@ -139,19 +139,24 @@ Start the host dev server. A small 4-dot toggle appears on the right edge.
 
 In the host app:
 
-| Shortcut (Mac / Win) | What it does |
+| Shortcut | What it does |
 |---|---|
-| `Cmd+Shift+B` / `Ctrl+Shift+B` | Toggle Bug Mode |
+| `Option+Shift+B` / `Alt+Shift+B` | Toggle Bug Mode |
 | **Bug Mode ON** + `Option+Click` / `Alt+Click` | Pin that element → floating comment box |
-| `Cmd+Shift+R` / `Ctrl+Shift+R` | Capture session (screen + mic + STT) |
-| `Cmd+Shift+V` / `Ctrl+Shift+V` | Voice-only |
-| `Cmd+Shift+Q` / `Ctrl+Shift+Q` | Open the freeform overlay |
+| `Option+Shift+R` / `Alt+Shift+R` | Capture session (screen + mic + STT) |
+| `Option+Shift+V` / `Alt+Shift+V` | Voice-only |
+| `Option+Shift+Q` / `Alt+Shift+Q` | Open the freeform overlay |
 | `Esc` | Cancel any mode |
 
+> Defaults use `Alt+Shift+*` because every common `Cmd+Shift+*` chord is
+> already taken by Chrome/Firefox (bookmarks, force-reload, quit…).
+> Override via `quad.init({ shortcut: { bugMode: "mod+shift+b", ... } })`
+> if you prefer the OS-modifier style.
+
 Example:
-1. `Cmd+Shift+B` (Bug Mode on)
+1. `Alt+Shift+B` (Bug Mode on)
 2. `Option+Click` the broken element → *"Pay button leads to a blank screen"* → Submit
-3. `Cmd+Shift+R` → choose **screen + voice** → reproduce while narrating
+3. `Alt+Shift+R` → choose **screen + voice** → reproduce while narrating
 4. **■ Stop** → uploads automatically
 
 ---
@@ -312,8 +317,8 @@ Production builds are unaffected — CSS hashes are stable.
 ```
 Reporter (host app)              Maintainer (Quad)                Builder (Claude Code)
 ────────────────────             ─────────────────                ─────────────────────
-Cmd+Shift+B  Option+Click  →
-Cmd+Shift+R  record + talk ■  →  Board · Inbox
+Alt+Shift+B  Option+Click  →
+Alt+Shift+R  record + talk ■  →  Board · Inbox
                                        ↓ click
                                   Video + transcript + DOM trail
                                        ↓ Confirm
