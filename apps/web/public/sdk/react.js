@@ -271,8 +271,6 @@ var BugMode = class {
     this.hostNode = hostNode;
     this.handlers = handlers;
     this.pinCombo = pinCombo;
-    document.addEventListener("mousemove", this.onMove, true);
-    document.addEventListener("click", this.onClick, true);
   }
   widget;
   hostNode;
@@ -281,13 +279,21 @@ var BugMode = class {
   hovered = null;
   pinCombo;
   destroy() {
-    document.removeEventListener("mousemove", this.onMove, true);
-    document.removeEventListener("click", this.onClick, true);
+    this.setOn(false);
   }
   setOn(on) {
+    if (on === this.on) {
+      this.widget.setBugMode(on);
+      return;
+    }
     this.on = on;
     this.widget.setBugMode(on);
-    if (!on) {
+    if (on) {
+      document.addEventListener("mousemove", this.onMove, true);
+      document.addEventListener("click", this.onClick, true);
+    } else {
+      document.removeEventListener("mousemove", this.onMove, true);
+      document.removeEventListener("click", this.onClick, true);
       this.hovered = null;
       this.widget.hideOutline();
     }
@@ -809,13 +815,10 @@ function buildPin(el, body) {
 var RevealLayer = class {
   constructor(shadow) {
     this.shadow = shadow;
-    this.unsubLocal = subscribe(() => this.schedule());
-    window.addEventListener("scroll", this.schedule, true);
-    window.addEventListener("resize", this.schedule);
-    setInterval(() => this.schedule(), 800);
-    this.mo = new MutationObserver(() => this.schedule());
-    this.mo.observe(document.body, { childList: true, subtree: true });
-    this.schedule();
+    this.unsubLocal = subscribe(() => this.syncActive());
+    window.addEventListener("scroll", this.schedule, { capture: true, passive: true });
+    window.addEventListener("resize", this.schedule, { passive: true });
+    this.syncActive();
   }
   shadow;
   outlines = /* @__PURE__ */ new Map();
@@ -823,16 +826,45 @@ var RevealLayer = class {
   mo = null;
   unsubLocal;
   openPopover = null;
+  pollId = null;
+  active = false;
   destroy() {
     this.unsubLocal();
     window.removeEventListener("scroll", this.schedule, true);
     window.removeEventListener("resize", this.schedule);
-    this.mo?.disconnect();
+    this.deactivate();
     for (const { outline, tag } of this.outlines.values()) {
       outline.remove();
       tag.remove();
     }
     this.outlines.clear();
+  }
+  /**
+   * Attach/detach the expensive observers (MutationObserver, route poll)
+   * based on whether the user actually has any pins revealed. Most host
+   * pages have zero, so this keeps Quad from interfering with the host's
+   * render loop in the common case.
+   */
+  syncActive() {
+    const hasVisible = visibleIds().length > 0;
+    if (hasVisible && !this.active) {
+      this.active = true;
+      this.mo = new MutationObserver(() => this.schedule());
+      this.mo.observe(document.body, { childList: true, subtree: true });
+      this.pollId = setInterval(() => this.schedule(), 800);
+    } else if (!hasVisible && this.active) {
+      this.deactivate();
+    }
+    this.schedule();
+  }
+  deactivate() {
+    this.active = false;
+    this.mo?.disconnect();
+    this.mo = null;
+    if (this.pollId != null) {
+      clearInterval(this.pollId);
+      this.pollId = null;
+    }
   }
   schedule = () => {
     if (this.rafId != null) return;
@@ -843,6 +875,7 @@ var RevealLayer = class {
   };
   render() {
     const visible = new Set(visibleIds());
+    if (visible.size === 0 && this.outlines.size === 0) return;
     const route = location.pathname;
     const pins = list().filter(
       (p) => visible.has(p.id) && p.route === route
@@ -1116,6 +1149,7 @@ var WIDGET_CSS = (
   background: rgba(139, 124, 246, 0.06);
   color: var(--star-300);
 }
+.q-panel input.q-work-item,
 .q-panel textarea {
   width: 100%;
   background: var(--surface);
@@ -1129,6 +1163,13 @@ var WIDGET_CSS = (
   min-height: 90px;
   outline: none;
 }
+.q-panel input.q-work-item {
+  box-sizing: border-box;
+  margin: 0 0 10px;
+  min-height: 0;
+}
+.q-panel textarea { box-sizing: border-box; }
+.q-panel input.q-work-item:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
 .q-panel .primary {
   margin-top: 14px;
@@ -1524,7 +1565,7 @@ var Widget = class {
   makeToggle() {
     const d = document.createElement("div");
     d.className = "q-toggle";
-    d.title = "Quad \u2014 report a bug (Cmd+Shift+Q)";
+    d.title = "Quad \u2014 report a bug (Alt+Shift+Q)";
     for (let i = 0; i < 4; i++) {
       const dot = document.createElement("span");
       dot.className = "dot";
@@ -1556,12 +1597,13 @@ var Widget = class {
     body.className = "body";
     body.innerHTML = `
       <p>To point at a specific element, use <strong>Bug Mode + Option/Alt+Click</strong>.</p>
-      <p>This panel is for freeform reports. Drop videos/screenshots below or paste (Cmd+V).</p>
+      <p>This panel is for freeform reports. Drop videos/screenshots below or paste (\u2318/Ctrl+V).</p>
       <div class="drop" data-over="false">
         Drop a file here or click to select<br/>
-        <small>Record with Cmd+Shift+5 (Mac) or Win+G (Windows), then drop here</small>
+        <small>Record with \u2318\u21E75 on macOS, Win+G on Windows, then drop the file here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
+      <input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Azure Work Item # (optional)" />
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
@@ -1652,6 +1694,7 @@ var Widget = class {
   wireOverlayBody(body) {
     const drop = body.querySelector(".drop");
     const fileInput = body.querySelector("input[type=file]");
+    const workItemInput = body.querySelector("input.q-work-item");
     const ta = body.querySelector("textarea");
     const btn = body.querySelector(".primary");
     const status = body.querySelector(".q-status");
@@ -1704,12 +1747,20 @@ var Widget = class {
         status.className = "q-status error";
         return;
       }
+      const workItemRaw = workItemInput.value.trim();
+      const azureWorkItemId = workItemRaw ? Number.parseInt(workItemRaw, 10) : void 0;
+      if (workItemRaw && (!Number.isFinite(azureWorkItemId) || !azureWorkItemId || azureWorkItemId <= 0)) {
+        status.textContent = "Azure Work Item # must be a positive number";
+        status.className = "q-status error";
+        return;
+      }
       btn.disabled = true;
       status.className = "q-status";
       status.textContent = "Sending\u2026";
       try {
-        await this.cb.onSubmitOverlay(body2, staged);
+        await this.cb.onSubmitOverlay(body2, staged, { azureWorkItemId });
         ta.value = "";
+        workItemInput.value = "";
         staged = [];
         renderStaged();
         status.textContent = "Sent";
@@ -1870,6 +1921,7 @@ var QuadApi = class {
   bugMode;
   capture;
   reveal;
+  optKey = "Alt";
   user;
   context = {};
   consoleRing = new Ring(50);
@@ -1894,19 +1946,20 @@ var QuadApi = class {
       );
     }
     const shortcuts = {
-      bugMode: parse(opts.shortcut?.bugMode ?? "mod+shift+b"),
+      bugMode: parse(opts.shortcut?.bugMode ?? "alt+shift+b"),
       pin: parse(opts.shortcut?.pin ?? "alt+click"),
-      overlay: parse(opts.shortcut?.overlay ?? "mod+shift+q"),
-      capture: parse(opts.shortcut?.capture ?? "mod+shift+r"),
-      voice: parse(opts.shortcut?.voice ?? "mod+shift+v")
+      overlay: parse(opts.shortcut?.overlay ?? "alt+shift+q"),
+      capture: parse(opts.shortcut?.capture ?? "alt+shift+r"),
+      voice: parse(opts.shortcut?.voice ?? "alt+shift+v")
     };
     this.widget = new Widget({
       onToggleOverlay: () => this.toggleOverlay(),
-      onSubmitOverlay: (body, files) => this.submitOverlay(body, files)
+      onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options)
     });
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
       onPin: (el, x, y) => this.openPinForm(el, x, y)
     });
+    this.optKey = /Mac|iPhone|iPad/i.test(navigator?.platform ?? "") ? "Option" : "Alt";
     this.reveal = new RevealLayer(this.widget.root);
     void this.bootstrapPins();
     this.capture = new CaptureSession(this.widget.root, this.widget.host, {
@@ -1931,7 +1984,7 @@ var QuadApi = class {
       },
       onPin: () => {
         if (!this.bugMode?.isOn()) this.toggleBugMode();
-        this.widget?.toast("Option+Click an element to pin it");
+        this.widget?.toast(`${this.optKey}+Click an element to pin it`);
       }
     });
     const onKey = (e) => {
@@ -2073,7 +2126,9 @@ var QuadApi = class {
   toggleBugMode() {
     if (!this.bugMode) return;
     this.bugMode.setOn(!this.bugMode.isOn());
-    this.widget?.toast(this.bugMode.isOn() ? "Bug Mode ON \u2014 Option+Click to pin" : "Bug Mode OFF");
+    this.widget?.toast(
+      this.bugMode.isOn() ? `Bug Mode ON \u2014 ${this.optKey}+Click to pin` : "Bug Mode OFF"
+    );
   }
   toggleOverlay() {
     if (!this.widget) return;
@@ -2106,7 +2161,7 @@ var QuadApi = class {
       }
     });
   }
-  async submitOverlay(body, files) {
+  async submitOverlay(body, files, options = {}) {
     if (!this.api) throw new Error("Quad: not initialized");
     const attachments = [];
     for (const f of files) {
@@ -2115,10 +2170,17 @@ var QuadApi = class {
       attachments.push({ ...up, kind });
     }
     const title = body.slice(0, 80) || "(attachment report)";
+    const meta = this.snapshotMeta();
+    if (options.azureWorkItemId) {
+      meta.customContext = {
+        ...meta.customContext,
+        azureWorkItemId: options.azureWorkItemId
+      };
+    }
     await this.api.createSession({
       title,
       body,
-      meta: this.snapshotMeta(),
+      meta,
       reporter: this.user,
       reporterAnonKey: this.ensureAnonKey(),
       attachments

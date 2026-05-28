@@ -9,6 +9,7 @@ declare class QuadApi {
     private bugMode?;
     private capture?;
     private reveal?;
+    private optKey;
     private user?;
     private context;
     private consoleRing;

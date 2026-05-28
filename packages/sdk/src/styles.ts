@@ -130,6 +130,7 @@ export const WIDGET_CSS = /* css */ `
   background: rgba(139, 124, 246, 0.06);
   color: var(--star-300);
 }
+.q-panel input.q-work-item,
 .q-panel textarea {
   width: 100%;
   background: var(--surface);
@@ -143,6 +144,13 @@ export const WIDGET_CSS = /* css */ `
   min-height: 90px;
   outline: none;
 }
+.q-panel input.q-work-item {
+  box-sizing: border-box;
+  margin: 0 0 10px;
+  min-height: 0;
+}
+.q-panel textarea { box-sizing: border-box; }
+.q-panel input.q-work-item:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
 .q-panel .primary {
   margin-top: 14px;

@@ -7,7 +7,7 @@ import { WIDGET_CSS } from "./styles";
 
 export type WidgetCallbacks = {
   onToggleOverlay: () => void;
-  onSubmitOverlay: (body: string, files: File[]) => Promise<void>;
+  onSubmitOverlay: (body: string, files: File[], options?: { azureWorkItemId?: number }) => Promise<void>;
 };
 
 export type PinFormCallbacks = {
@@ -100,6 +100,7 @@ export class Widget {
         <small>Record with ⌘⇧5 on macOS, Win+G on Windows, then drop the file here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
+      <input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Azure Work Item # (optional)" />
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
@@ -211,6 +212,7 @@ export class Widget {
   private wireOverlayBody(body: HTMLDivElement): void {
     const drop = body.querySelector<HTMLDivElement>(".drop")!;
     const fileInput = body.querySelector<HTMLInputElement>("input[type=file]")!;
+    const workItemInput = body.querySelector<HTMLInputElement>("input.q-work-item")!;
     const ta = body.querySelector<HTMLTextAreaElement>("textarea")!;
     const btn = body.querySelector<HTMLButtonElement>(".primary")!;
     const status = body.querySelector<HTMLParagraphElement>(".q-status")!;
@@ -269,12 +271,20 @@ export class Widget {
         status.className = "q-status error";
         return;
       }
+      const workItemRaw = workItemInput.value.trim();
+      const azureWorkItemId = workItemRaw ? Number.parseInt(workItemRaw, 10) : undefined;
+      if (workItemRaw && (!Number.isFinite(azureWorkItemId) || !azureWorkItemId || azureWorkItemId <= 0)) {
+        status.textContent = "Azure Work Item # must be a positive number";
+        status.className = "q-status error";
+        return;
+      }
       btn.disabled = true;
       status.className = "q-status";
       status.textContent = "Sending…";
       try {
-        await this.cb.onSubmitOverlay(body, staged);
+        await this.cb.onSubmitOverlay(body, staged, { azureWorkItemId });
         ta.value = "";
+        workItemInput.value = "";
         staged = [];
         renderStaged();
         status.textContent = "Sent";

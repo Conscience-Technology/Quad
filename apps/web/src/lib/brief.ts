@@ -9,6 +9,12 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "~/db";
 import type { BugMeta } from "~/db/schema";
+import {
+  addAzureWorkItemComment,
+  azureWorkItemUrl,
+  getAzureDevOpsPatForUser,
+  isAzureDevOpsConfigured,
+} from "./azure-devops";
 import { putBytes } from "./storage";
 
 const MAX_BRIEF_BYTES = 8 * 1024;
@@ -50,6 +56,9 @@ export async function buildTaskBrief(input: {
     .limit(1);
   const project = projectRows[0];
   if (!project) throw new Error("project not found");
+  const azureWorkItemId = readAzureWorkItemId(bug.meta);
+  const linkedAzureWorkItemUrl =
+    azureWorkItemId && project.azureDevOps ? azureWorkItemUrl(project.azureDevOps, azureWorkItemId) : null;
 
   const [atts, comments, occurrences] = await Promise.all([
     db
@@ -136,6 +145,8 @@ export async function buildTaskBrief(input: {
       status: "queued",
       title: bug.title,
       maintainerInstruction: input.maintainerInstruction ?? null,
+      azureWorkItemId,
+      azureWorkItemUrl: linkedAzureWorkItemUrl,
       briefStorageKey: briefKey,
       bundleManifest: {
         markdown: briefKey,
@@ -154,6 +165,45 @@ export async function buildTaskBrief(input: {
     actorUserId: input.confirmedByUserId,
     payload: { fromBugReport: bug.id, briefSizeBytes: briefBytes.byteLength },
   });
+
+  if (azureWorkItemId) {
+    try {
+      const pat = await getAzureDevOpsPatForUser(
+        input.confirmedByUserId,
+        project.azureDevOps?.organization,
+      );
+      if (isAzureDevOpsConfigured(project.azureDevOps, pat)) {
+        await addAzureWorkItemComment(
+          project.azureDevOps,
+          azureWorkItemId,
+          `Linked to Quad task ${task.id}: ${bug.title}`,
+          pat,
+        );
+        await db.insert(schema.taskEvents).values({
+          taskId: task.id,
+          kind: "comment_added",
+          actorUserId: input.confirmedByUserId,
+          payload: {
+            integration: "azure-devops",
+            action: "linked_from_report",
+            workItemId: azureWorkItemId,
+          },
+        });
+      }
+    } catch (err) {
+      await db.insert(schema.taskEvents).values({
+        taskId: task.id,
+        kind: "comment_added",
+        actorUserId: input.confirmedByUserId,
+        payload: {
+          integration: "azure-devops",
+          action: "linked_from_report",
+          workItemId: azureWorkItemId,
+          error: err instanceof Error ? err.message : "Azure DevOps comment sync failed",
+        },
+      });
+    }
+  }
 
   await db
     .update(schema.bugReports)
@@ -193,6 +243,7 @@ function renderMarkdown(args: {
   const reporter = bug.reporterIdentify
     ? bug.reporterIdentify.email ?? bug.reporterIdentify.id ?? "anon"
     : bug.reporterAnonKey ?? "anon";
+  const requestedAzureWorkItemId = readAzureWorkItemId(meta);
   out.push(
     `## Origin`,
     `- Reporter: ${reporter}`,
@@ -201,6 +252,7 @@ function renderMarkdown(args: {
     `- Route: ${bug.targetRoute ?? ""}`,
     `- URL: ${bug.pageUrl ?? ""}`,
     `- Commit at report time: ${(meta as unknown as Record<string, string>).gitCommitSha ?? "(unknown)"}`,
+    ...(requestedAzureWorkItemId ? [`- Azure Work Item: #${requestedAzureWorkItemId}`] : []),
     occurrences.length > 0 ? `- Occurrences: ${occurrences.length + 1} (1 primary + ${occurrences.length} more)` : `- Occurrences: 1`,
     "",
   );
@@ -343,4 +395,17 @@ function truncateMid(s: string, max: number): string {
   if (s.length <= max) return s;
   const half = Math.floor((max - 3) / 2);
   return `${s.slice(0, half)}...${s.slice(-half)}`;
+}
+
+function readAzureWorkItemId(meta: BugMeta): number | null {
+  const customContext = meta.customContext;
+  if (!customContext || typeof customContext !== "object") return null;
+  const value = customContext.azureWorkItemId;
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
 }

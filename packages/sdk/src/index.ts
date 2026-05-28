@@ -84,7 +84,7 @@ class QuadApi {
     // Widget + bug mode
     this.widget = new Widget({
       onToggleOverlay: () => this.toggleOverlay(),
-      onSubmitOverlay: (body, files) => this.submitOverlay(body, files),
+      onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options),
     });
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
       onPin: (el, x, y) => this.openPinForm(el, x, y),
@@ -322,7 +322,11 @@ class QuadApi {
     });
   }
 
-  private async submitOverlay(body: string, files: File[]): Promise<void> {
+  private async submitOverlay(
+    body: string,
+    files: File[],
+    options: { azureWorkItemId?: number } = {},
+  ): Promise<void> {
     if (!this.api) throw new Error("Quad: not initialized");
     const attachments: Array<{
       key: string;
@@ -340,10 +344,17 @@ class QuadApi {
       attachments.push({ ...up, kind });
     }
     const title = body.slice(0, 80) || "(attachment report)";
+    const meta = this.snapshotMeta();
+    if (options.azureWorkItemId) {
+      meta.customContext = {
+        ...meta.customContext,
+        azureWorkItemId: options.azureWorkItemId,
+      };
+    }
     await this.api.createSession({
       title,
       body,
-      meta: this.snapshotMeta(),
+      meta,
       reporter: this.user,
       reporterAnonKey: this.ensureAnonKey(),
       attachments,

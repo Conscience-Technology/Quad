@@ -34,6 +34,7 @@ export function BugDetail({
   if (q.isLoading) return <p className="text-sm text-[var(--color-star-500)]">Loading…</p>;
   if (!q.data) return null;
   const { bug, attachments, comments, occurrences, media, transcript } = q.data;
+  const requestedAzureWorkItemId = readAzureWorkItemId(bug.meta);
 
   const status = bug.status;
   const videoComments = comments
@@ -170,6 +171,13 @@ export function BugDetail({
       </div>
 
       <aside className="space-y-4">
+        {requestedAzureWorkItemId && (
+          <Surface className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">Azure DevOps</p>
+            <p className="text-sm text-[var(--color-star-300)]">Requested Work Item #{requestedAzureWorkItemId}</p>
+          </Surface>
+        )}
+
         {status === "confirmed" ? (
           <Surface>
             <p className="text-sm text-[var(--color-star-300)]">
@@ -223,4 +231,18 @@ export function BugDetail({
       </aside>
     </div>
   );
+}
+
+function readAzureWorkItemId(meta: unknown): number | null {
+  if (!meta || typeof meta !== "object") return null;
+  const customContext = (meta as { customContext?: unknown }).customContext;
+  if (!customContext || typeof customContext !== "object") return null;
+  const value = (customContext as { azureWorkItemId?: unknown }).azureWorkItemId;
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
 }
