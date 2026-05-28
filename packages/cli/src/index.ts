@@ -45,6 +45,15 @@ program
   });
 
 program
+  .command("doctor")
+  .description("Diagnose endpoint, MCP key, project scope, queued tasks, and integrations")
+  .action(async () => {
+    const cfg = await loadConfig();
+    const result = await api<Record<string, unknown>>(cfg, "/api/mcp/doctor");
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+program
   .command("pull")
   .description("Pull a task into ./.quad/tasks/<id>/")
   .argument("[task-id]")
@@ -109,11 +118,14 @@ program
   .option("--note <text>", "free-form note attached to the audit event")
   .action(async (taskId: string, o: { set: string; pr?: string; note?: string }) => {
     const cfg = await loadConfig();
-    await api(cfg, `/api/mcp/tasks/${taskId}/status`, {
+    const result = await api<Record<string, unknown>>(cfg, `/api/mcp/tasks/${taskId}/status`, {
       method: "POST",
       body: JSON.stringify({ status: o.set, prUrl: o.pr, note: o.note }),
     });
     console.log(`${taskId} → ${o.set}`);
+    if (result.externalIssue) {
+      console.log(JSON.stringify({ externalIssue: result.externalIssue }, null, 2));
+    }
   });
 
 program
@@ -123,7 +135,7 @@ program
   .option("--video-ms <ms>", "video timestamp (with --level video)")
   .action(async (taskId: string, body: string, o: { level: string; videoMs?: string }) => {
     const cfg = await loadConfig();
-    await api(cfg, `/api/mcp/tasks/${taskId}/comment`, {
+    const result = await api<Record<string, unknown>>(cfg, `/api/mcp/tasks/${taskId}/comment`, {
       method: "POST",
       body: JSON.stringify({
         body,
@@ -132,6 +144,64 @@ program
       }),
     });
     console.log("comment posted");
+    if (result.externalIssue) {
+      console.log(JSON.stringify({ externalIssue: result.externalIssue }, null, 2));
+    }
+  });
+
+const integration = program
+  .command("integration")
+  .description("Issue integration commands");
+
+integration
+  .command("list")
+  .description("List configured issue integrations")
+  .option("-p, --project <id>", "project id")
+  .action(async (o: { project?: string }) => {
+    const cfg = await loadConfig();
+    const qs = new URLSearchParams();
+    if (o.project) qs.set("project_id", o.project);
+    const result = await api<Record<string, unknown>>(cfg, `/api/mcp/integrations?${qs}`);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+integration
+  .command("test")
+  .description("Test an issue integration")
+  .requiredOption("-p, --project <id>", "project id")
+  .option("--provider <provider>", "provider id", "azure-devops")
+  .option("--issue <id>", "external issue/work item id")
+  .action(async (o: { project: string; provider: string; issue?: string }) => {
+    const cfg = await loadConfig();
+    const result = await api<Record<string, unknown>>(cfg, "/api/mcp/integrations", {
+      method: "POST",
+      body: JSON.stringify({
+        projectId: o.project,
+        provider: o.provider,
+        issueId: o.issue,
+      }),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+const issue = program
+  .command("issue")
+  .description("External issue commands");
+
+issue
+  .command("link <task-id> <issue-id>")
+  .description("Link a task to an external issue/work item")
+  .option("--provider <provider>", "provider id", "azure-devops")
+  .action(async (taskId: string, issueId: string, o: { provider: string }) => {
+    const cfg = await loadConfig();
+    const result = await api<Record<string, unknown>>(cfg, `/api/mcp/tasks/${taskId}/issue`, {
+      method: "POST",
+      body: JSON.stringify({
+        provider: o.provider,
+        issueId,
+      }),
+    });
+    console.log(JSON.stringify(result, null, 2));
   });
 
 program

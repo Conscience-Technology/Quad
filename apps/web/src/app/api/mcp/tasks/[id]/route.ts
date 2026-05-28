@@ -82,6 +82,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       prUrl: task.prUrl,
       azureWorkItemId: task.azureWorkItemId,
       azureWorkItemUrl: task.azureWorkItemUrl,
+      externalIssue: task.azureWorkItemId
+        ? {
+            provider: "azure-devops",
+            id: task.azureWorkItemId,
+            url: task.azureWorkItemUrl,
+          }
+        : null,
     },
     markdown,
     frames: inlineFrames,

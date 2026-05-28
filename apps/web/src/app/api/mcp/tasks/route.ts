@@ -47,6 +47,8 @@ export async function GET(req: Request) {
       status: schema.tasks.status,
       title: schema.tasks.title,
       prUrl: schema.tasks.prUrl,
+      azureWorkItemId: schema.tasks.azureWorkItemId,
+      azureWorkItemUrl: schema.tasks.azureWorkItemUrl,
       createdAt: schema.tasks.createdAt,
     })
     .from(schema.tasks)
@@ -54,5 +56,16 @@ export async function GET(req: Request) {
     .orderBy(desc(schema.tasks.createdAt))
     .limit(params.limit);
 
-  return NextResponse.json({ tasks });
+  return NextResponse.json({
+    tasks: tasks.map((task) => ({
+      ...task,
+      externalIssue: task.azureWorkItemId
+        ? {
+            provider: "azure-devops",
+            id: task.azureWorkItemId,
+            url: task.azureWorkItemUrl,
+          }
+        : null,
+    })),
+  });
 }

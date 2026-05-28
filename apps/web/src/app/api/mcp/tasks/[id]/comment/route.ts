@@ -38,6 +38,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     })
     .returning();
   let azureDevOps: Record<string, unknown> | undefined;
+  let externalIssue: Record<string, unknown> | undefined;
   if (task.azureWorkItemId) {
     const [project] = await db
       .select()
@@ -56,9 +57,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         azurePat,
       );
       azureDevOps = { workItemId: task.azureWorkItemId, synced: true };
+      externalIssue = {
+        provider: "azure-devops",
+        id: task.azureWorkItemId,
+        synced: true,
+      };
     } catch (err) {
       azureDevOps = {
         workItemId: task.azureWorkItemId,
+        synced: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+      externalIssue = {
+        provider: "azure-devops",
+        id: task.azureWorkItemId,
         synced: false,
         error: err instanceof Error ? err.message : String(err),
       };
@@ -69,7 +81,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     kind: "comment_added",
     actorUserId: r.auth.user.id,
     actorApiKeyId: r.auth.apiKey.id,
-    payload: { commentId: comment?.id, azureDevOps },
+    payload: { commentId: comment?.id, azureDevOps, externalIssue },
   });
-  return NextResponse.json({ id: comment?.id });
+  return NextResponse.json({ id: comment?.id, externalIssue });
 }

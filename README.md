@@ -208,9 +208,12 @@ Then, in Claude Code:
 
 > *"pick the next quad task and fix it"*
 
-**10 MCP tools wired**: `quad_list_tasks` · `quad_pick_task` ·
+Start with `quad_doctor` when setting up a new instance or debugging a key.
+
+**14 MCP tools wired**: `quad_doctor` · `quad_list_tasks` · `quad_pick_task` ·
 `quad_get_task` · `quad_update_task` · `quad_post_comment` ·
-`quad_search_tasks` · `quad_get_frames` · `quad_get_transcript` ·
+`quad_search_tasks` · `quad_list_integrations` · `quad_test_integration` ·
+`quad_link_issue` · `quad_get_frames` · `quad_get_transcript` ·
 `quad_get_timeline` · `quad_get_source`.
 
 ---

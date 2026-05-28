@@ -4,9 +4,13 @@
 export const VERSION = "0.0.0";
 
 export const TOOLS = [
+  "quad_doctor",
   "quad_list_tasks",
   "quad_pick_task",
   "quad_get_task",
+  "quad_list_integrations",
+  "quad_test_integration",
+  "quad_link_issue",
   "quad_get_frames",
   "quad_get_transcript",
   "quad_get_timeline",

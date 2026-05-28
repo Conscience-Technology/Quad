@@ -40,6 +40,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     .where(eq(schema.projects.id, task.projectId))
     .limit(1);
   let azureDevOps: Record<string, unknown> | undefined;
+  let externalIssue: Record<string, unknown> | undefined;
   try {
     const azurePat = await getAzureDevOpsPatForUser(
       r.auth.user.id,
@@ -64,10 +65,22 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         azurePat,
       );
       azureDevOps = { workItemId: task.azureWorkItemId, state: mappedState, synced: true };
+      externalIssue = {
+        provider: "azure-devops",
+        id: task.azureWorkItemId,
+        state: mappedState,
+        synced: true,
+      };
     }
   } catch (err) {
     azureDevOps = {
       workItemId: task.azureWorkItemId,
+      synced: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+    externalIssue = {
+      provider: "azure-devops",
+      id: task.azureWorkItemId,
       synced: false,
       error: err instanceof Error ? err.message : String(err),
     };
@@ -77,7 +90,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     kind: body.status === "pr_open" ? "pr_attached" : "status_changed",
     actorUserId: r.auth.user.id,
     actorApiKeyId: r.auth.apiKey.id,
-    payload: { status: body.status, prUrl: body.prUrl, note: body.note, azureDevOps },
+    payload: { status: body.status, prUrl: body.prUrl, note: body.note, azureDevOps, externalIssue },
   });
   if (body.status === "done") {
     await db
@@ -85,5 +98,5 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .set({ status: "resolved", updatedAt: new Date() })
       .where(eq(schema.bugReports.id, task.bugReportId));
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, externalIssue });
 }
