@@ -27,6 +27,9 @@ type QuadOptions = {
     voice?: {
         enabled?: boolean;
     };
+    azureDevOps?: {
+        enabled?: boolean;
+    };
     mask?: string[];
     commitSha?: string;
     position?: "right" | "left";

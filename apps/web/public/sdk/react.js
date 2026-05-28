@@ -1529,8 +1529,9 @@ var WIDGET_CSS = (
 
 // src/widget.ts
 var Widget = class {
-  constructor(cb) {
+  constructor(cb, options = {}) {
     this.cb = cb;
+    this.options = options;
     this.host = document.createElement("quad-widget");
     this.host.style.cssText = "all: initial; position: static;";
     this.root = this.host.attachShadow({ mode: "closed" });
@@ -1547,6 +1548,7 @@ var Widget = class {
     document.body.appendChild(this.host);
   }
   cb;
+  options;
   host;
   root;
   toggleEl;
@@ -1603,7 +1605,7 @@ var Widget = class {
         <small>Record with \u2318\u21E75 on macOS, Win+G on Windows, then drop the file here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
-      <input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Azure Work Item # (optional)" />
+      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Azure Work Item # (optional)" />' : ""}
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
@@ -1747,7 +1749,7 @@ var Widget = class {
         status.className = "q-status error";
         return;
       }
-      const workItemRaw = workItemInput.value.trim();
+      const workItemRaw = workItemInput?.value.trim() ?? "";
       const azureWorkItemId = workItemRaw ? Number.parseInt(workItemRaw, 10) : void 0;
       if (workItemRaw && (!Number.isFinite(azureWorkItemId) || !azureWorkItemId || azureWorkItemId <= 0)) {
         status.textContent = "Azure Work Item # must be a positive number";
@@ -1760,7 +1762,7 @@ var Widget = class {
       try {
         await this.cb.onSubmitOverlay(body2, staged, { azureWorkItemId });
         ta.value = "";
-        workItemInput.value = "";
+        if (workItemInput) workItemInput.value = "";
         staged = [];
         renderStaged();
         status.textContent = "Sent";
@@ -1952,10 +1954,15 @@ var QuadApi = class {
       capture: parse(opts.shortcut?.capture ?? "alt+shift+r"),
       voice: parse(opts.shortcut?.voice ?? "alt+shift+v")
     };
-    this.widget = new Widget({
-      onToggleOverlay: () => this.toggleOverlay(),
-      onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options)
-    });
+    this.widget = new Widget(
+      {
+        onToggleOverlay: () => this.toggleOverlay(),
+        onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options)
+      },
+      {
+        azureDevOpsEnabled: opts.azureDevOps?.enabled === true
+      }
+    );
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
       onPin: (el, x, y) => this.openPinForm(el, x, y)
     });

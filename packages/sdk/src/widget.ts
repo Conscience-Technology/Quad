@@ -10,6 +10,10 @@ export type WidgetCallbacks = {
   onSubmitOverlay: (body: string, files: File[], options?: { azureWorkItemId?: number }) => Promise<void>;
 };
 
+export type WidgetOptions = {
+  azureDevOpsEnabled?: boolean;
+};
+
 export type PinFormCallbacks = {
   onSubmit: (body: string) => Promise<void>;
   onCancel: () => void;
@@ -28,7 +32,10 @@ export class Widget {
   private overlayOpen = false;
   private bugModeOn = false;
 
-  constructor(private cb: WidgetCallbacks) {
+  constructor(
+    private cb: WidgetCallbacks,
+    private options: WidgetOptions = {},
+  ) {
     this.host = document.createElement("quad-widget");
     this.host.style.cssText = "all: initial; position: static;";
     this.root = this.host.attachShadow({ mode: "closed" });
@@ -100,7 +107,7 @@ export class Widget {
         <small>Record with ⌘⇧5 on macOS, Win+G on Windows, then drop the file here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
-      <input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Azure Work Item # (optional)" />
+      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Azure Work Item # (optional)" />' : ""}
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
@@ -212,7 +219,7 @@ export class Widget {
   private wireOverlayBody(body: HTMLDivElement): void {
     const drop = body.querySelector<HTMLDivElement>(".drop")!;
     const fileInput = body.querySelector<HTMLInputElement>("input[type=file]")!;
-    const workItemInput = body.querySelector<HTMLInputElement>("input.q-work-item")!;
+    const workItemInput = body.querySelector<HTMLInputElement>("input.q-work-item");
     const ta = body.querySelector<HTMLTextAreaElement>("textarea")!;
     const btn = body.querySelector<HTMLButtonElement>(".primary")!;
     const status = body.querySelector<HTMLParagraphElement>(".q-status")!;
@@ -271,7 +278,7 @@ export class Widget {
         status.className = "q-status error";
         return;
       }
-      const workItemRaw = workItemInput.value.trim();
+      const workItemRaw = workItemInput?.value.trim() ?? "";
       const azureWorkItemId = workItemRaw ? Number.parseInt(workItemRaw, 10) : undefined;
       if (workItemRaw && (!Number.isFinite(azureWorkItemId) || !azureWorkItemId || azureWorkItemId <= 0)) {
         status.textContent = "Azure Work Item # must be a positive number";
@@ -284,7 +291,7 @@ export class Widget {
       try {
         await this.cb.onSubmitOverlay(body, staged, { azureWorkItemId });
         ta.value = "";
-        workItemInput.value = "";
+        if (workItemInput) workItemInput.value = "";
         staged = [];
         renderStaged();
         status.textContent = "Sent";

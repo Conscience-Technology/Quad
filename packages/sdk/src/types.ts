@@ -20,6 +20,7 @@ export type QuadOptions = {
   captureNetwork?: boolean; // default true
   video?: { enabled?: boolean; maxDurationMs?: number };
   voice?: { enabled?: boolean };
+  azureDevOps?: { enabled?: boolean };
   mask?: string[]; // CSS selectors to mask in screenshots/recordings
   commitSha?: string; // host app's git commit SHA (for source-map resolution)
   position?: "right" | "left"; // default "right"

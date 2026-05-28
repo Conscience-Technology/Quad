@@ -82,10 +82,15 @@ class QuadApi {
     };
 
     // Widget + bug mode
-    this.widget = new Widget({
-      onToggleOverlay: () => this.toggleOverlay(),
-      onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options),
-    });
+    this.widget = new Widget(
+      {
+        onToggleOverlay: () => this.toggleOverlay(),
+        onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options),
+      },
+      {
+        azureDevOpsEnabled: opts.azureDevOps?.enabled === true,
+      },
+    );
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
       onPin: (el, x, y) => this.openPinForm(el, x, y),
     });
