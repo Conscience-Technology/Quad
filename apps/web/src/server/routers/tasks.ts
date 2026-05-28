@@ -13,6 +13,7 @@ import {
   getAzureDevOpsPatForUser,
   getAzureWorkItem,
   isAzureDevOpsConfigured,
+  setAzureWorkItemState,
   updateAzureWorkItemState,
 } from "~/lib/azure-devops";
 import { getBytes, presignDownload } from "~/lib/storage";
@@ -104,6 +105,13 @@ export const tasksRouter = router({
 
       const workItem = await getAzureWorkItem(project.azureDevOps, input.workItemId, azurePat);
       const url = workItem?.url ?? azureWorkItemUrl(project.azureDevOps!, input.workItemId);
+      const reportState = project.azureDevOps?.reportState?.trim() || "Reopened";
+      const syncedState = await setAzureWorkItemState(
+        project.azureDevOps,
+        input.workItemId,
+        reportState,
+        azurePat,
+      );
 
       await ctx.db
         .update(schema.tasks)
@@ -123,7 +131,8 @@ export const tasksRouter = router({
           workItemId: input.workItemId,
           url,
           title: workItem?.title,
-          state: workItem?.state,
+          previousState: workItem?.state,
+          state: syncedState,
         },
       });
 

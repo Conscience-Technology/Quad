@@ -35,6 +35,7 @@ export function BugDetail({
   if (!q.data) return null;
   const { bug, attachments, comments, occurrences, media, transcript } = q.data;
   const requestedAzureWorkItemId = readAzureWorkItemId(bug.meta);
+  const azureDevOpsSync = readAzureDevOpsSync(bug.meta);
 
   const status = bug.status;
   const videoComments = comments
@@ -175,6 +176,13 @@ export function BugDetail({
           <Surface className="space-y-1">
             <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">Azure DevOps</p>
             <p className="text-sm text-[var(--color-star-300)]">Requested Work Item #{requestedAzureWorkItemId}</p>
+            {azureDevOpsSync && (
+              <p className={`text-xs ${azureDevOpsSync.synced ? "text-[var(--color-nebula-cyan)]" : "text-[var(--color-nebula-rose)]"}`}>
+                {azureDevOpsSync.synced
+                  ? `Synced${azureDevOpsSync.state ? ` → ${azureDevOpsSync.state}` : ""}`
+                  : azureDevOpsSync.error ?? "Azure DevOps sync skipped"}
+              </p>
+            )}
           </Surface>
         )}
 
@@ -245,4 +253,17 @@ function readAzureWorkItemId(meta: unknown): number | null {
         ? Number.parseInt(value, 10)
         : NaN;
   return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+}
+
+function readAzureDevOpsSync(meta: unknown): { synced?: boolean; state?: string; error?: string } | null {
+  if (!meta || typeof meta !== "object") return null;
+  const customContext = (meta as { customContext?: unknown }).customContext;
+  if (!customContext || typeof customContext !== "object") return null;
+  const sync = (customContext as { azureDevOps?: unknown }).azureDevOps;
+  if (!sync || typeof sync !== "object") return null;
+  return {
+    synced: typeof (sync as { synced?: unknown }).synced === "boolean" ? (sync as { synced: boolean }).synced : undefined,
+    state: typeof (sync as { state?: unknown }).state === "string" ? (sync as { state: string }).state : undefined,
+    error: typeof (sync as { error?: unknown }).error === "string" ? (sync as { error: string }).error : undefined,
+  };
 }

@@ -14,6 +14,7 @@ import {
   azureWorkItemUrl,
   getAzureDevOpsPatForUser,
   isAzureDevOpsConfigured,
+  setAzureWorkItemState,
 } from "./azure-devops";
 import { putBytes } from "./storage";
 
@@ -173,6 +174,13 @@ export async function buildTaskBrief(input: {
         project.azureDevOps?.organization,
       );
       if (isAzureDevOpsConfigured(project.azureDevOps, pat)) {
+        const state = project.azureDevOps?.reportState?.trim() || "Reopened";
+        const syncedState = await setAzureWorkItemState(
+          project.azureDevOps,
+          azureWorkItemId,
+          state,
+          pat,
+        );
         await addAzureWorkItemComment(
           project.azureDevOps,
           azureWorkItemId,
@@ -187,6 +195,7 @@ export async function buildTaskBrief(input: {
             integration: "azure-devops",
             action: "linked_from_report",
             workItemId: azureWorkItemId,
+            state: syncedState,
           },
         });
       }

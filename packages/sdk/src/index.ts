@@ -371,7 +371,11 @@ class QuadApi {
       commitSha: this.opts.commitSha,
       consoleLogs: this.consoleRing.snapshot(),
       networkErrors: this.networkRing.snapshot(),
-      customContext: this.context,
+      customContext: {
+        pageUrl: location.href,
+        path: location.pathname,
+        ...this.context,
+      },
     };
   }
 

@@ -6,6 +6,12 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "~/db";
 import type { BugReport, BugMeta } from "~/db/schema";
 import { computeFingerprint, normalizeRoute } from "~/lib/fingerprint";
+import {
+  addAzureWorkItemComment,
+  azureWorkItemUrl,
+  isAzureDevOpsConfigured,
+  setAzureWorkItemState,
+} from "~/lib/azure-devops";
 
 type ConsoleEntry = NonNullable<BugMeta["consoleLogs"]>[number];
 type NetworkEntry = NonNullable<BugMeta["networkErrors"]>[number];
@@ -164,6 +170,7 @@ export async function createSession(input: CreateSessionInput): Promise<IngestRe
     selector: input.title.slice(0, 80),
   });
 
+  const reporterMeta = sanitizeMeta(input.meta);
   const [bug] = await db
     .insert(schema.bugReports)
     .values({
@@ -173,7 +180,7 @@ export async function createSession(input: CreateSessionInput): Promise<IngestRe
       status: "new",
       title: input.title,
       body: input.body,
-      meta: sanitizeMeta(input.meta),
+      meta: reporterMeta,
       reporterUserId: null,
       reporterAnonKey: input.reporterAnonKey ?? null,
       reporterIdentify: input.reporter
@@ -198,6 +205,8 @@ export async function createSession(input: CreateSessionInput): Promise<IngestRe
       })),
     );
   }
+
+  await syncAzureDevOpsFromReport(input, bug);
 
   return { id: bug.id, fingerprint };
 }
@@ -245,6 +254,116 @@ function safePathFromUrl(ctx: Record<string, unknown> | undefined): string | nul
   try { return new URL(u).pathname; } catch { return null; }
 }
 
+async function syncAzureDevOpsFromReport(
+  input: CreateSessionInput,
+  bug: typeof schema.bugReports.$inferSelect,
+): Promise<void> {
+  const workItemId = readAzureWorkItemId(bug.meta);
+  if (!workItemId) return;
+
+  const attemptedAt = new Date().toISOString();
+  try {
+    const projectRows = await db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, input.projectId))
+      .limit(1);
+    const project = projectRows[0];
+    const config = project?.azureDevOps;
+
+    if (!isAzureDevOpsConfigured(config)) {
+      await markBugAzureDevOpsSync(bug, {
+        attemptedAt,
+        workItemId,
+        synced: false,
+        error: "Azure DevOps sync is disabled, incomplete, or AZURE_DEVOPS_PAT is missing",
+      });
+      return;
+    }
+
+    const state = config?.reportState?.trim() || "Reopened";
+    const syncedState = await setAzureWorkItemState(config, workItemId, state);
+    await addAzureWorkItemComment(
+      config,
+      workItemId,
+      renderAzureReportComment(input, bug),
+    );
+
+    await markBugAzureDevOpsSync(bug, {
+      attemptedAt,
+      workItemId,
+      synced: true,
+      state: syncedState,
+      commentSynced: true,
+      url: config ? azureWorkItemUrl(config, workItemId) : undefined,
+    });
+  } catch (err) {
+    await markBugAzureDevOpsSync(bug, {
+      attemptedAt,
+      workItemId,
+      synced: false,
+      error: err instanceof Error ? err.message : "Azure DevOps report sync failed",
+    });
+  }
+}
+
+async function markBugAzureDevOpsSync(
+  bug: typeof schema.bugReports.$inferSelect,
+  sync: Record<string, unknown>,
+): Promise<void> {
+  await db
+    .update(schema.bugReports)
+    .set({
+      meta: {
+        ...bug.meta,
+        customContext: {
+          ...bug.meta.customContext,
+          azureDevOps: sync,
+        },
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.bugReports.id, bug.id));
+}
+
+function renderAzureReportComment(
+  input: CreateSessionInput,
+  bug: typeof schema.bugReports.$inferSelect,
+): string {
+  const pageUrl = readString(input.meta.customContext?.pageUrl);
+  const reporter = input.reporter?.email ?? input.reporter?.name ?? input.reporter?.id ?? input.reporterAnonKey ?? "anonymous";
+  const attachments = input.attachments?.length ?? 0;
+  const body = input.body.trim() || "(no description)";
+  return [
+    `Quad bug report submitted`,
+    ``,
+    `**Title:** ${bug.title}`,
+    `**Reporter:** ${reporter}`,
+    pageUrl ? `**Page:** ${pageUrl}` : "",
+    `**Attachments:** ${attachments}`,
+    ``,
+    `**Description**`,
+    body.slice(0, 2000),
+  ].filter(Boolean).join("\n");
+}
+
+function readAzureWorkItemId(meta: BugMeta): number | null {
+  const customContext = meta.customContext;
+  if (!customContext || typeof customContext !== "object") return null;
+  const value = customContext.azureWorkItemId;
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 function sanitizeMeta(m: IngestMeta) {
   // Truncate ring buffers + strip headers we promised not to keep.
   const consoleLogs = (m.consoleLogs ?? []).slice(0, 50).map((c) => ({
@@ -282,4 +401,3 @@ function stripCredentialsFromUrl(u: string): string {
     return u;
   }
 }
-

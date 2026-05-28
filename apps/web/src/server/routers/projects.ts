@@ -27,6 +27,7 @@ const AzureDevOpsSchema = z
     enabled: z.boolean().default(false),
     organization: z.string().trim().max(120).optional(),
     project: z.string().trim().max(160).optional(),
+    reportState: z.string().trim().max(80).optional(),
     stateMap: z
       .object({
         queued: z.string().trim().max(80).optional(),

@@ -88,9 +88,18 @@ export async function updateAzureWorkItemState(
   status: TaskStatus,
   pat?: string | null,
 ): Promise<string | null> {
-  if (!workItemId || !isAzureDevOpsConfigured(config, pat) || !config) return null;
+  if (!config) return null;
   const mapped = config.stateMap?.[status] || DEFAULT_STATE_MAP[status];
-  if (!mapped) return null;
+  return setAzureWorkItemState(config, workItemId, mapped, pat);
+}
+
+export async function setAzureWorkItemState(
+  config: AzureDevOpsConfig | null | undefined,
+  workItemId: number | null,
+  state: string | null | undefined,
+  pat?: string | null,
+): Promise<string | null> {
+  if (!workItemId || !state || !isAzureDevOpsConfigured(config, pat) || !config) return null;
   await azureFetch(
     config,
     `_apis/wit/workitems/${workItemId}?api-version=7.1`,
@@ -98,12 +107,12 @@ export async function updateAzureWorkItemState(
       method: "PATCH",
       headers: { "content-type": "application/json-patch+json" },
       body: JSON.stringify([
-        { op: "add", path: "/fields/System.State", value: mapped },
+        { op: "add", path: "/fields/System.State", value: state },
       ]),
     },
     pat,
   );
-  return mapped;
+  return state;
 }
 
 export async function addAzureWorkItemComment(

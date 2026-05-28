@@ -168,6 +168,7 @@ export type AzureDevOpsConfig = {
   enabled?: boolean;
   organization?: string;
   project?: string;
+  reportState?: string;
   stateMap?: Partial<Record<
     "queued" | "picked" | "in_progress" | "pr_open" | "done" | "wont_do",
     string

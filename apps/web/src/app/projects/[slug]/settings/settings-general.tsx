@@ -36,6 +36,7 @@ export function SettingsGeneralPanel({
   const [adoEnabled, setAdoEnabled] = useState(initialAzureDevOps?.enabled ?? false);
   const [adoOrg, setAdoOrg] = useState(initialAzureDevOps?.organization ?? "");
   const [adoProject, setAdoProject] = useState(initialAzureDevOps?.project ?? "");
+  const [adoReportState, setAdoReportState] = useState(initialAzureDevOps?.reportState ?? "Reopened");
   const [adoQueued, setAdoQueued] = useState(initialAzureDevOps?.stateMap?.queued ?? "New");
   const [adoPicked, setAdoPicked] = useState(initialAzureDevOps?.stateMap?.picked ?? "New");
   const [adoInProgress, setAdoInProgress] = useState(
@@ -192,8 +193,8 @@ export function SettingsGeneralPanel({
           Azure DevOps
         </h2>
         <p className="text-xs text-[var(--color-star-500)] mb-3">
-          Links Quad tasks to Azure Boards work items. The PAT is read from
-          AZURE_DEVOPS_PAT on the server and is not stored here.
+          Links Quad reports and tasks to Azure Boards work items. SDK report submission uses
+          AZURE_DEVOPS_PAT on the server; logged-in task actions can use the user's saved PAT.
         </p>
         <Surface>
           <form
@@ -206,6 +207,7 @@ export function SettingsGeneralPanel({
                       enabled: adoEnabled,
                       organization: adoOrg || undefined,
                       project: adoProject || undefined,
+                      reportState: adoReportState || undefined,
                       stateMap: {
                         queued: adoQueued || undefined,
                         picked: adoPicked || undefined,
@@ -245,6 +247,17 @@ export function SettingsGeneralPanel({
                 />
               </Field>
             </div>
+            <Field
+              label="report submitted →"
+              hint="When the SDK report includes a Work Item number, Quad sets Azure Boards to this state and adds a comment."
+            >
+              <Input
+                type="text"
+                value={adoReportState}
+                onChange={(e) => setAdoReportState(e.currentTarget.value)}
+                placeholder="Reopened"
+              />
+            </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="queued →">
                 <Input type="text" value={adoQueued} onChange={(e) => setAdoQueued(e.currentTarget.value)} />
