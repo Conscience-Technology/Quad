@@ -2,9 +2,10 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { schema } from "~/db";
 import { encryptSecret } from "~/lib/secret-box";
+import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
 import { authedProcedure, router } from "../trpc";
 
-const Provider = "azure-devops";
+const Provider = AZURE_DEVOPS_PROVIDER_ID;
 
 export const integrationsRouter = router({
   listMine: authedProcedure.query(async ({ ctx }) => {

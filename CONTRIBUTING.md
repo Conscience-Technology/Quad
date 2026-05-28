@@ -91,17 +91,18 @@ spec.md          Single source of truth for the design + Phase plan
 
 ## Branch + PR workflow
 
-Trunk-based with short-lived feature branches.
+Trunk-based with short-lived branches. See [docs/branching.md](./docs/branching.md)
+for the full policy.
 
 - `main` is the only long-lived branch and must always be deployable.
 - Nobody pushes to `main` directly — it's protected. All changes land via
   PR + green CI + a code owner review.
 - Branch off `main`:
-  - `feat/<slug>` new capability
+  - `feature/<slug>` product or core feature work
+  - `integration/<provider>` new issue tracker / workflow integration
   - `fix/<slug>` bug fix
-  - `chore/<slug>` deps / tooling / refactors
-  - `docs/<slug>` docs only
-  - `ci/<slug>` workflow / build pipeline
+  - `release/<version>` temporary release stabilization
+  - `experimental/<slug>` intentionally unstable work
 - Keep PRs small (~400 lines net change when possible). Stack large work.
 - Merge strategy: **squash merge**. The PR title becomes the commit on
   `main`, so write it like a commit message: imperative, lowercase, no
@@ -127,6 +128,8 @@ remove stale invitation token todo
       anywhere on the server
 - [ ] If you touched a route / migration, the change applies cleanly on a
       fresh `docker compose up`
+- [ ] If you added or changed an external issue tracker integration, follow
+      [docs/integrations/creating-provider.md](./docs/integrations/creating-provider.md)
 - [ ] Spec updated if you changed semantics (`spec.md` is the contract)
 - [ ] **Deploy parity**: if you added a new `deploy/<target>.md`, also add a
       row to the **Deploy** matrix in `README.md`. If you changed env vars

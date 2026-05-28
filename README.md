@@ -259,6 +259,11 @@ silent in the SDK, PII discipline, single-instance) and the PR checklist.
 Help especially welcome on: Helm chart · Browser Extension · source-map
 runtime resolution · translations · component themes.
 
+External tracker sync is provider-based. Start with
+[docs/integrations/overview.md](./docs/integrations/overview.md) and
+[docs/integrations/creating-provider.md](./docs/integrations/creating-provider.md)
+when adding Jira, GitHub Issues, Linear, or another workflow system.
+
 ## Security
 
 Found a vulnerability? Email **pr@conscience.technology** or see
