@@ -32,6 +32,7 @@ const Body = z.object({
     pageUrl: z.string(),
     outerHtmlPreview: z.string(),
     body: z.string(),
+    label: z.string().max(200).optional(),
   }),
   meta: z.record(z.unknown()),
   reporter: z

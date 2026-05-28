@@ -25,8 +25,7 @@ export class Widget {
   private toggleEl: HTMLDivElement;
   private panelEl: HTMLDivElement;
   private bodyEl: HTMLDivElement;
-  private outlineEl: HTMLDivElement;
-  private labelEl: HTMLDivElement;
+  private cursorStyle: HTMLStyleElement | null = null;
   private pinFormEl: HTMLDivElement | null = null;
   private toastEl: HTMLDivElement | null = null;
   private overlayOpen = false;
@@ -47,8 +46,6 @@ export class Widget {
     this.toggleEl = this.makeToggle();
     this.panelEl = this.makePanel();
     this.bodyEl = this.panelEl.querySelector(".body")!;
-    this.outlineEl = this.makeOutline();
-    this.labelEl = this.makeOutlineLabel();
 
     this.root.appendChild(this.toggleEl);
     this.root.appendChild(this.panelEl);
@@ -56,6 +53,7 @@ export class Widget {
   }
 
   destroy(): void {
+    this.setBugMode(false);
     this.host.remove();
   }
 
@@ -75,9 +73,30 @@ export class Widget {
   }
 
   setBugMode(on: boolean): void {
+    if (this.bugModeOn === on) return;
     this.bugModeOn = on;
     this.toggleEl.setAttribute("data-bug-mode", on ? "on" : "off");
-    if (!on) this.hideOutline();
+    this.setCrosshair(on);
+  }
+
+  /**
+   * Toggle a global crosshair cursor by injecting / removing a tiny
+   * stylesheet at the document head. Figma-style intent: the cursor itself
+   * tells the reporter "click anywhere to drop a pin" — no expensive
+   * hover preview, no whole-section outline.
+   */
+  private setCrosshair(on: boolean): void {
+    if (on && !this.cursorStyle) {
+      const s = document.createElement("style");
+      s.setAttribute("data-quad", "cursor");
+      s.textContent =
+        "html, body, *, *::before, *::after { cursor: crosshair !important; }";
+      document.head.appendChild(s);
+      this.cursorStyle = s;
+    } else if (!on && this.cursorStyle) {
+      this.cursorStyle.remove();
+      this.cursorStyle = null;
+    }
   }
 
   // ---- Overlay panel --------------------------------------------------------
@@ -314,43 +333,6 @@ export class Widget {
 
   isOverlayOpen(): boolean {
     return this.overlayOpen;
-  }
-
-  // ---- Hover outline --------------------------------------------------------
-
-  private makeOutline(): HTMLDivElement {
-    const o = document.createElement("div");
-    o.className = "q-outline";
-    o.style.display = "none";
-    this.root.appendChild(o);
-    return o;
-  }
-
-  private makeOutlineLabel(): HTMLDivElement {
-    const l = document.createElement("div");
-    l.className = "q-outline-label";
-    l.style.display = "none";
-    this.root.appendChild(l);
-    return l;
-  }
-
-  showOutline(rect: DOMRect, label: string): void {
-    this.outlineEl.style.display = "block";
-    this.outlineEl.style.left = `${rect.left}px`;
-    this.outlineEl.style.top = `${rect.top}px`;
-    this.outlineEl.style.width = `${rect.width}px`;
-    this.outlineEl.style.height = `${rect.height}px`;
-
-    this.labelEl.style.display = "block";
-    this.labelEl.textContent = label;
-    const labelTop = rect.top - 22;
-    this.labelEl.style.left = `${rect.left}px`;
-    this.labelEl.style.top = `${labelTop < 0 ? rect.bottom + 4 : labelTop}px`;
-  }
-
-  hideOutline(): void {
-    this.outlineEl.style.display = "none";
-    this.labelEl.style.display = "none";
   }
 
   // ---- Floating pin form ----------------------------------------------------

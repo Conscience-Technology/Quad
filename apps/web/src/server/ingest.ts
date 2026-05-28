@@ -52,6 +52,7 @@ export type CreatePinInput = {
     pageUrl: string;
     outerHtmlPreview: string;
     body: string;
+    label?: string;
   };
   meta: IngestMeta;
   reporter?: IngestReporter;
@@ -103,6 +104,18 @@ export async function createPin(input: CreatePinInput): Promise<IngestResult> {
 
   const existing = await findExisting(input.projectId, fingerprint);
   const reporterMeta = sanitizeMeta(input.meta);
+  if (input.pin.label) {
+    reporterMeta.customContext = {
+      ...(reporterMeta.customContext ?? {}),
+      quadLabel: input.pin.label,
+    };
+  }
+  // Prefer the human label as the report title prefix — much more
+  // scannable than a bare selector + body fragment.
+  const titleBase = input.pin.label
+    ? `${input.pin.label} — ${input.pin.body}`
+    : input.pin.body;
+  const computedTitle = titleBase.trim().slice(0, 80) || "(pin)";
 
   if (existing) {
     const [occ] = await db
@@ -128,7 +141,7 @@ export async function createPin(input: CreatePinInput): Promise<IngestResult> {
       fingerprint,
       kind: "pin",
       status: "new",
-      title: input.pin.body.slice(0, 80) || "(pin)",
+      title: computedTitle,
       body: input.pin.body,
       targetSelector: input.pin.selector,
       targetDomPath: input.pin.domPath,

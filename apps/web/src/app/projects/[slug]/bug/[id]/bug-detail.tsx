@@ -106,6 +106,12 @@ export function BugDetail({
         {bug.targetSelector && (
           <Surface className="space-y-2">
             <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">Target element</p>
+            {typeof bug.meta?.customContext?.quadLabel === "string" && (
+              <p className="text-sm text-[var(--color-star-100)]">
+                <span className="text-[var(--color-nebula-violet)]">●</span>{" "}
+                {String(bug.meta.customContext.quadLabel)}
+              </p>
+            )}
             <Code className="block break-all">{bug.targetSelector}</Code>
             {bug.targetComponentPath && (
               <p className="text-xs text-[var(--color-star-500)] font-mono">{bug.targetComponentPath}</p>

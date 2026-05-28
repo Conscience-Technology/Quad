@@ -65,6 +65,9 @@ export type PinPayload = {
   pageUrl: string;
   outerHtmlPreview: string;
   body: string;
+  /** Human label for the pinned element (data-quad-label, aria-label,
+   * testid, button text, etc). Used to make reports readable at a glance. */
+  label?: string;
 };
 
 export type ReportMeta = {

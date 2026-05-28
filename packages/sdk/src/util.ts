@@ -83,6 +83,58 @@ function cssEscape(s: string): string {
   return s.replace(/([!"#$%&'()*+,./:;<=>?@\[\\\]^`{|}~])/g, "\\$1");
 }
 
+/**
+ * Best-effort human label for the pinned element. Resolved in this priority:
+ *   1. `data-quad-label="…"`  (explicit author hint)
+ *   2. `aria-label`            (a11y already curated this for screen readers)
+ *   3. `data-testid`           (test selectors are usually meaningful)
+ *   4. trimmed `textContent`   (button/link text, headings…)
+ *   5. `title` / placeholder
+ * Walks one ancestor up if the clicked element itself has nothing (e.g.
+ * clicking an <svg> inside a labelled <button>).
+ */
+export function labelFor(el: Element, max = 80): string | undefined {
+  let cur: Element | null = el;
+  for (let i = 0; i < 2 && cur; i++) {
+    const v = readLabelAttrs(cur, max);
+    if (v) return v;
+    cur = cur.parentElement;
+  }
+  return undefined;
+}
+
+function readLabelAttrs(el: Element, max: number): string | undefined {
+  if (el instanceof HTMLElement) {
+    const explicit = el.dataset.quadLabel;
+    if (explicit) return clip(explicit, max);
+  }
+  const aria = el.getAttribute("aria-label");
+  if (aria && aria.trim()) return clip(aria, max);
+  if (el instanceof HTMLElement && el.dataset.testid) {
+    return clip(el.dataset.testid, max);
+  }
+  const tag = el.tagName.toLowerCase();
+  if (
+    tag === "button" || tag === "a" || tag === "summary" ||
+    /^h[1-6]$/.test(tag) || tag === "label"
+  ) {
+    const text = (el.textContent ?? "").trim().replace(/\s+/g, " ");
+    if (text) return clip(text, max);
+  }
+  if (el instanceof HTMLInputElement) {
+    if (el.placeholder) return clip(`placeholder “${el.placeholder}”`, max);
+    if (el.name) return clip(`input[name=${el.name}]`, max);
+  }
+  const title = el.getAttribute("title");
+  if (title && title.trim()) return clip(title, max);
+  return undefined;
+}
+
+function clip(s: string, max: number): string {
+  s = s.trim();
+  return s.length <= max ? s : `${s.slice(0, max)}…`;
+}
+
 /** outerHTML truncated to a preview. */
 export function outerHtmlPreview(el: Element, max = 200): string {
   const html = (el as HTMLElement).outerHTML ?? "";

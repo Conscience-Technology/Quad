@@ -167,32 +167,6 @@ export const WIDGET_CSS = /* css */ `
 .q-panel .primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .q-panel .primary:hover:not(:disabled) { opacity: 0.9; }
 
-/* Hover outline (bug mode) */
-.q-outline {
-  position: fixed;
-  pointer-events: none;
-  z-index: 2147483599;
-  border: 2px solid var(--violet);
-  border-radius: 2px;
-  box-shadow: 0 0 12px rgba(139, 124, 246, 0.35);
-  transition: all 80ms linear;
-}
-.q-outline-label {
-  position: fixed;
-  pointer-events: none;
-  z-index: 2147483599;
-  background: var(--violet);
-  color: var(--void);
-  padding: 3px 8px;
-  font-size: 11px;
-  font-family: ui-monospace, monospace;
-  border-radius: 2px;
-  white-space: nowrap;
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Floating pin form */
 .q-pin-form {
   position: fixed;
