@@ -14,12 +14,12 @@ export type AzureWorkItem = {
 };
 
 const DEFAULT_STATE_MAP: Record<TaskStatus, string> = {
-  queued: "New",
-  picked: "New",
+  queued: "To Do",
+  picked: "In Progress",
   in_progress: "In Progress",
-  pr_open: "In Progress",
-  done: "Closed",
-  wont_do: "Removed",
+  pr_open: "Reviewed",
+  done: "Done",
+  wont_do: "Resolved",
 };
 
 export function isAzureDevOpsConfigured(
