@@ -2,6 +2,7 @@ import { router } from "../trpc";
 import { apiKeysRouter } from "./api-keys";
 import { authRouter } from "./auth";
 import { bugsRouter } from "./bugs";
+import { integrationsRouter } from "./integrations";
 import { instanceRouter } from "./instance";
 import { membersRouter } from "./members";
 import { projectsRouter } from "./projects";
@@ -12,6 +13,7 @@ export const appRouter = router({
   auth: authRouter,
   instance: instanceRouter,
   users: usersRouter,
+  integrations: integrationsRouter,
   projects: projectsRouter,
   members: membersRouter,
   apiKeys: apiKeysRouter,

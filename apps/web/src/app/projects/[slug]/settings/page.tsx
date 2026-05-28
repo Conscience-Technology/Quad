@@ -22,6 +22,7 @@ export default async function ProjectSettings({
         initialName={project.name}
         initialOrigins={project.allowedOrigins}
         initialRepo={project.repo}
+        initialAzureDevOps={project.azureDevOps}
       />
     </div>
   );

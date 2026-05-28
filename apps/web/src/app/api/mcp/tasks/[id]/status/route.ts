@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "~/db";
+import {
+  addAzureWorkItemComment,
+  getAzureDevOpsPatForUser,
+  updateAzureWorkItemState,
+} from "~/lib/azure-devops";
 import { authMcpRequest, projectAllowed } from "~/lib/mcp-auth";
 
 export const runtime = "nodejs";
@@ -28,12 +33,51 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const patch: Record<string, unknown> = { status: body.status, updatedAt: new Date() };
   if (body.prUrl) patch.prUrl = body.prUrl;
   await db.update(schema.tasks).set(patch).where(eq(schema.tasks.id, task.id));
+
+  const [project] = await db
+    .select()
+    .from(schema.projects)
+    .where(eq(schema.projects.id, task.projectId))
+    .limit(1);
+  let azureDevOps: Record<string, unknown> | undefined;
+  try {
+    const azurePat = await getAzureDevOpsPatForUser(
+      r.auth.user.id,
+      project?.azureDevOps?.organization,
+    );
+    const mappedState = await updateAzureWorkItemState(
+      project?.azureDevOps,
+      task.azureWorkItemId,
+      body.status,
+      azurePat,
+    );
+    if (mappedState) {
+      const lines = [
+        `Quad task status changed to \`${body.status}\` → Azure DevOps state \`${mappedState}\`.`,
+        body.prUrl ? `PR: ${body.prUrl}` : "",
+        body.note ? `Note: ${body.note}` : "",
+      ].filter(Boolean);
+      await addAzureWorkItemComment(
+        project?.azureDevOps,
+        task.azureWorkItemId,
+        lines.join("\n\n"),
+        azurePat,
+      );
+      azureDevOps = { workItemId: task.azureWorkItemId, state: mappedState, synced: true };
+    }
+  } catch (err) {
+    azureDevOps = {
+      workItemId: task.azureWorkItemId,
+      synced: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
   await db.insert(schema.taskEvents).values({
     taskId: task.id,
     kind: body.status === "pr_open" ? "pr_attached" : "status_changed",
     actorUserId: r.auth.user.id,
     actorApiKeyId: r.auth.apiKey.id,
-    payload: { status: body.status, prUrl: body.prUrl, note: body.note },
+    payload: { status: body.status, prUrl: body.prUrl, note: body.note, azureDevOps },
   });
   if (body.status === "done") {
     await db

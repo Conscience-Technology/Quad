@@ -32,6 +32,7 @@ const Schema = z.object({
   BUCKET_PUBLIC_URL: z.string().url().optional(),
 
   OPENAI_API_KEY: z.string().optional(),
+  AZURE_DEVOPS_PAT: z.string().optional(),
   WHISPER_MONTHLY_MINUTES_CAP: z
     .string()
     .optional()

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "~/db";
+import { addAzureWorkItemComment, getAzureDevOpsPatForUser } from "~/lib/azure-devops";
 import { authMcpRequest, projectAllowed } from "~/lib/mcp-auth";
 
 export const runtime = "nodejs";
@@ -36,12 +37,39 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       body: payload.body,
     })
     .returning();
+  let azureDevOps: Record<string, unknown> | undefined;
+  if (task.azureWorkItemId) {
+    const [project] = await db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, task.projectId))
+      .limit(1);
+    try {
+      const azurePat = await getAzureDevOpsPatForUser(
+        r.auth.user.id,
+        project?.azureDevOps?.organization,
+      );
+      await addAzureWorkItemComment(
+        project?.azureDevOps,
+        task.azureWorkItemId,
+        `Quad builder comment:\n\n${payload.body}`,
+        azurePat,
+      );
+      azureDevOps = { workItemId: task.azureWorkItemId, synced: true };
+    } catch (err) {
+      azureDevOps = {
+        workItemId: task.azureWorkItemId,
+        synced: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
   await db.insert(schema.taskEvents).values({
     taskId: task.id,
     kind: "comment_added",
     actorUserId: r.auth.user.id,
     actorApiKeyId: r.auth.apiKey.id,
-    payload: { commentId: comment?.id },
+    payload: { commentId: comment?.id, azureDevOps },
   });
   return NextResponse.json({ id: comment?.id });
 }

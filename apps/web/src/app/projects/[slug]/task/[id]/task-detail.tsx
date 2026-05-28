@@ -20,7 +20,11 @@ export function TaskDetail({
   const update = trpc.tasks.updateStatus.useMutation({
     onSettled: () => utils.tasks.byId.invalidate({ projectId, taskId }),
   });
+  const linkAzure = trpc.tasks.linkAzureWorkItem.useMutation({
+    onSettled: () => utils.tasks.byId.invalidate({ projectId, taskId }),
+  });
   const [prUrl, setPrUrl] = useState("");
+  const [azureWorkItemId, setAzureWorkItemId] = useState("");
 
   if (q.isLoading) return <p className="text-sm text-[var(--color-star-500)]">…</p>;
   if (!q.data) return null;
@@ -108,6 +112,49 @@ npx quad pull ${task.id}
       </div>
 
       <aside className="space-y-4">
+        <Surface className="space-y-3">
+          <Field
+            label="Azure Work Item"
+            hint="Enter an Azure Boards work item number, for example 8743."
+          >
+            <Input
+              type="number"
+              value={azureWorkItemId}
+              onChange={(e) => setAzureWorkItemId(e.currentTarget.value)}
+              placeholder={task.azureWorkItemId ? String(task.azureWorkItemId) : "8743"}
+            />
+          </Field>
+          <Button
+            variant="primary"
+            className="w-full"
+            disabled={!azureWorkItemId || linkAzure.isPending}
+            onClick={() =>
+              linkAzure.mutate({
+                projectId,
+                taskId,
+                workItemId: Number.parseInt(azureWorkItemId, 10),
+              })
+            }
+          >
+            {linkAzure.isPending ? "…" : "Link Azure Work Item"}
+          </Button>
+          {linkAzure.error && (
+            <p className="text-xs text-[var(--color-nebula-rose)]">
+              {linkAzure.error.message}
+            </p>
+          )}
+          {task.azureWorkItemUrl && (
+            <a
+              href={task.azureWorkItemUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-[var(--color-nebula-cyan)] hover:text-[var(--color-star-100)] break-all block"
+            >
+              Azure #{task.azureWorkItemId}
+            </a>
+          )}
+        </Surface>
+
         <Surface className="space-y-3">
           <Field label="Status">
             <div className="space-y-1">

@@ -164,6 +164,16 @@ export type ProjectRepo = {
   pathPrefix?: string;
 };
 
+export type AzureDevOpsConfig = {
+  enabled?: boolean;
+  organization?: string;
+  project?: string;
+  stateMap?: Partial<Record<
+    "queued" | "picked" | "in_progress" | "pr_open" | "done" | "wont_do",
+    string
+  >>;
+};
+
 export const projects = pgTable(
   "projects",
   {
@@ -172,6 +182,7 @@ export const projects = pgTable(
     name: text("name").notNull(),
     allowedOrigins: text("allowed_origins").array().notNull().default(sql`'{}'`),
     repo: jsonb("repo").$type<ProjectRepo | null>(),
+    azureDevOps: jsonb("azure_devops").$type<AzureDevOpsConfig | null>(),
     createdByUserId: uuid("created_by_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
@@ -292,6 +303,39 @@ export const mcpKeyProjects = pgTable(
   },
   (t) => ({
     pk: primaryKey({ columns: [t.apiKeyId, t.projectId] }),
+  }),
+);
+
+// ---- User integrations -------------------------------------------------------
+
+export const userIntegrations = pgTable(
+  "user_integrations",
+  {
+    id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    organization: text("organization").notNull(),
+    secretEncrypted: text("secret_encrypted").notNull(),
+    secretPrefix: text("secret_prefix"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    userProviderOrgUq: uniqueIndex("user_integrations_user_provider_org_uq").on(
+      t.userId,
+      t.provider,
+      t.organization,
+    ),
+    userProviderIdx: index("user_integrations_user_provider_idx").on(
+      t.userId,
+      t.provider,
+    ),
   }),
 );
 
@@ -509,6 +553,8 @@ export const tasks = pgTable(
       onDelete: "set null",
     }),
     prUrl: text("pr_url"),
+    azureWorkItemId: integer("azure_work_item_id"),
+    azureWorkItemUrl: text("azure_work_item_url"),
     confirmedByUserId: uuid("confirmed_by_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
@@ -523,6 +569,10 @@ export const tasks = pgTable(
     projectStatusIdx: index("tasks_project_status_idx").on(
       t.projectId,
       t.status,
+    ),
+    azureWorkItemIdx: index("tasks_azure_work_item_idx").on(
+      t.projectId,
+      t.azureWorkItemId,
     ),
     bugUq: uniqueIndex("tasks_bug_uq").on(t.bugReportId),
   }),
@@ -583,6 +633,7 @@ export type Project = typeof projects.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
+export type UserIntegration = typeof userIntegrations.$inferSelect;
 export type BugReport = typeof bugReports.$inferSelect;
 export type BugOccurrence = typeof bugOccurrences.$inferSelect;
 export type Comment = typeof comments.$inferSelect;

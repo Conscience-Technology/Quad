@@ -68,6 +68,33 @@ export function BugDetail({
           />
         )}
 
+        {media.screenshots.length > 0 && (
+          <Surface className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">
+              Screenshots · {media.screenshots.length}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {media.screenshots.map((s) => (
+                <a
+                  key={s.id}
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block overflow-hidden rounded border border-[var(--color-space-border)] bg-[var(--color-space-surface)]"
+                  title={`${s.mime} · ${s.sizeBytes}B`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={s.url}
+                    alt="Bug report screenshot"
+                    className="block max-h-[420px] w-full object-contain"
+                  />
+                </a>
+              ))}
+            </div>
+          </Surface>
+        )}
+
         {bug.body && (
           <Surface>
             <p className="text-sm text-[var(--color-star-300)] whitespace-pre-wrap">{bug.body}</p>

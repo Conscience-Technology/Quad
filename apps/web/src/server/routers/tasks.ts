@@ -7,6 +7,14 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { schema } from "~/db";
+import {
+  addAzureWorkItemComment,
+  azureWorkItemUrl,
+  getAzureDevOpsPatForUser,
+  getAzureWorkItem,
+  isAzureDevOpsConfigured,
+  updateAzureWorkItemState,
+} from "~/lib/azure-devops";
 import { getBytes, presignDownload } from "~/lib/storage";
 import { projectMemberProcedure } from "../auth-procedures";
 import { router } from "../trpc";
@@ -28,6 +36,8 @@ export const tasksRouter = router({
           status: schema.tasks.status,
           title: schema.tasks.title,
           prUrl: schema.tasks.prUrl,
+          azureWorkItemId: schema.tasks.azureWorkItemId,
+          azureWorkItemUrl: schema.tasks.azureWorkItemUrl,
           createdAt: schema.tasks.createdAt,
           updatedAt: schema.tasks.updatedAt,
           bugReportId: schema.tasks.bugReportId,
@@ -59,6 +69,74 @@ export const tasksRouter = router({
       return { task, briefUrl, markdown, events };
     }),
 
+  linkAzureWorkItem: projectMemberProcedure
+    .input(
+      z.object({
+        projectId: z.string().uuid(),
+        taskId: z.string().uuid(),
+        workItemId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [task] = await ctx.db
+        .select()
+        .from(schema.tasks)
+        .where(and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.projectId, input.projectId)))
+        .limit(1);
+      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const [project] = await ctx.db
+        .select()
+        .from(schema.projects)
+        .where(eq(schema.projects.id, input.projectId))
+        .limit(1);
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      const azurePat = await getAzureDevOpsPatForUser(
+        ctx.user.id,
+        project.azureDevOps?.organization,
+      );
+      if (!isAzureDevOpsConfigured(project.azureDevOps, azurePat)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Azure DevOps is not configured for this project, or your Azure DevOps PAT is missing.",
+        });
+      }
+
+      const workItem = await getAzureWorkItem(project.azureDevOps, input.workItemId, azurePat);
+      const url = workItem?.url ?? azureWorkItemUrl(project.azureDevOps!, input.workItemId);
+
+      await ctx.db
+        .update(schema.tasks)
+        .set({
+          azureWorkItemId: input.workItemId,
+          azureWorkItemUrl: url,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.tasks.id, task.id));
+      await ctx.db.insert(schema.taskEvents).values({
+        taskId: task.id,
+        kind: "status_changed",
+        actorUserId: ctx.user.id,
+        payload: {
+          integration: "azure-devops",
+          action: "linked",
+          workItemId: input.workItemId,
+          url,
+          title: workItem?.title,
+          state: workItem?.state,
+        },
+      });
+
+      await addAzureWorkItemComment(
+        project.azureDevOps,
+        input.workItemId,
+        `Linked to Quad task ${task.id}: ${task.title}`,
+        azurePat,
+      );
+
+      return { ok: true, workItem, url };
+    }),
+
   updateStatus: projectMemberProcedure
     .input(
       z.object({
@@ -81,11 +159,50 @@ export const tasksRouter = router({
       if (input.prUrl) patch.prUrl = input.prUrl;
 
       await ctx.db.update(schema.tasks).set(patch).where(eq(schema.tasks.id, task.id));
+
+      const [project] = await ctx.db
+        .select()
+        .from(schema.projects)
+        .where(eq(schema.projects.id, task.projectId))
+        .limit(1);
+      let azureDevOps: Record<string, unknown> | undefined;
+      try {
+        const azurePat = await getAzureDevOpsPatForUser(
+          ctx.user.id,
+          project?.azureDevOps?.organization,
+        );
+        const mappedState = await updateAzureWorkItemState(
+          project?.azureDevOps,
+          task.azureWorkItemId,
+          input.status,
+          azurePat,
+        );
+        if (mappedState) {
+          const lines = [
+            `Quad task status changed to \`${input.status}\` → Azure DevOps state \`${mappedState}\`.`,
+            input.prUrl ? `PR: ${input.prUrl}` : "",
+            input.note ? `Note: ${input.note}` : "",
+          ].filter(Boolean);
+          await addAzureWorkItemComment(
+            project?.azureDevOps,
+            task.azureWorkItemId,
+            lines.join("\n\n"),
+            azurePat,
+          );
+          azureDevOps = { workItemId: task.azureWorkItemId, state: mappedState, synced: true };
+        }
+      } catch (err) {
+        azureDevOps = {
+          workItemId: task.azureWorkItemId,
+          synced: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
       await ctx.db.insert(schema.taskEvents).values({
         taskId: task.id,
         kind: input.status === "pr_open" ? "pr_attached" : "status_changed",
         actorUserId: ctx.user.id,
-        payload: { status: input.status, prUrl: input.prUrl, note: input.note },
+        payload: { status: input.status, prUrl: input.prUrl, note: input.note, azureDevOps },
       });
 
       // When a task is marked done, mark the underlying bug as resolved.

@@ -3,18 +3,20 @@
 import { useState } from "react";
 import { Button, Code, Field, Input, Surface } from "~/components/ui";
 import { trpc } from "~/lib/trpc/react";
-import type { ProjectRepo } from "~/db/schema";
+import type { AzureDevOpsConfig, ProjectRepo } from "~/db/schema";
 
 export function SettingsGeneralPanel({
   projectId,
   initialName,
   initialOrigins,
   initialRepo,
+  initialAzureDevOps,
 }: {
   projectId: string;
   initialName: string;
   initialOrigins: string[];
   initialRepo: ProjectRepo | null;
+  initialAzureDevOps: AzureDevOpsConfig | null;
 }) {
   const utils = trpc.useUtils();
   const update = trpc.projects.update.useMutation({
@@ -31,6 +33,17 @@ export function SettingsGeneralPanel({
   const [repoName, setRepoName] = useState(initialRepo?.name ?? "");
   const [repoBranch, setRepoBranch] = useState(initialRepo?.defaultBranch ?? "main");
   const [repoPrefix, setRepoPrefix] = useState(initialRepo?.pathPrefix ?? "");
+  const [adoEnabled, setAdoEnabled] = useState(initialAzureDevOps?.enabled ?? false);
+  const [adoOrg, setAdoOrg] = useState(initialAzureDevOps?.organization ?? "");
+  const [adoProject, setAdoProject] = useState(initialAzureDevOps?.project ?? "");
+  const [adoQueued, setAdoQueued] = useState(initialAzureDevOps?.stateMap?.queued ?? "New");
+  const [adoPicked, setAdoPicked] = useState(initialAzureDevOps?.stateMap?.picked ?? "New");
+  const [adoInProgress, setAdoInProgress] = useState(
+    initialAzureDevOps?.stateMap?.in_progress ?? "In Progress",
+  );
+  const [adoPrOpen, setAdoPrOpen] = useState(initialAzureDevOps?.stateMap?.pr_open ?? "In Progress");
+  const [adoDone, setAdoDone] = useState(initialAzureDevOps?.stateMap?.done ?? "Closed");
+  const [adoWontDo, setAdoWontDo] = useState(initialAzureDevOps?.stateMap?.wont_do ?? "Removed");
   const [confirmDelete, setConfirmDelete] = useState("");
 
   const parsedOrigins = originsText
@@ -168,6 +181,92 @@ export function SettingsGeneralPanel({
             </div>
             <Button type="submit" variant="primary" disabled={update.isPending}>
               {update.isPending ? "…" : "Repo Save"}
+            </Button>
+          </form>
+        </Surface>
+      </section>
+
+      {/* Azure DevOps */}
+      <section>
+        <h2 className="text-xs uppercase tracking-wide text-[var(--color-star-500)] mb-3">
+          Azure DevOps
+        </h2>
+        <p className="text-xs text-[var(--color-star-500)] mb-3">
+          Links Quad tasks to Azure Boards work items. The PAT is read from
+          AZURE_DEVOPS_PAT on the server and is not stored here.
+        </p>
+        <Surface>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const azureDevOps =
+                adoEnabled || adoOrg || adoProject
+                  ? {
+                      enabled: adoEnabled,
+                      organization: adoOrg || undefined,
+                      project: adoProject || undefined,
+                      stateMap: {
+                        queued: adoQueued || undefined,
+                        picked: adoPicked || undefined,
+                        in_progress: adoInProgress || undefined,
+                        pr_open: adoPrOpen || undefined,
+                        done: adoDone || undefined,
+                        wont_do: adoWontDo || undefined,
+                      },
+                    }
+                  : null;
+              update.mutate({ projectId, azureDevOps });
+            }}
+          >
+            <label className="flex items-center gap-2 text-sm text-[var(--color-star-300)]">
+              <input
+                type="checkbox"
+                checked={adoEnabled}
+                onChange={(e) => setAdoEnabled(e.currentTarget.checked)}
+              />
+              Enable Azure DevOps sync
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Organization">
+                <Input
+                  type="text"
+                  value={adoOrg}
+                  onChange={(e) => setAdoOrg(e.currentTarget.value)}
+                  placeholder="Conscience-Technology"
+                />
+              </Field>
+              <Field label="Project">
+                <Input
+                  type="text"
+                  value={adoProject}
+                  onChange={(e) => setAdoProject(e.currentTarget.value)}
+                  placeholder="CURECA"
+                />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="queued →">
+                <Input type="text" value={adoQueued} onChange={(e) => setAdoQueued(e.currentTarget.value)} />
+              </Field>
+              <Field label="picked →">
+                <Input type="text" value={adoPicked} onChange={(e) => setAdoPicked(e.currentTarget.value)} />
+              </Field>
+              <Field label="in_progress →">
+                <Input type="text" value={adoInProgress} onChange={(e) => setAdoInProgress(e.currentTarget.value)} />
+              </Field>
+              <Field label="pr_open →">
+                <Input type="text" value={adoPrOpen} onChange={(e) => setAdoPrOpen(e.currentTarget.value)} />
+              </Field>
+              <Field label="done →">
+                <Input type="text" value={adoDone} onChange={(e) => setAdoDone(e.currentTarget.value)} />
+              </Field>
+              <Field label="wont_do →">
+                <Input type="text" value={adoWontDo} onChange={(e) => setAdoWontDo(e.currentTarget.value)} />
+              </Field>
+            </div>
+            <Button type="submit" variant="primary" disabled={update.isPending}>
+              {update.isPending ? "…" : "Azure DevOps Save"}
             </Button>
           </form>
         </Surface>
