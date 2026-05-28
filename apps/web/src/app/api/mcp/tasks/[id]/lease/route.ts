@@ -22,8 +22,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!projectAllowed(r.auth, task.projectId)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
-  if (task.status !== "picked") {
-    return NextResponse.json({ error: "task is not picked" }, { status: 400 });
+  if (task.status !== "in_progress") {
+    return NextResponse.json({ error: "task is not in_progress" }, { status: 400 });
   }
 
   const now = new Date();
@@ -37,7 +37,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       leaseExpiresAt,
       updatedAt: now,
     })
-    .where(and(eq(schema.tasks.id, task.id), eq(schema.tasks.status, "picked")))
+    .where(and(eq(schema.tasks.id, task.id), eq(schema.tasks.status, "in_progress")))
     .returning();
 
   await db.insert(schema.taskEvents).values({

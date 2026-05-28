@@ -38,13 +38,13 @@ export async function GET(req: Request) {
     ? await db
         .select({
           total: sql<number>`count(*)::int`,
-          queued: sql<number>`count(*) filter (where ${schema.tasks.status} = 'queued')::int`,
-          picked: sql<number>`count(*) filter (where ${schema.tasks.status} = 'picked')::int`,
-          stalePicked: sql<number>`count(*) filter (where ${schema.tasks.status} = 'picked' and ${schema.tasks.leaseExpiresAt} is not null and ${schema.tasks.leaseExpiresAt} < now())::int`,
+          to_do: sql<number>`count(*) filter (where ${schema.tasks.status} = 'to_do')::int`,
+          in_progress: sql<number>`count(*) filter (where ${schema.tasks.status} = 'in_progress')::int`,
+          staleInProgress: sql<number>`count(*) filter (where ${schema.tasks.status} = 'in_progress' and ${schema.tasks.leaseExpiresAt} is not null and ${schema.tasks.leaseExpiresAt} < now())::int`,
         })
         .from(schema.tasks)
         .where(inArray(schema.tasks.projectId, projectIds))
-    : [{ total: 0, queued: 0, picked: 0, stalePicked: 0 }];
+    : [{ total: 0, to_do: 0, in_progress: 0, staleInProgress: 0 }];
 
   const scopedProjects = r.auth.user.isSuperAdmin
     ? "all"
@@ -82,9 +82,9 @@ export async function GET(req: Request) {
         : "No projects are available to this MCP key",
     },
     {
-      name: "queued_tasks",
-      ok: (taskCounts?.queued ?? 0) > 0,
-      message: `${taskCounts?.queued ?? 0} queued task(s), ${taskCounts?.picked ?? 0} picked task(s), ${taskCounts?.stalePicked ?? 0} stale lease(s)`,
+      name: "to_do_tasks",
+      ok: (taskCounts?.to_do ?? 0) > 0,
+      message: `${taskCounts?.to_do ?? 0} To Do task(s), ${taskCounts?.in_progress ?? 0} in_progress task(s), ${taskCounts?.staleInProgress ?? 0} stale lease(s)`,
     },
     {
       name: "issue_integrations",
@@ -117,7 +117,7 @@ export async function GET(req: Request) {
       slug: project.slug,
       name: project.name,
     })),
-    taskCounts: taskCounts ?? { total: 0, queued: 0, picked: 0, stalePicked: 0 },
+    taskCounts: taskCounts ?? { total: 0, to_do: 0, in_progress: 0, staleInProgress: 0 },
     integrations,
     durationMs: Date.now() - startedAt,
   });

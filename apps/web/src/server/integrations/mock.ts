@@ -8,12 +8,13 @@ export type MockIssueConfig = {
 };
 
 const DEFAULT_STATE_MAP: Record<TaskStatus, string> = {
-  queued: "Open",
-  picked: "In Progress",
+  to_do: "Open",
   in_progress: "In Progress",
-  pr_open: "Review",
+  reviewed: "Review",
+  resolved: "Resolved",
+  published: "Published",
   done: "Done",
-  wont_do: "Closed",
+  canceled: "Closed",
 };
 
 export const MOCK_PROVIDER_ID = "mock" as const;

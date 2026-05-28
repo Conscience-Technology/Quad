@@ -32,12 +32,13 @@ const AzureDevOpsSchema = z
     reportState: z.string().trim().max(80).optional(),
     stateMap: z
       .object({
-        queued: z.string().trim().max(80).optional(),
-        picked: z.string().trim().max(80).optional(),
+        to_do: z.string().trim().max(80).optional(),
         in_progress: z.string().trim().max(80).optional(),
-        pr_open: z.string().trim().max(80).optional(),
+        reviewed: z.string().trim().max(80).optional(),
+        resolved: z.string().trim().max(80).optional(),
+        published: z.string().trim().max(80).optional(),
         done: z.string().trim().max(80).optional(),
-        wont_do: z.string().trim().max(80).optional(),
+        canceled: z.string().trim().max(80).optional(),
       })
       .optional(),
   })

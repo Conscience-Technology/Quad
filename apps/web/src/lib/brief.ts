@@ -146,7 +146,7 @@ export async function buildTaskBrief(input: {
     .values({
       projectId: bug.projectId,
       bugReportId: bug.id,
-      status: "queued",
+      status: "to_do",
       title: bug.title,
       maintainerInstruction: input.maintainerInstruction ?? null,
       azureWorkItemId,

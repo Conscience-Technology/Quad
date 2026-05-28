@@ -9,12 +9,13 @@ import { trpc } from "~/lib/trpc/react";
 type Status = TaskStatus | "all";
 
 const TABS: Status[] = [
-  "queued",
-  "picked",
+  "to_do",
   "in_progress",
-  "pr_open",
+  "reviewed",
+  "resolved",
+  "published",
   "done",
-  "wont_do",
+  "canceled",
   "all",
 ];
 
@@ -25,7 +26,7 @@ export function TasksList({
   projectId: string;
   projectSlug: string;
 }) {
-  const [status, setStatus] = useState<Status>("queued");
+  const [status, setStatus] = useState<Status>("to_do");
   const q = trpc.tasks.list.useQuery({ projectId, status });
   return (
     <div className="space-y-4">

@@ -50,6 +50,13 @@
       "when": 1780038000000,
       "tag": "0006_generic_integrations_and_leases",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780041000000,
+      "tag": "0007_general_task_statuses",
+      "breakpoints": true
     }
   ]
 }

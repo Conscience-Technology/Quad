@@ -14,12 +14,13 @@ export type GitHubIssuesCredentials = string;
 export const GITHUB_ISSUES_PROVIDER_ID = "github-issues" as const;
 
 const DEFAULT_STATE_MAP: Record<TaskStatus, string> = {
-  queued: "open",
-  picked: "open",
+  to_do: "open",
   in_progress: "open",
-  pr_open: "open",
+  reviewed: "open",
+  resolved: "closed",
+  published: "closed",
   done: "closed",
-  wont_do: "closed",
+  canceled: "closed",
 };
 
 export const githubIssuesProvider: ExternalIssueProvider<
@@ -118,7 +119,7 @@ function toExternalIssue(config: GitHubIssuesConfig, issue: GitHubIssue): Extern
 
 function normalizeGitHubState(state: string): "open" | "closed" {
   const value = state.toLowerCase().trim();
-  if (["closed", "close", "done", "resolved", "wont_do", "won't do"].includes(value)) {
+  if (["closed", "close", "done", "resolved", "canceled", "won't do"].includes(value)) {
     return "closed";
   }
   return "open";

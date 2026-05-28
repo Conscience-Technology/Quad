@@ -1,6 +1,6 @@
 /**
- * POST /api/mcp/tasks/pick — claim the next queued task (or a specified one),
- * transitioning queued -> picked atomically.
+ * POST /api/mcp/tasks/pick — claim the next To Do task (or a specified one),
+ * transitioning to_do -> in_progress atomically.
  */
 import { NextResponse } from "next/server";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   await db
     .update(schema.tasks)
     .set({
-      status: "queued",
+      status: "to_do",
       claimedByUserId: null,
       claimedByApiKeyId: null,
       claimedAt: null,
@@ -50,13 +50,13 @@ export async function POST(req: Request) {
     .where(
       and(
         inArray(schema.tasks.projectId, projects),
-        eq(schema.tasks.status, "picked"),
+        eq(schema.tasks.status, "in_progress"),
         sql`${schema.tasks.leaseExpiresAt} is not null`,
         sql`${schema.tasks.leaseExpiresAt} < ${now}`,
       ),
     );
 
-  // Find the candidate task (specified or next queued in the allowed projects).
+  // Find the candidate task (specified or next To Do in the allowed projects).
   let candidate: typeof schema.tasks.$inferSelect | undefined;
   if (body.taskId) {
     const rows = await db
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
         and(
           eq(schema.tasks.id, body.taskId),
           inArray(schema.tasks.projectId, projects),
-          eq(schema.tasks.status, "queued"),
+          eq(schema.tasks.status, "to_do"),
         ),
       )
       .limit(1);
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       .where(
         and(
           inArray(schema.tasks.projectId, projects),
-          eq(schema.tasks.status, "queued"),
+          eq(schema.tasks.status, "to_do"),
         ),
       )
       .limit(1);
@@ -88,19 +88,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ task: null });
   }
 
-  // Best-effort atomic claim: status='picked' WHERE id=... AND status='queued'.
+  // Best-effort atomic claim: status='in_progress' WHERE id=... AND status='to_do'.
   const leaseExpiresAt = new Date(now.getTime() + (body.leaseMs ?? DEFAULT_LEASE_MS));
   const [claimed] = await db
     .update(schema.tasks)
     .set({
-      status: "picked",
+      status: "in_progress",
       claimedByUserId: r.auth.user.id,
       claimedByApiKeyId: r.auth.apiKey.id,
       claimedAt: now,
       leaseExpiresAt,
       updatedAt: now,
     })
-    .where(and(eq(schema.tasks.id, candidate.id), eq(schema.tasks.status, "queued")))
+    .where(and(eq(schema.tasks.id, candidate.id), eq(schema.tasks.status, "to_do")))
     .returning();
   if (!claimed) {
     return NextResponse.json({ task: null, error: "race" });

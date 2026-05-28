@@ -1,5 +1,5 @@
 /**
- * GET /api/mcp/tasks?status=queued&project_id=&query=  — list/search tasks
+ * GET /api/mcp/tasks?status=to_do&project_id=&query=  — list/search tasks
  * POST /api/mcp/tasks/pick                             — pick next (project_id?, task_id?)
  */
 import { NextResponse } from "next/server";
@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const QuerySchema = z.object({
-  status: z.enum(["queued", "picked", "in_progress", "pr_open", "done", "wont_do"]).optional(),
+  status: z.enum(["to_do", "in_progress", "reviewed", "resolved", "published", "done", "canceled"]).optional(),
   projectId: z.string().uuid().optional(),
   query: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),

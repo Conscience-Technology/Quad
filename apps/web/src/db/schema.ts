@@ -70,12 +70,13 @@ export const attachmentKind = pgEnum("attachment_kind", [
 ]);
 
 export const taskStatus = pgEnum("task_status", [
-  "queued",
-  "picked",
+  "to_do",
   "in_progress",
-  "pr_open",
+  "reviewed",
+  "resolved",
+  "published",
   "done",
-  "wont_do",
+  "canceled",
 ]);
 
 export const taskEventKind = pgEnum("task_event_kind", [
@@ -170,7 +171,7 @@ export type AzureDevOpsConfig = {
   project?: string;
   reportState?: string;
   stateMap?: Partial<Record<
-    "queued" | "picked" | "in_progress" | "pr_open" | "done" | "wont_do",
+    "to_do" | "in_progress" | "reviewed" | "resolved" | "published" | "done" | "canceled",
     string
   >>;
 };
@@ -557,7 +558,7 @@ export const tasks = pgTable(
     bugReportId: uuid("bug_report_id")
       .notNull()
       .references(() => bugReports.id, { onDelete: "cascade" }),
-    status: taskStatus("status").notNull().default("queued"),
+    status: taskStatus("status").notNull().default("to_do"),
     title: text("title").notNull(),
     maintainerInstruction: text("maintainer_instruction"),
     briefStorageKey: text("brief_storage_key").notNull(),

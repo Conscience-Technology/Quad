@@ -5,7 +5,15 @@ import { mockIssueProvider } from "../src/server/integrations/mock";
 import { getIssueProvider, listIssueProviders } from "../src/server/integrations/registry";
 import type { ExternalIssueProvider, TaskStatus } from "../src/server/integrations/types";
 
-const statuses: TaskStatus[] = ["queued", "picked", "in_progress", "pr_open", "done", "wont_do"];
+const statuses: TaskStatus[] = [
+  "to_do",
+  "in_progress",
+  "reviewed",
+  "resolved",
+  "published",
+  "done",
+  "canceled",
+];
 
 async function main() {
   assert.ok(getIssueProvider("azure-devops"));
@@ -83,7 +91,7 @@ function checkGitHubIssuesProvider() {
   assert.equal(githubIssuesProvider.issueUrl(config, 17), "https://github.com/Conscience-Technology/Quad/issues/17");
   assert.equal(githubIssuesProvider.reportState(config), "open");
   assert.equal(githubIssuesProvider.mapTaskStatus(config, "done"), "closed");
-  assert.equal(githubIssuesProvider.mapTaskStatus(config, "queued"), "open");
+  assert.equal(githubIssuesProvider.mapTaskStatus(config, "to_do"), "open");
   assert.equal(githubIssuesProvider.isConfigured(config, "token"), true);
   assert.equal(githubIssuesProvider.isConfigured({ ...config, repo: "" }, "token"), false);
 }

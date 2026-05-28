@@ -19,13 +19,13 @@ quad_doctor
 The MCP key is valid but is not scoped to any project. Open Account → MCP keys
 and attach the key to at least one project, or use a super-admin key.
 
-### No queued tasks
+### No To Do tasks
 
 The key and project scope work, but there is nothing to pick. Create a task from
 a bug report or list another status:
 
 ```bash
-npx quad list --status picked
+npx quad list --status in_progress
 ```
 
 ### Integration credential missing

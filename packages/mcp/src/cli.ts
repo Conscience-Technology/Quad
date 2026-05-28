@@ -26,7 +26,7 @@ import { VERSION } from "./index.js";
 
 const ENDPOINT = (process.env.QUAD_ENDPOINT ?? "").replace(/\/$/, "");
 const KEY = process.env.QUAD_API_KEY ?? "";
-const TASK_STATUSES = ["queued", "picked", "in_progress", "pr_open", "done", "wont_do"] as const;
+const TASK_STATUSES = ["to_do", "in_progress", "reviewed", "resolved", "published", "done", "canceled"] as const;
 
 if (!ENDPOINT || !KEY) {
   console.error("QUAD_ENDPOINT and QUAD_API_KEY are required");
@@ -53,7 +53,7 @@ const TOOLS = [
   {
     name: "quad_doctor",
     description:
-      "Diagnose Quad MCP connectivity, API key scope, available projects, queued tasks, and configured issue integrations. Run this first when Quad tools behave unexpectedly.",
+      "Diagnose Quad MCP connectivity, API key scope, available projects, To Do tasks, and configured issue integrations. Run this first when Quad tools behave unexpectedly.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -75,7 +75,7 @@ const TOOLS = [
   {
     name: "quad_pick_task",
     description:
-      "Claim the next queued task (or the specified one). Transitions queued -> picked and starts a lease.",
+      "Claim the next To Do task (or the specified one). Transitions to_do -> in_progress and starts a lease.",
     inputSchema: {
       type: "object",
       properties: {
@@ -87,7 +87,7 @@ const TOOLS = [
   },
   {
     name: "quad_renew_task",
-    description: "Renew the lease for a picked task so it is not reclaimed as stale.",
+    description: "Renew the lease for an in_progress task so it is not reclaimed as stale.",
     inputSchema: {
       type: "object",
       required: ["task_id"],
@@ -283,7 +283,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
             }),
           },
         );
-        if (!r.task) return text(`No queued task available${r.error ? ` (${r.error})` : ""}.`);
+        if (!r.task) return text(`No To Do task available${r.error ? ` (${r.error})` : ""}.`);
         // Immediately fetch the full brief so the agent can act in one round.
         const full = await fetchTask(((r.task as { id: string }).id));
         return briefContent(full);

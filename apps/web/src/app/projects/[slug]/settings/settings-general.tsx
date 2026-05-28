@@ -48,14 +48,13 @@ export function SettingsGeneralPanel({
   const [adoOrg, setAdoOrg] = useState(initialAzureDevOps?.organization ?? "");
   const [adoProject, setAdoProject] = useState(initialAzureDevOps?.project ?? "");
   const [adoReportState, setAdoReportState] = useState(initialAzureDevOps?.reportState ?? "Reopened");
-  const [adoQueued, setAdoQueued] = useState(initialAzureDevOps?.stateMap?.queued ?? "To Do");
-  const [adoPicked, setAdoPicked] = useState(initialAzureDevOps?.stateMap?.picked ?? "In Progress");
-  const [adoInProgress, setAdoInProgress] = useState(
-    initialAzureDevOps?.stateMap?.in_progress ?? "In Progress",
-  );
-  const [adoPrOpen, setAdoPrOpen] = useState(initialAzureDevOps?.stateMap?.pr_open ?? "Reviewed");
+  const [adoToDo, setAdoToDo] = useState(initialAzureDevOps?.stateMap?.to_do ?? "To Do");
+  const [adoInProgress, setAdoInProgress] = useState(initialAzureDevOps?.stateMap?.in_progress ?? "In Progress");
+  const [adoReviewed, setAdoReviewed] = useState(initialAzureDevOps?.stateMap?.reviewed ?? "Reviewed");
+  const [adoResolved, setAdoResolved] = useState(initialAzureDevOps?.stateMap?.resolved ?? "Resolved");
+  const [adoPublished, setAdoPublished] = useState(initialAzureDevOps?.stateMap?.published ?? "Published");
   const [adoDone, setAdoDone] = useState(initialAzureDevOps?.stateMap?.done ?? "Done");
-  const [adoWontDo, setAdoWontDo] = useState(initialAzureDevOps?.stateMap?.wont_do ?? "Resolved");
+  const [adoCanceled, setAdoCanceled] = useState(initialAzureDevOps?.stateMap?.canceled ?? "Resolved");
   const [adoTestWorkItemId, setAdoTestWorkItemId] = useState("");
   const [confirmDelete, setConfirmDelete] = useState("");
 
@@ -266,12 +265,13 @@ export function SettingsGeneralPanel({
                       project: adoProject || undefined,
                       reportState: adoReportState || undefined,
                       stateMap: {
-                        queued: adoQueued || undefined,
-                        picked: adoPicked || undefined,
+                        to_do: adoToDo || undefined,
                         in_progress: adoInProgress || undefined,
-                        pr_open: adoPrOpen || undefined,
+                        reviewed: adoReviewed || undefined,
+                        resolved: adoResolved || undefined,
+                        published: adoPublished || undefined,
                         done: adoDone || undefined,
-                        wont_do: adoWontDo || undefined,
+                        canceled: adoCanceled || undefined,
                       },
                     }
                   : null;
@@ -317,23 +317,26 @@ export function SettingsGeneralPanel({
               />
             </Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="queued →">
-                <Input type="text" list="azure-devops-states" value={adoQueued} onChange={(e) => setAdoQueued(e.currentTarget.value)} />
-              </Field>
-              <Field label="picked →">
-                <Input type="text" list="azure-devops-states" value={adoPicked} onChange={(e) => setAdoPicked(e.currentTarget.value)} />
+              <Field label="to_do →">
+                <Input type="text" list="azure-devops-states" value={adoToDo} onChange={(e) => setAdoToDo(e.currentTarget.value)} />
               </Field>
               <Field label="in_progress →">
                 <Input type="text" list="azure-devops-states" value={adoInProgress} onChange={(e) => setAdoInProgress(e.currentTarget.value)} />
               </Field>
-              <Field label="pr_open →">
-                <Input type="text" list="azure-devops-states" value={adoPrOpen} onChange={(e) => setAdoPrOpen(e.currentTarget.value)} />
+              <Field label="reviewed →">
+                <Input type="text" list="azure-devops-states" value={adoReviewed} onChange={(e) => setAdoReviewed(e.currentTarget.value)} />
+              </Field>
+              <Field label="resolved →">
+                <Input type="text" list="azure-devops-states" value={adoResolved} onChange={(e) => setAdoResolved(e.currentTarget.value)} />
+              </Field>
+              <Field label="published →">
+                <Input type="text" list="azure-devops-states" value={adoPublished} onChange={(e) => setAdoPublished(e.currentTarget.value)} />
               </Field>
               <Field label="done →">
                 <Input type="text" list="azure-devops-states" value={adoDone} onChange={(e) => setAdoDone(e.currentTarget.value)} />
               </Field>
-              <Field label="wont_do →">
-                <Input type="text" list="azure-devops-states" value={adoWontDo} onChange={(e) => setAdoWontDo(e.currentTarget.value)} />
+              <Field label="canceled →">
+                <Input type="text" list="azure-devops-states" value={adoCanceled} onChange={(e) => setAdoCanceled(e.currentTarget.value)} />
               </Field>
             </div>
             <datalist id="azure-devops-states">

@@ -140,12 +140,13 @@ export function Kbd({ children }: { children: ReactNode }) {
 
 export type BugStatus = "new" | "triaging" | "confirmed" | "resolved" | "wont_do";
 export type TaskStatus =
-  | "queued"
-  | "picked"
+  | "to_do"
   | "in_progress"
-  | "pr_open"
+  | "reviewed"
+  | "resolved"
+  | "published"
   | "done"
-  | "wont_do";
+  | "canceled";
 
 const BUG_DOT: Record<BugStatus, { color: string; label: string }> = {
   new: { color: "var(--color-nebula-cyan)", label: "New" },
@@ -155,12 +156,13 @@ const BUG_DOT: Record<BugStatus, { color: string; label: string }> = {
   wont_do: { color: "var(--color-star-500)", label: "Won't do" },
 };
 const TASK_DOT: Record<TaskStatus, { color: string; label: string }> = {
-  queued: { color: "var(--color-nebula-cyan)", label: "Queued" },
-  picked: { color: "var(--color-nebula-amber)", label: "Picked" },
-  in_progress: { color: "var(--color-nebula-amber)", label: "In progress" },
-  pr_open: { color: "var(--color-nebula-violet)", label: "PR open" },
+  to_do: { color: "var(--color-nebula-cyan)", label: "To Do" },
+  in_progress: { color: "var(--color-nebula-amber)", label: "In Progress" },
+  reviewed: { color: "var(--color-nebula-violet)", label: "Reviewed" },
+  resolved: { color: "var(--color-nebula-green)", label: "Resolved" },
+  published: { color: "var(--color-nebula-violet)", label: "Published" },
   done: { color: "var(--color-nebula-green)", label: "Done" },
-  wont_do: { color: "var(--color-star-500)", label: "Won't do" },
+  canceled: { color: "var(--color-star-500)", label: "Canceled" },
 };
 
 export function StatusDot({

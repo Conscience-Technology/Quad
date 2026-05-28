@@ -56,13 +56,13 @@ export function ProjectNav({
   const me = proj.data?.find((p) => p.id === projectId);
   const triage = trpc.bugs.list.useQuery({ projectId, status: "triaging", limit: 200 });
   const resolved = trpc.bugs.list.useQuery({ projectId, status: "resolved", limit: 200 });
-  const tasksQueued = trpc.tasks.list.useQuery({ projectId, status: "queued" });
+  const tasksToDo = trpc.tasks.list.useQuery({ projectId, status: "to_do" });
   const members = trpc.members.list.useQuery({ projectId });
 
   const countFor = (label: string): number | undefined => {
     if (label === "Board") return me?.openBugCount;
     if (label === "Triage") return triage.data?.length;
-    if (label === "Tasks") return tasksQueued.data?.length;
+    if (label === "Tasks") return tasksToDo.data?.length;
     if (label === "Resolved") return resolved.data?.length;
     if (label === "Members") return members.data?.length;
     return undefined;

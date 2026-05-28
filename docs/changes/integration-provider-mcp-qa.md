@@ -168,7 +168,7 @@ Existing tool improvements:
   the REST API's `projectId` / `taskId` body.
 - Task reads and task lists include `externalIssue`.
 - `quad_pick_task` now starts a finite lease.
-- `quad_renew_task` renews a picked task lease.
+- `quad_renew_task` renews an in_progress task lease.
 
 ## CLI Additions
 
@@ -248,12 +248,15 @@ The follow-ups below were implemented after the initial provider/MCP work:
 
 - Added provider conformance tests through `pnpm test:providers`.
 - Added a mock provider for local development and CI.
-- Added lease/expiry semantics for picked tasks.
+- Added lease/expiry semantics for in_progress task claims.
 - Migrated project integration config from `projects.azureDevOps` into a generic
   `project_integrations` table.
 - Added `task_external_issues` as the external issue database model while
   keeping Azure-specific task columns as compatibility fields.
 - Added GitHub Issues as the second real provider to prove the abstraction.
+- Generalized Quad task statuses from implementation/provider terms to:
+  `to_do`, `in_progress`, `reviewed`, `resolved`, `published`, `done`,
+  `canceled`.
 
 ## Compatibility Notes
 

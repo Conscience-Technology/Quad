@@ -22,8 +22,9 @@ import { getAzureDevOpsConfig, upsertTaskExternalIssue } from "~/server/integrat
 import { projectMemberProcedure } from "../auth-procedures";
 import { router } from "../trpc";
 
-const StatusFilter = z.enum(["queued", "picked", "in_progress", "pr_open", "done", "wont_do", "all"]).default("queued");
-const SetStatus = z.enum(["queued", "picked", "in_progress", "pr_open", "done", "wont_do"]);
+const TaskStatuses = ["to_do", "in_progress", "reviewed", "resolved", "published", "done", "canceled"] as const;
+const StatusFilter = z.enum([...TaskStatuses, "all"]).default("to_do");
+const SetStatus = z.enum(TaskStatuses);
 
 export const tasksRouter = router({
   list: projectMemberProcedure
@@ -243,7 +244,7 @@ export const tasksRouter = router({
       }
       await ctx.db.insert(schema.taskEvents).values({
         taskId: task.id,
-        kind: input.status === "pr_open" ? "pr_attached" : "status_changed",
+        kind: input.status === "reviewed" ? "pr_attached" : "status_changed",
         actorUserId: ctx.user.id,
         payload: { status: input.status, prUrl: input.prUrl, note: input.note, azureDevOps },
       });

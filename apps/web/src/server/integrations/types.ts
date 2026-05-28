@@ -1,4 +1,11 @@
-export type TaskStatus = "queued" | "picked" | "in_progress" | "pr_open" | "done" | "wont_do";
+export type TaskStatus =
+  | "to_do"
+  | "in_progress"
+  | "reviewed"
+  | "resolved"
+  | "published"
+  | "done"
+  | "canceled";
 
 export type ExternalIssue = {
   id: number | string;

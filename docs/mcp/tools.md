@@ -10,7 +10,7 @@ Quad's MCP server is designed for two workflows:
 ## Setup / QA
 
 - `quad_doctor`
-  - Checks endpoint connectivity, MCP key validity, project scope, queued task
+  - Checks endpoint connectivity, MCP key validity, project scope, To Do task
     counts, and configured issue integrations.
 - `quad_list_integrations`
   - Lists provider config per accessible project, including credential source.
@@ -22,9 +22,9 @@ Quad's MCP server is designed for two workflows:
 - `quad_list_tasks`
 - `quad_search_tasks`
 - `quad_pick_task`
-  - Starts a finite lease so stale picked tasks can be reclaimed.
+  - Starts a finite lease so stale in_progress tasks can be reclaimed.
 - `quad_renew_task`
-  - Renews the lease for a picked task.
+  - Renews the lease for an in_progress task.
 - `quad_get_task`
 - `quad_update_task`
 - `quad_post_comment`
@@ -32,7 +32,7 @@ Quad's MCP server is designed for two workflows:
 `quad_update_task` accepts only:
 
 ```txt
-queued | picked | in_progress | pr_open | done | wont_do
+to_do | in_progress | reviewed | resolved | published | done | canceled
 ```
 
 If a task has an external issue linked, status/comment operations return

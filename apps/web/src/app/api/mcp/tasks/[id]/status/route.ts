@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const Body = z.object({
-  status: z.enum(["queued", "picked", "in_progress", "pr_open", "done", "wont_do"]),
+  status: z.enum(["to_do", "in_progress", "reviewed", "resolved", "published", "done", "canceled"]),
   prUrl: z.string().url().optional(),
   note: z.string().max(2_000).optional(),
 });
@@ -135,7 +135,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
   await db.insert(schema.taskEvents).values({
     taskId: task.id,
-    kind: body.status === "pr_open" ? "pr_attached" : "status_changed",
+    kind: body.status === "reviewed" ? "pr_attached" : "status_changed",
     actorUserId: r.auth.user.id,
     actorApiKeyId: r.auth.apiKey.id,
     payload: { status: body.status, prUrl: body.prUrl, note: body.note, azureDevOps, externalIssue },

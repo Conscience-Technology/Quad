@@ -61,12 +61,13 @@ project:
 
 ```txt
 report_submitted -> Reopened
-queued           -> To Do
-picked           -> In Progress
-in_progress      -> In Progress
-pr_open          -> Reviewed
-done             -> Done
-wont_do          -> Resolved
+to_do           -> To Do
+in_progress     -> In Progress
+reviewed        -> Reviewed
+resolved        -> Resolved
+published       -> Published
+done            -> Done
+canceled        -> Resolved
 ```
 
 Do not hard-code a provider's workflow into Quad task status enums.

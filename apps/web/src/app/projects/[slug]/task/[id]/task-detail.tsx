@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, Code, Field, Input, Surface } from "~/components/ui";
 import { trpc } from "~/lib/trpc/react";
 
-type Status = "queued" | "picked" | "in_progress" | "pr_open" | "done" | "wont_do";
+type Status = "to_do" | "in_progress" | "reviewed" | "resolved" | "published" | "done" | "canceled";
 
 export function TaskDetail({
   projectId,
@@ -172,7 +172,7 @@ npx quad pull ${task.id}
             hint={task.azureWorkItemId ? "Status changes sync to the connected external issue when credentials are available." : undefined}
           >
             <div className="space-y-1">
-              {(["queued", "picked", "in_progress", "pr_open", "done", "wont_do"] as const).map((s) => (
+              {(["to_do", "in_progress", "reviewed", "resolved", "published", "done", "canceled"] as const).map((s) => (
                 <Button
                   key={s}
                   variant={task.status === s ? "primary" : "ghost"}
@@ -188,7 +188,7 @@ npx quad pull ${task.id}
         </Surface>
 
         <Surface className="space-y-3">
-          <Field label="Attach PR URL" hint="Transitions to status=pr_open">
+          <Field label="Attach PR URL" hint="Transitions to status=reviewed">
             <Input
               type="text"
               value={prUrl}
@@ -200,9 +200,9 @@ npx quad pull ${task.id}
             variant="primary"
             className="w-full"
             disabled={!prUrl || update.isPending}
-            onClick={() => update.mutate({ projectId, taskId, status: "pr_open", prUrl })}
+            onClick={() => update.mutate({ projectId, taskId, status: "reviewed", prUrl })}
           >
-            Attach PR + pr_open
+            Attach PR + reviewed
           </Button>
           {task.prUrl && (
             <a

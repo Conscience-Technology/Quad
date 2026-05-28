@@ -7,12 +7,13 @@ export type AzureDevOpsCredentials = string;
 export const AZURE_DEVOPS_PROVIDER_ID = "azure-devops" as const;
 
 const DEFAULT_STATE_MAP: Record<TaskStatus, string> = {
-  queued: "To Do",
-  picked: "In Progress",
+  to_do: "To Do",
   in_progress: "In Progress",
-  pr_open: "Reviewed",
+  reviewed: "Reviewed",
+  resolved: "Resolved",
+  published: "Published",
   done: "Done",
-  wont_do: "Resolved",
+  canceled: "Resolved",
 };
 
 export const azureDevOpsProvider: ExternalIssueProvider<

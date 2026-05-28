@@ -29,7 +29,7 @@ program
   .command("list")
   .description("List tasks")
   .option("-p, --project <id>", "project id")
-  .option("-s, --status <status>", "queued|picked|in_progress|pr_open|done|wont_do", "queued")
+  .option("-s, --status <status>", "to_do|in_progress|reviewed|resolved|published|done|canceled", "to_do")
   .option("-q, --query <q>", "title substring")
   .action(async (o: { project?: string; status: string; query?: string }) => {
     const cfg = await loadConfig();
@@ -46,7 +46,7 @@ program
 
 program
   .command("doctor")
-  .description("Diagnose endpoint, MCP key, project scope, queued tasks, and integrations")
+  .description("Diagnose endpoint, MCP key, project scope, To Do tasks, and integrations")
   .action(async () => {
     const cfg = await loadConfig();
     const result = await api<Record<string, unknown>>(cfg, "/api/mcp/doctor");
@@ -57,7 +57,7 @@ program
   .command("pull")
   .description("Pull a task into ./.quad/tasks/<id>/")
   .argument("[task-id]")
-  .option("--next", "pick the next queued task")
+  .option("--next", "pick the next To Do task")
   .option("-p, --project <id>", "project id when using --next")
   .option("--lease-minutes <minutes>", "lease duration when using --next", "30")
   .action(async (taskId: string | undefined, o: { next?: boolean; project?: string; leaseMinutes?: string }) => {
@@ -71,9 +71,9 @@ program
           leaseMs: Number.parseInt(o.leaseMinutes ?? "30", 10) * 60 * 1000,
         }),
       });
-      if (!r.task) { console.error("no queued task"); process.exit(1); }
+      if (!r.task) { console.error("no To Do task"); process.exit(1); }
       id = r.task.id;
-      console.log(`picked ${id}`);
+      console.log(`in_progress ${id}`);
     }
     if (!id) { console.error("task-id or --next required"); process.exit(2); }
 
@@ -116,7 +116,7 @@ program
 
 program
   .command("lease <task-id>")
-  .description("Renew a picked task lease")
+  .description("Renew an in_progress task lease")
   .option("--minutes <minutes>", "lease duration", "30")
   .action(async (taskId: string, o: { minutes: string }) => {
     const cfg = await loadConfig();
@@ -130,8 +130,8 @@ program
 program
   .command("status <task-id>")
   .description("Update task status")
-  .requiredOption("--set <status>", "queued|picked|in_progress|pr_open|done|wont_do")
-  .option("--pr <url>", "PR URL (with --set pr_open)")
+  .requiredOption("--set <status>", "to_do|in_progress|reviewed|resolved|published|done|canceled")
+  .option("--pr <url>", "PR URL (with --set reviewed)")
   .option("--note <text>", "free-form note attached to the audit event")
   .action(async (taskId: string, o: { set: string; pr?: string; note?: string }) => {
     const cfg = await loadConfig();
