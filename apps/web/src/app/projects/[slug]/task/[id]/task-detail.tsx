@@ -20,11 +20,11 @@ export function TaskDetail({
   const update = trpc.tasks.updateStatus.useMutation({
     onSettled: () => utils.tasks.byId.invalidate({ projectId, taskId }),
   });
-  const linkAzure = trpc.tasks.linkAzureWorkItem.useMutation({
+  const linkExternalIssue = trpc.tasks.linkAzureWorkItem.useMutation({
     onSettled: () => utils.tasks.byId.invalidate({ projectId, taskId }),
   });
   const [prUrl, setPrUrl] = useState("");
-  const [azureWorkItemId, setAzureWorkItemId] = useState("");
+  const [externalIssueId, setExternalIssueId] = useState("");
 
   if (q.isLoading) return <p className="text-sm text-[var(--color-star-500)]">…</p>;
   if (!q.data) return null;
@@ -114,49 +114,63 @@ npx quad pull ${task.id}
       <aside className="space-y-4">
         <Surface className="space-y-3">
           <Field
-            label="Azure Work Item"
-            hint="Enter an Azure Boards work item number, for example 8743."
+            label="External Issue"
+            hint="Azure DevOps is the active provider. Enter an Azure Boards work item number, for example 8743."
           >
             <Input
               type="number"
-              value={azureWorkItemId}
-              onChange={(e) => setAzureWorkItemId(e.currentTarget.value)}
+              min="1"
+              value={externalIssueId}
+              onChange={(e) => setExternalIssueId(e.currentTarget.value)}
               placeholder={task.azureWorkItemId ? String(task.azureWorkItemId) : "8743"}
             />
           </Field>
           <Button
             variant="primary"
             className="w-full"
-            disabled={!azureWorkItemId || linkAzure.isPending}
+            disabled={!externalIssueId || linkExternalIssue.isPending}
             onClick={() =>
-              linkAzure.mutate({
+              linkExternalIssue.mutate({
                 projectId,
                 taskId,
-                workItemId: Number.parseInt(azureWorkItemId, 10),
+                workItemId: Number.parseInt(externalIssueId, 10),
               })
             }
           >
-            {linkAzure.isPending ? "…" : "Link Azure Work Item"}
+            {linkExternalIssue.isPending ? "…" : "Link Issue"}
           </Button>
-          {linkAzure.error && (
+          {linkExternalIssue.error && (
             <p className="text-xs text-[var(--color-nebula-rose)]">
-              {linkAzure.error.message}
+              {linkExternalIssue.error.message}
+            </p>
+          )}
+          {linkExternalIssue.isSuccess && (
+            <p className="text-xs text-[var(--color-nebula-cyan)]">
+              Linked and synced with Azure DevOps.
             </p>
           )}
           {task.azureWorkItemUrl && (
-            <a
-              href={task.azureWorkItemUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-[var(--color-nebula-cyan)] hover:text-[var(--color-star-100)] break-all block"
-            >
-              Azure #{task.azureWorkItemId}
-            </a>
+            <div className="space-y-1">
+              <p className="text-2xs uppercase tracking-wider text-[var(--color-star-500)]">
+                Connected issue
+              </p>
+              <a
+                href={task.azureWorkItemUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-[var(--color-nebula-cyan)] hover:text-[var(--color-star-100)] break-all block"
+              >
+                Azure DevOps #{task.azureWorkItemId}
+              </a>
+            </div>
           )}
         </Surface>
 
         <Surface className="space-y-3">
-          <Field label="Status">
+          <Field
+            label="Status"
+            hint={task.azureWorkItemId ? "Status changes sync to the connected external issue when credentials are available." : undefined}
+          >
             <div className="space-y-1">
               {(["queued", "picked", "in_progress", "pr_open", "done", "wont_do"] as const).map((s) => (
                 <Button

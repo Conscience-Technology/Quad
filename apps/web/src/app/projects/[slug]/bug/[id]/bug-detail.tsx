@@ -36,6 +36,7 @@ export function BugDetail({
   const { bug, attachments, comments, occurrences, media, transcript } = q.data;
   const requestedAzureWorkItemId = readAzureWorkItemId(bug.meta);
   const azureDevOpsSync = readAzureDevOpsSync(bug.meta);
+  const syncMessage = azureDevOpsSync ? describeExternalSync(azureDevOpsSync) : null;
 
   const status = bug.status;
   const videoComments = comments
@@ -179,14 +180,23 @@ export function BugDetail({
 
       <aside className="space-y-4">
         {requestedAzureWorkItemId && (
-          <Surface className="space-y-1">
-            <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">Azure DevOps</p>
-            <p className="text-sm text-[var(--color-star-300)]">Requested Work Item #{requestedAzureWorkItemId}</p>
-            {azureDevOpsSync && (
-              <p className={`text-xs ${azureDevOpsSync.synced ? "text-[var(--color-nebula-cyan)]" : "text-[var(--color-nebula-rose)]"}`}>
-                {azureDevOpsSync.synced
-                  ? `Synced${azureDevOpsSync.state ? ` → ${azureDevOpsSync.state}` : ""}`
-                  : azureDevOpsSync.error ?? "Azure DevOps sync skipped"}
+          <Surface className="space-y-2">
+            <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">External Issue</p>
+            <p className="text-sm text-[var(--color-star-300)]">
+              Azure DevOps work item #{requestedAzureWorkItemId}
+            </p>
+            {syncMessage ? (
+              <div className="space-y-1">
+                <p className={`text-xs ${syncMessage.ok ? "text-[var(--color-nebula-cyan)]" : "text-[var(--color-nebula-rose)]"}`}>
+                  {syncMessage.title}
+                </p>
+                {syncMessage.detail && (
+                  <p className="text-xs text-[var(--color-star-500)]">{syncMessage.detail}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--color-star-500)]">
+                Pending. Quad has the issue number but no sync result has been recorded yet.
               </p>
             )}
           </Surface>
@@ -220,7 +230,7 @@ export function BugDetail({
               disabled={confirm.isPending}
               className="w-full"
             >
-              {confirm.isPending ? "…" : "Confirm → Task"}
+              {confirm.isPending ? "…" : "Create Task"}
             </Button>
             {confirm.error && (
               <p className="text-xs text-[var(--color-nebula-rose)]">{confirm.error.message}</p>
@@ -271,5 +281,28 @@ function readAzureDevOpsSync(meta: unknown): { synced?: boolean; state?: string;
     synced: typeof (sync as { synced?: unknown }).synced === "boolean" ? (sync as { synced: boolean }).synced : undefined,
     state: typeof (sync as { state?: unknown }).state === "string" ? (sync as { state: string }).state : undefined,
     error: typeof (sync as { error?: unknown }).error === "string" ? (sync as { error: string }).error : undefined,
+  };
+}
+
+function describeExternalSync(sync: { synced?: boolean; state?: string; error?: string }): {
+  ok: boolean;
+  title: string;
+  detail?: string;
+} {
+  if (sync.synced) {
+    return {
+      ok: true,
+      title: sync.state ? `Synced to ${sync.state}` : "Synced",
+      detail: "Quad updated Azure DevOps and added a report comment.",
+    };
+  }
+  const error = sync.error ?? "Sync skipped";
+  const missingCredential = /PAT|credential|missing|not configured/i.test(error);
+  return {
+    ok: false,
+    title: error,
+    detail: missingCredential
+      ? "Add AZURE_DEVOPS_PAT on the server or save a personal Azure DevOps PAT in Account → MCP keys."
+      : "Check the project integration settings and run Test connection.",
   };
 }

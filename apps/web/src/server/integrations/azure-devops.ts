@@ -64,6 +64,19 @@ export const azureDevOpsProvider: ExternalIssueProvider<
     };
   },
 
+  async testConnection({ config, credentials }) {
+    if (!this.isConfigured(config, credentials) || !config) {
+      throw new Error("Azure DevOps project config or credential is missing");
+    }
+    await azureFetch<Record<string, unknown>>(
+      config,
+      "_apis/wit/workitemtypes?$top=1&api-version=7.1",
+      {},
+      credentials,
+    );
+    return { ok: true, message: "Azure DevOps project and credential are valid" };
+  },
+
   async setIssueState({ config, issueId, state, credentials }) {
     if (!issueId || !state || !this.isConfigured(config, credentials) || !config) return null;
     await azureFetch(

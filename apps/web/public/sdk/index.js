@@ -86,6 +86,99 @@ var Api = class {
   }
 };
 
+// src/shortcuts.ts
+var IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+function parse(combo) {
+  const parts = combo.toLowerCase().split("+").map((s) => s.trim());
+  const out = { alt: false, shift: false, ctrl: false, meta: false, key: "" };
+  for (const p of parts) {
+    if (p === "alt" || p === "option") out.alt = true;
+    else if (p === "shift") out.shift = true;
+    else if (p === "ctrl" || p === "control") out.ctrl = true;
+    else if (p === "cmd" || p === "command" || p === "meta") out.meta = true;
+    else if (p === "mod") {
+      if (IS_MAC) out.meta = true;
+      else out.ctrl = true;
+    } else {
+      out.key = p;
+    }
+  }
+  return out;
+}
+function matchesKey(combo, e) {
+  if (!isComboKey(combo)) return false;
+  if (combo.alt !== e.altKey) return false;
+  if (combo.shift !== e.shiftKey) return false;
+  if (combo.ctrl !== e.ctrlKey) return false;
+  if (combo.meta !== e.metaKey) return false;
+  const k = e.key.toLowerCase();
+  return k === combo.key;
+}
+function matchesMouse(combo, e, kind = "click") {
+  if (combo.key !== kind) return false;
+  if (combo.alt !== e.altKey) return false;
+  if (combo.shift !== e.shiftKey) return false;
+  if (combo.ctrl !== e.ctrlKey) return false;
+  if (combo.meta !== e.metaKey) return false;
+  return true;
+}
+function isComboKey(c) {
+  return c.key !== "" && c.key !== "click" && c.key !== "dblclick";
+}
+
+// src/bug-mode.ts
+var BugMode = class {
+  constructor(widget, hostNode, pinCombo, handlers) {
+    this.widget = widget;
+    this.hostNode = hostNode;
+    this.handlers = handlers;
+    this.pinCombo = pinCombo;
+  }
+  widget;
+  hostNode;
+  handlers;
+  on = false;
+  pinCombo;
+  destroy() {
+    this.setOn(false);
+  }
+  setOn(on) {
+    if (on === this.on) {
+      this.widget.setBugMode(on);
+      return;
+    }
+    this.on = on;
+    this.widget.setBugMode(on);
+    if (on) {
+      document.addEventListener("click", this.onClick, true);
+    } else {
+      document.removeEventListener("click", this.onClick, true);
+    }
+  }
+  isOn() {
+    return this.on;
+  }
+  onClick = (e) => {
+    if (!this.on) return;
+    if (!matchesMouse(this.pinCombo, e, "click")) return;
+    const el = this.pickElement(e);
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.handlers.onPin(el, e.clientX, e.clientY);
+  };
+  /** Find the element under the cursor while ignoring our own widget. */
+  pickElement(e) {
+    const path = e.composedPath?.() ?? [];
+    for (const node of path) {
+      if (!(node instanceof Element)) continue;
+      if (this.hostNode.contains(node)) continue;
+      return node;
+    }
+    return null;
+  }
+};
+
 // src/util.ts
 function isBrowser() {
   return typeof window !== "undefined" && typeof document !== "undefined";
@@ -156,6 +249,42 @@ function cssEscape(s) {
   }
   return s.replace(/([!"#$%&'()*+,./:;<=>?@\[\\\]^`{|}~])/g, "\\$1");
 }
+function labelFor(el, max = 80) {
+  let cur = el;
+  for (let i = 0; i < 2 && cur; i++) {
+    const v = readLabelAttrs(cur, max);
+    if (v) return v;
+    cur = cur.parentElement;
+  }
+  return void 0;
+}
+function readLabelAttrs(el, max) {
+  if (el instanceof HTMLElement) {
+    const explicit = el.dataset.quadLabel;
+    if (explicit) return clip(explicit, max);
+  }
+  const aria = el.getAttribute("aria-label");
+  if (aria && aria.trim()) return clip(aria, max);
+  if (el instanceof HTMLElement && el.dataset.testid) {
+    return clip(el.dataset.testid, max);
+  }
+  const tag = el.tagName.toLowerCase();
+  if (tag === "button" || tag === "a" || tag === "summary" || /^h[1-6]$/.test(tag) || tag === "label") {
+    const text = (el.textContent ?? "").trim().replace(/\s+/g, " ");
+    if (text) return clip(text, max);
+  }
+  if (el instanceof HTMLInputElement) {
+    if (el.placeholder) return clip(`placeholder \u201C${el.placeholder}\u201D`, max);
+    if (el.name) return clip(`input[name=${el.name}]`, max);
+  }
+  const title = el.getAttribute("title");
+  if (title && title.trim()) return clip(title, max);
+  return void 0;
+}
+function clip(s, max) {
+  s = s.trim();
+  return s.length <= max ? s : `${s.slice(0, max)}\u2026`;
+}
 function outerHtmlPreview(el, max = 200) {
   const html = el.outerHTML ?? "";
   return html.length <= max ? html : `${html.slice(0, max)}\u2026`;
@@ -221,113 +350,6 @@ function probe(el) {
     } : path[path.length - 1] ? { function: path[path.length - 1] } : void 0
   };
 }
-
-// src/shortcuts.ts
-var IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-function parse(combo) {
-  const parts = combo.toLowerCase().split("+").map((s) => s.trim());
-  const out = { alt: false, shift: false, ctrl: false, meta: false, key: "" };
-  for (const p of parts) {
-    if (p === "alt" || p === "option") out.alt = true;
-    else if (p === "shift") out.shift = true;
-    else if (p === "ctrl" || p === "control") out.ctrl = true;
-    else if (p === "cmd" || p === "command" || p === "meta") out.meta = true;
-    else if (p === "mod") {
-      if (IS_MAC) out.meta = true;
-      else out.ctrl = true;
-    } else {
-      out.key = p;
-    }
-  }
-  return out;
-}
-function matchesKey(combo, e) {
-  if (!isComboKey(combo)) return false;
-  if (combo.alt !== e.altKey) return false;
-  if (combo.shift !== e.shiftKey) return false;
-  if (combo.ctrl !== e.ctrlKey) return false;
-  if (combo.meta !== e.metaKey) return false;
-  const k = e.key.toLowerCase();
-  return k === combo.key;
-}
-function matchesMouse(combo, e, kind = "click") {
-  if (combo.key !== kind) return false;
-  if (combo.alt !== e.altKey) return false;
-  if (combo.shift !== e.shiftKey) return false;
-  if (combo.ctrl !== e.ctrlKey) return false;
-  if (combo.meta !== e.metaKey) return false;
-  return true;
-}
-function isComboKey(c) {
-  return c.key !== "" && c.key !== "click" && c.key !== "dblclick";
-}
-
-// src/bug-mode.ts
-var BugMode = class {
-  constructor(widget, hostNode, pinCombo, handlers) {
-    this.widget = widget;
-    this.hostNode = hostNode;
-    this.handlers = handlers;
-    this.pinCombo = pinCombo;
-  }
-  widget;
-  hostNode;
-  handlers;
-  on = false;
-  hovered = null;
-  pinCombo;
-  destroy() {
-    this.setOn(false);
-  }
-  setOn(on) {
-    if (on === this.on) {
-      this.widget.setBugMode(on);
-      return;
-    }
-    this.on = on;
-    this.widget.setBugMode(on);
-    if (on) {
-      document.addEventListener("mousemove", this.onMove, true);
-      document.addEventListener("click", this.onClick, true);
-    } else {
-      document.removeEventListener("mousemove", this.onMove, true);
-      document.removeEventListener("click", this.onClick, true);
-      this.hovered = null;
-      this.widget.hideOutline();
-    }
-  }
-  isOn() {
-    return this.on;
-  }
-  onMove = (e) => {
-    if (!this.on) return;
-    const el = this.pickElement(e);
-    if (!el || el === this.hovered) return;
-    this.hovered = el;
-    const reactInfo = probe(el);
-    const label = reactInfo.componentPath ? `${reactInfo.componentPath.split(" > ").pop()} \xB7 ${selectorFor(el).slice(0, 60)}` : selectorFor(el).slice(0, 80);
-    this.widget.showOutline(el.getBoundingClientRect(), label);
-  };
-  onClick = (e) => {
-    if (!this.on) return;
-    if (!matchesMouse(this.pinCombo, e, "click")) return;
-    const el = this.pickElement(e);
-    if (!el) return;
-    e.preventDefault();
-    e.stopPropagation();
-    this.handlers.onPin(el, e.clientX, e.clientY);
-  };
-  /** Find the element under the cursor while ignoring our own widget. */
-  pickElement(e) {
-    const path = e.composedPath?.() ?? [];
-    for (const node of path) {
-      if (!(node instanceof Element)) continue;
-      if (this.hostNode.contains(node)) continue;
-      return node;
-    }
-    return null;
-  }
-};
 
 // src/event-trail.ts
 var EventTrail = class {
@@ -805,6 +827,7 @@ function buildPin(el, body) {
     route: location.pathname,
     pageUrl: location.href,
     outerHtmlPreview: outerHtmlPreview(el, 200),
+    label: labelFor(el),
     body
   };
 }
@@ -1184,32 +1207,6 @@ var WIDGET_CSS = (
 .q-panel .primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .q-panel .primary:hover:not(:disabled) { opacity: 0.9; }
 
-/* Hover outline (bug mode) */
-.q-outline {
-  position: fixed;
-  pointer-events: none;
-  z-index: 2147483599;
-  border: 2px solid var(--violet);
-  border-radius: 2px;
-  box-shadow: 0 0 12px rgba(139, 124, 246, 0.35);
-  transition: all 80ms linear;
-}
-.q-outline-label {
-  position: fixed;
-  pointer-events: none;
-  z-index: 2147483599;
-  background: var(--violet);
-  color: var(--void);
-  padding: 3px 8px;
-  font-size: 11px;
-  font-family: ui-monospace, monospace;
-  border-radius: 2px;
-  white-space: nowrap;
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Floating pin form */
 .q-pin-form {
   position: fixed;
@@ -1539,8 +1536,6 @@ var Widget = class {
     this.toggleEl = this.makeToggle();
     this.panelEl = this.makePanel();
     this.bodyEl = this.panelEl.querySelector(".body");
-    this.outlineEl = this.makeOutline();
-    this.labelEl = this.makeOutlineLabel();
     this.root.appendChild(this.toggleEl);
     this.root.appendChild(this.panelEl);
     document.body.appendChild(this.host);
@@ -1552,13 +1547,13 @@ var Widget = class {
   toggleEl;
   panelEl;
   bodyEl;
-  outlineEl;
-  labelEl;
+  cursorStyle = null;
   pinFormEl = null;
   toastEl = null;
   overlayOpen = false;
   bugModeOn = false;
   destroy() {
+    this.setBugMode(false);
     this.host.remove();
   }
   // ---- Right-edge toggle ----------------------------------------------------
@@ -1575,9 +1570,28 @@ var Widget = class {
     return d;
   }
   setBugMode(on) {
+    if (this.bugModeOn === on) return;
     this.bugModeOn = on;
     this.toggleEl.setAttribute("data-bug-mode", on ? "on" : "off");
-    if (!on) this.hideOutline();
+    this.setCrosshair(on);
+  }
+  /**
+   * Toggle a global crosshair cursor by injecting / removing a tiny
+   * stylesheet at the document head. Figma-style intent: the cursor itself
+   * tells the reporter "click anywhere to drop a pin" — no expensive
+   * hover preview, no whole-section outline.
+   */
+  setCrosshair(on) {
+    if (on && !this.cursorStyle) {
+      const s = document.createElement("style");
+      s.setAttribute("data-quad", "cursor");
+      s.textContent = "html, body, *, *::before, *::after { cursor: crosshair !important; }";
+      document.head.appendChild(s);
+      this.cursorStyle = s;
+    } else if (!on && this.cursorStyle) {
+      this.cursorStyle.remove();
+      this.cursorStyle = null;
+    }
   }
   // ---- Overlay panel --------------------------------------------------------
   makePanel() {
@@ -1596,14 +1610,14 @@ var Widget = class {
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
-      <p>To point at a specific element, use <strong>Bug Mode + Option/Alt+Click</strong>.</p>
+      <p>To point at a specific element, turn on <strong>Bug Mode</strong> and click it.</p>
       <p>This panel is for freeform reports. Drop videos/screenshots below or paste (\u2318/Ctrl+V).</p>
       <div class="drop" data-over="false">
         Drop a file here or click to select<br/>
         <small>Record with \u2318\u21E75 on macOS, Win+G on Windows, then drop the file here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
-      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Azure Work Item # (optional)" />' : ""}
+      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Issue / Work item # (optional)" />' : ""}
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
@@ -1750,7 +1764,7 @@ var Widget = class {
       const workItemRaw = workItemInput?.value.trim() ?? "";
       const azureWorkItemId = workItemRaw ? Number.parseInt(workItemRaw, 10) : void 0;
       if (workItemRaw && (!Number.isFinite(azureWorkItemId) || !azureWorkItemId || azureWorkItemId <= 0)) {
-        status.textContent = "Azure Work Item # must be a positive number";
+        status.textContent = "Issue number must be a positive number";
         status.className = "q-status error";
         return;
       }
@@ -1781,37 +1795,6 @@ var Widget = class {
   }
   isOverlayOpen() {
     return this.overlayOpen;
-  }
-  // ---- Hover outline --------------------------------------------------------
-  makeOutline() {
-    const o = document.createElement("div");
-    o.className = "q-outline";
-    o.style.display = "none";
-    this.root.appendChild(o);
-    return o;
-  }
-  makeOutlineLabel() {
-    const l = document.createElement("div");
-    l.className = "q-outline-label";
-    l.style.display = "none";
-    this.root.appendChild(l);
-    return l;
-  }
-  showOutline(rect, label) {
-    this.outlineEl.style.display = "block";
-    this.outlineEl.style.left = `${rect.left}px`;
-    this.outlineEl.style.top = `${rect.top}px`;
-    this.outlineEl.style.width = `${rect.width}px`;
-    this.outlineEl.style.height = `${rect.height}px`;
-    this.labelEl.style.display = "block";
-    this.labelEl.textContent = label;
-    const labelTop = rect.top - 22;
-    this.labelEl.style.left = `${rect.left}px`;
-    this.labelEl.style.top = `${labelTop < 0 ? rect.bottom + 4 : labelTop}px`;
-  }
-  hideOutline() {
-    this.outlineEl.style.display = "none";
-    this.labelEl.style.display = "none";
   }
   // ---- Floating pin form ----------------------------------------------------
   openPinForm(x, y, selector, cb) {

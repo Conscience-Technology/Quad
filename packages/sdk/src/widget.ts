@@ -119,14 +119,14 @@ export class Widget {
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
-      <p>To point at a specific element, use <strong>Bug Mode + Option/Alt+Click</strong>.</p>
+      <p>To point at a specific element, turn on <strong>Bug Mode</strong> and click it.</p>
       <p>This panel is for freeform reports. Drop videos/screenshots below or paste (⌘/Ctrl+V).</p>
       <div class="drop" data-over="false">
         Drop a file here or click to select<br/>
         <small>Record with ⌘⇧5 on macOS, Win+G on Windows, then drop the file here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
-      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Azure Work Item # (optional)" />' : ""}
+      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Issue / Work item # (optional)" />' : ""}
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
@@ -300,7 +300,7 @@ export class Widget {
       const workItemRaw = workItemInput?.value.trim() ?? "";
       const azureWorkItemId = workItemRaw ? Number.parseInt(workItemRaw, 10) : undefined;
       if (workItemRaw && (!Number.isFinite(azureWorkItemId) || !azureWorkItemId || azureWorkItemId <= 0)) {
-        status.textContent = "Azure Work Item # must be a positive number";
+        status.textContent = "Issue number must be a positive number";
         status.className = "q-status error";
         return;
       }

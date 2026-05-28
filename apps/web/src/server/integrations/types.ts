@@ -42,6 +42,10 @@ export type ExternalIssueProvider<Config = unknown, Credentials = unknown> = {
   mapTaskStatus(config: Config | null | undefined, status: TaskStatus): string | null;
 
   getIssue(input: IssueProviderCall<Config, Credentials>): Promise<ExternalIssue | null>;
+  testConnection?(input: {
+    config: Config | null | undefined;
+    credentials?: Credentials | null;
+  }): Promise<{ ok: true; message?: string }>;
   setIssueState(input: IssueProviderStateCall<Config, Credentials>): Promise<string | null>;
   updateIssueForTaskStatus(
     input: IssueProviderTaskStateCall<Config, Credentials>,

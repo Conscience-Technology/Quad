@@ -1,8 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { schema } from "~/db";
+import type { AzureDevOpsConfig } from "~/db/schema";
 import { encryptSecret } from "~/lib/secret-box";
-import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
+import {
+  azureDevOpsProvider,
+  AZURE_DEVOPS_PROVIDER_ID,
+} from "~/server/integrations/azure-devops";
+import { env } from "~/lib/env";
+import { getUserIntegrationSecret } from "~/server/integrations/credentials";
 import { authedProcedure, router } from "../trpc";
 
 const Provider = AZURE_DEVOPS_PROVIDER_ID;
@@ -88,5 +94,61 @@ export const integrationsRouter = router({
         target: input.organization,
       });
       return { ok: true };
+    }),
+
+  testAzureDevOps: authedProcedure
+    .input(
+      z.object({
+        organization: z.string().trim().min(1).max(120),
+        project: z.string().trim().min(1).max(160),
+        workItemId: z.number().int().positive().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const config: AzureDevOpsConfig = {
+        enabled: true,
+        organization: input.organization,
+        project: input.project,
+      };
+      const userPat = await getUserIntegrationSecret(
+        Provider,
+        ctx.user.id,
+        input.organization,
+      );
+      const serverPat = env().AZURE_DEVOPS_PAT;
+      const credentials = userPat || serverPat;
+      if (!azureDevOpsProvider.isConfigured(config, credentials)) {
+        return {
+          ok: false,
+          credentialSource: "missing" as const,
+          message: "Save a personal PAT or set AZURE_DEVOPS_PAT on the server.",
+        };
+      }
+
+      if (input.workItemId) {
+        const issue = await azureDevOpsProvider.getIssue({
+          config,
+          issueId: input.workItemId,
+          credentials,
+        });
+        return {
+          ok: true,
+          credentialSource: userPat ? "user" as const : "server" as const,
+          message: issue?.title
+            ? `Connected. Found #${issue.id}: ${issue.title}`
+            : `Connected. Found work item #${input.workItemId}.`,
+          issue,
+        };
+      }
+
+      const result = await azureDevOpsProvider.testConnection?.({
+        config,
+        credentials,
+      });
+      return {
+        ok: true,
+        credentialSource: userPat ? "user" as const : "server" as const,
+        message: result?.message ?? "Connected.",
+      };
     }),
 });
