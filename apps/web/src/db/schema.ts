@@ -175,6 +175,8 @@ export type AzureDevOpsConfig = {
   >>;
 };
 
+export type ProjectIntegrationConfig = Record<string, unknown>;
+
 export const projects = pgTable(
   "projects",
   {
@@ -196,6 +198,28 @@ export const projects = pgTable(
   },
   (t) => ({
     slugUq: uniqueIndex("projects_slug_uq").on(t.slug),
+  }),
+);
+
+export const projectIntegrations = pgTable(
+  "project_integrations",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    config: jsonb("config").$type<ProjectIntegrationConfig>().notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.projectId, t.provider] }),
+    providerIdx: index("project_integrations_provider_idx").on(t.provider),
   }),
 );
 
@@ -553,6 +577,8 @@ export const tasks = pgTable(
     claimedByApiKeyId: uuid("claimed_by_api_key_id").references(() => apiKeys.id, {
       onDelete: "set null",
     }),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
     prUrl: text("pr_url"),
     azureWorkItemId: integer("azure_work_item_id"),
     azureWorkItemUrl: text("azure_work_item_url"),
@@ -576,6 +602,36 @@ export const tasks = pgTable(
       t.azureWorkItemId,
     ),
     bugUq: uniqueIndex("tasks_bug_uq").on(t.bugReportId),
+  }),
+);
+
+export const taskExternalIssues = pgTable(
+  "task_external_issues",
+  {
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    externalId: text("external_id").notNull(),
+    externalUrl: text("external_url"),
+    title: text("title"),
+    state: text("state"),
+    syncStatus: text("sync_status").notNull().default("unknown"),
+    syncError: text("sync_error"),
+    meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.taskId, t.provider] }),
+    providerExternalIdx: index("task_external_issues_provider_external_idx").on(
+      t.provider,
+      t.externalId,
+    ),
   }),
 );
 
@@ -631,6 +687,7 @@ export const auditLog = pgTable(
 export type Instance = typeof instance.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Project = typeof projects.$inferSelect;
+export type ProjectIntegration = typeof projectIntegrations.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
@@ -641,5 +698,6 @@ export type Comment = typeof comments.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type Transcript = typeof transcripts.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type TaskExternalIssue = typeof taskExternalIssues.$inferSelect;
 export type TaskEvent = typeof taskEvents.$inferSelect;
 export type AuditLog = typeof auditLog.$inferSelect;

@@ -6,6 +6,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { schema } from "~/db";
 import { uniqueProjectSlug } from "~/lib/slug";
+import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
+import { saveProjectIntegrationConfig } from "~/server/integrations/store";
 import {
   projectAdminProcedure,
   projectOwnerProcedure,
@@ -160,6 +162,10 @@ export const projectsRouter = router({
         meta: { slug, name: input.name },
       });
 
+      if (input.azureDevOps !== undefined) {
+        await saveProjectIntegrationConfig(project.id, AZURE_DEVOPS_PROVIDER_ID, input.azureDevOps);
+      }
+
       return project;
     }),
 
@@ -194,6 +200,10 @@ export const projectsRouter = router({
         target: input.projectId,
         meta: input,
       });
+
+      if (input.azureDevOps !== undefined) {
+        await saveProjectIntegrationConfig(input.projectId, AZURE_DEVOPS_PROVIDER_ID, input.azureDevOps);
+      }
 
       return updated;
     }),

@@ -16,6 +16,8 @@ import {
   isAzureDevOpsConfigured,
   setAzureWorkItemState,
 } from "./azure-devops";
+import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
+import { getAzureDevOpsConfig, upsertTaskExternalIssue } from "~/server/integrations/store";
 import { putBytes } from "./storage";
 
 const MAX_BRIEF_BYTES = 8 * 1024;
@@ -58,8 +60,9 @@ export async function buildTaskBrief(input: {
   const project = projectRows[0];
   if (!project) throw new Error("project not found");
   const azureWorkItemId = readAzureWorkItemId(bug.meta);
+  const azureDevOpsConfig = await getAzureDevOpsConfig(project);
   const linkedAzureWorkItemUrl =
-    azureWorkItemId && project.azureDevOps ? azureWorkItemUrl(project.azureDevOps, azureWorkItemId) : null;
+    azureWorkItemId && azureDevOpsConfig ? azureWorkItemUrl(azureDevOpsConfig, azureWorkItemId) : null;
 
   const [atts, comments, occurrences] = await Promise.all([
     db
@@ -168,25 +171,41 @@ export async function buildTaskBrief(input: {
   });
 
   if (azureWorkItemId) {
+    await upsertTaskExternalIssue({
+      taskId: task.id,
+      provider: AZURE_DEVOPS_PROVIDER_ID,
+      externalId: azureWorkItemId,
+      externalUrl: linkedAzureWorkItemUrl,
+      syncStatus: "linked",
+    });
     try {
       const pat = await getAzureDevOpsPatForUser(
         input.confirmedByUserId,
-        project.azureDevOps?.organization,
+        azureDevOpsConfig?.organization,
       );
-      if (isAzureDevOpsConfigured(project.azureDevOps, pat)) {
-        const state = project.azureDevOps?.reportState?.trim() || "Reopened";
+      if (isAzureDevOpsConfigured(azureDevOpsConfig, pat)) {
+        const state = azureDevOpsConfig?.reportState?.trim() || "Reopened";
         const syncedState = await setAzureWorkItemState(
-          project.azureDevOps,
+          azureDevOpsConfig,
           azureWorkItemId,
           state,
           pat,
         );
         await addAzureWorkItemComment(
-          project.azureDevOps,
+          azureDevOpsConfig,
           azureWorkItemId,
           `Linked to Quad task ${task.id}: ${bug.title}`,
           pat,
         );
+        await upsertTaskExternalIssue({
+          taskId: task.id,
+          provider: AZURE_DEVOPS_PROVIDER_ID,
+          externalId: azureWorkItemId,
+          externalUrl: linkedAzureWorkItemUrl,
+          state: syncedState,
+          syncStatus: "synced",
+          syncError: null,
+        });
         await db.insert(schema.taskEvents).values({
           taskId: task.id,
           kind: "comment_added",
@@ -200,6 +219,14 @@ export async function buildTaskBrief(input: {
         });
       }
     } catch (err) {
+      await upsertTaskExternalIssue({
+        taskId: task.id,
+        provider: AZURE_DEVOPS_PROVIDER_ID,
+        externalId: azureWorkItemId,
+        externalUrl: linkedAzureWorkItemUrl,
+        syncStatus: "failed",
+        syncError: err instanceof Error ? err.message : "Azure DevOps comment sync failed",
+      });
       await db.insert(schema.taskEvents).values({
         taskId: task.id,
         kind: "comment_added",

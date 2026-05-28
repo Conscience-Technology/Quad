@@ -7,6 +7,7 @@ import { and, desc, eq, inArray, like, or } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "~/db";
 import { authMcpRequest } from "~/lib/mcp-auth";
+import { externalIssuePayload } from "~/server/integrations/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,23 +50,26 @@ export async function GET(req: Request) {
       prUrl: schema.tasks.prUrl,
       azureWorkItemId: schema.tasks.azureWorkItemId,
       azureWorkItemUrl: schema.tasks.azureWorkItemUrl,
+      claimedAt: schema.tasks.claimedAt,
+      leaseExpiresAt: schema.tasks.leaseExpiresAt,
       createdAt: schema.tasks.createdAt,
     })
     .from(schema.tasks)
     .where(and(...where))
     .orderBy(desc(schema.tasks.createdAt))
     .limit(params.limit);
+  const issueRows = tasks.length
+    ? await db
+        .select()
+        .from(schema.taskExternalIssues)
+        .where(inArray(schema.taskExternalIssues.taskId, tasks.map((task) => task.id)))
+    : [];
+  const issueByTask = new Map(issueRows.map((issue) => [issue.taskId, issue]));
 
   return NextResponse.json({
     tasks: tasks.map((task) => ({
       ...task,
-      externalIssue: task.azureWorkItemId
-        ? {
-            provider: "azure-devops",
-            id: task.azureWorkItemId,
-            url: task.azureWorkItemUrl,
-          }
-        : null,
+      externalIssue: externalIssuePayload(task, issueByTask.get(task.id)),
     })),
   });
 }

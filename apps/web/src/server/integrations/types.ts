@@ -7,7 +7,7 @@ export type ExternalIssue = {
   state?: string;
 };
 
-export type IssueProviderId = "azure-devops" | (string & {});
+export type IssueProviderId = "azure-devops" | "github-issues" | "mock" | (string & {});
 
 export type IssueProviderCall<Config, Credentials> = {
   config: Config | null | undefined;

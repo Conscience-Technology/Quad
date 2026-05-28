@@ -75,12 +75,25 @@ const TOOLS = [
   {
     name: "quad_pick_task",
     description:
-      "Claim the next queued task (or the specified one). Transitions queued -> picked.",
+      "Claim the next queued task (or the specified one). Transitions queued -> picked and starts a lease.",
     inputSchema: {
       type: "object",
       properties: {
         project_id: { type: "string" },
         task_id: { type: "string" },
+        lease_ms: { type: "number" },
+      },
+    },
+  },
+  {
+    name: "quad_renew_task",
+    description: "Renew the lease for a picked task so it is not reclaimed as stale.",
+    inputSchema: {
+      type: "object",
+      required: ["task_id"],
+      properties: {
+        task_id: { type: "string" },
+        lease_ms: { type: "number" },
       },
     },
   },
@@ -129,7 +142,7 @@ const TOOLS = [
       required: ["project_id"],
       properties: {
         project_id: { type: "string" },
-        provider: { type: "string", enum: ["azure-devops"] },
+        provider: { type: "string", enum: ["azure-devops", "github-issues", "mock"] },
         issue_id: { type: ["string", "number"] },
       },
     },
@@ -143,7 +156,7 @@ const TOOLS = [
       required: ["task_id", "issue_id"],
       properties: {
         task_id: { type: "string" },
-        provider: { type: "string", enum: ["azure-devops"] },
+        provider: { type: "string", enum: ["azure-devops", "github-issues", "mock"] },
         issue_id: { type: ["string", "number"] },
       },
     },
@@ -225,8 +238,9 @@ const TOOLS = [
 ] as const;
 
 type ListTasksArgs = { project_id?: string; status?: string; query?: string; limit?: number };
-type PickArgs = { project_id?: string; task_id?: string };
+type PickArgs = { project_id?: string; task_id?: string; lease_ms?: number };
 type GetArgs = { task_id: string };
+type RenewArgs = { task_id: string; lease_ms?: number };
 type UpdateArgs = { task_id: string; status: string; pr_url?: string; note?: string };
 type CommentArgs = { task_id: string; body: string; level?: string; video_ms?: number };
 type IntegrationArgs = { project_id?: string; provider?: string; issue_id?: string | number };
@@ -265,6 +279,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
             body: JSON.stringify({
               projectId: (args as PickArgs).project_id,
               taskId: (args as PickArgs).task_id,
+              leaseMs: (args as PickArgs).lease_ms,
             }),
           },
         );
@@ -272,6 +287,14 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         // Immediately fetch the full brief so the agent can act in one round.
         const full = await fetchTask(((r.task as { id: string }).id));
         return briefContent(full);
+      }
+      case "quad_renew_task": {
+        const a = args as RenewArgs;
+        const r = await api<Record<string, unknown>>(`/api/mcp/tasks/${a.task_id}/lease`, {
+          method: "POST",
+          body: JSON.stringify({ leaseMs: a.lease_ms }),
+        });
+        return text("```json\n" + JSON.stringify(r, null, 2) + "\n```");
       }
       case "quad_get_task": {
         const a = args as GetArgs;

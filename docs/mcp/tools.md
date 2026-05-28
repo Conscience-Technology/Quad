@@ -22,6 +22,9 @@ Quad's MCP server is designed for two workflows:
 - `quad_list_tasks`
 - `quad_search_tasks`
 - `quad_pick_task`
+  - Starts a finite lease so stale picked tasks can be reclaimed.
+- `quad_renew_task`
+  - Renews the lease for a picked task.
 - `quad_get_task`
 - `quad_update_task`
 - `quad_post_comment`
@@ -39,9 +42,9 @@ new clients should read `externalIssue`.
 ## External Issues
 
 - `quad_link_issue`
-  - Links a task to an external issue provider. Azure DevOps is currently the
-    built-in provider. The response includes provider, id, URL, title, previous
-    state, target state, and sync result.
+  - Links a task to an external issue provider. Built-in providers include
+    Azure DevOps, GitHub Issues, and the mock provider. The response includes
+    provider, id, URL, title, previous state, target state, and sync result.
 
 ## Report Context
 

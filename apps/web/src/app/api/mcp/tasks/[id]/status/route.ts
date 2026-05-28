@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "~/db";
-import {
-  addAzureWorkItemComment,
-  getAzureDevOpsPatForUser,
-  updateAzureWorkItemState,
-} from "~/lib/azure-devops";
 import { authMcpRequest, projectAllowed } from "~/lib/mcp-auth";
+import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
+import { getIssueProvider } from "~/server/integrations/registry";
+import {
+  credentialForProvider,
+  getProjectIntegrationConfig,
+  getTaskExternalIssue,
+  providerConfigFromProject,
+  upsertTaskExternalIssue,
+} from "~/server/integrations/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,49 +45,93 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     .limit(1);
   let azureDevOps: Record<string, unknown> | undefined;
   let externalIssue: Record<string, unknown> | undefined;
-  try {
-    const azurePat = await getAzureDevOpsPatForUser(
-      r.auth.user.id,
-      project?.azureDevOps?.organization,
-    );
-    const mappedState = await updateAzureWorkItemState(
-      project?.azureDevOps,
-      task.azureWorkItemId,
-      body.status,
-      azurePat,
-    );
-    if (mappedState) {
+  const linkedIssue =
+    (await getTaskExternalIssue(task.id)) ??
+    (task.azureWorkItemId
+      ? {
+          taskId: task.id,
+          provider: AZURE_DEVOPS_PROVIDER_ID,
+          externalId: String(task.azureWorkItemId),
+          externalUrl: task.azureWorkItemUrl,
+          title: null,
+          state: null,
+          syncStatus: "legacy",
+          syncError: null,
+          meta: {},
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      : null);
+  if (linkedIssue && project) {
+    const provider = getIssueProvider(linkedIssue.provider);
+    try {
+      if (!provider) throw new Error(`Unknown provider: ${linkedIssue.provider}`);
+      const integrationConfig = await getProjectIntegrationConfig(project.id, provider.id);
+      const config = providerConfigFromProject(project, provider.id, integrationConfig);
+      const credential = await credentialForProvider(provider, r.auth.user.id, config);
+      const mappedState = await provider.updateIssueForTaskStatus({
+        config,
+        issueId: linkedIssue.externalId,
+        status: body.status,
+        credentials: credential,
+      });
+      if (!mappedState) throw new Error(`${provider.name} status mapping is not configured`);
       const lines = [
-        `Quad task status changed to \`${body.status}\` → Azure DevOps state \`${mappedState}\`.`,
+        `Quad task status changed to \`${body.status}\` → ${provider.name} state \`${mappedState}\`.`,
         body.prUrl ? `PR: ${body.prUrl}` : "",
         body.note ? `Note: ${body.note}` : "",
       ].filter(Boolean);
-      await addAzureWorkItemComment(
-        project?.azureDevOps,
-        task.azureWorkItemId,
-        lines.join("\n\n"),
-        azurePat,
-      );
-      azureDevOps = { workItemId: task.azureWorkItemId, state: mappedState, synced: true };
+      await provider.addIssueComment({
+        config,
+        issueId: linkedIssue.externalId,
+        markdown: lines.join("\n\n"),
+        credentials: credential,
+      });
+      await upsertTaskExternalIssue({
+        taskId: task.id,
+        provider: provider.id,
+        externalId: linkedIssue.externalId,
+        externalUrl: linkedIssue.externalUrl,
+        title: linkedIssue.title,
+        state: mappedState,
+        syncStatus: "synced",
+        syncError: null,
+      });
+      if (provider.id === AZURE_DEVOPS_PROVIDER_ID) {
+        azureDevOps = { workItemId: Number(linkedIssue.externalId), state: mappedState, synced: true };
+      }
       externalIssue = {
-        provider: "azure-devops",
-        id: task.azureWorkItemId,
+        provider: provider.id,
+        id: linkedIssue.externalId,
         state: mappedState,
         synced: true,
       };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await upsertTaskExternalIssue({
+        taskId: task.id,
+        provider: linkedIssue.provider,
+        externalId: linkedIssue.externalId,
+        externalUrl: linkedIssue.externalUrl,
+        title: linkedIssue.title,
+        state: linkedIssue.state,
+        syncStatus: "failed",
+        syncError: message,
+      });
+      if (linkedIssue.provider === AZURE_DEVOPS_PROVIDER_ID) {
+        azureDevOps = {
+          workItemId: Number(linkedIssue.externalId),
+          synced: false,
+          error: message,
+        };
+      }
+      externalIssue = {
+        provider: linkedIssue.provider,
+        id: linkedIssue.externalId,
+        synced: false,
+        error: message,
+      };
     }
-  } catch (err) {
-    azureDevOps = {
-      workItemId: task.azureWorkItemId,
-      synced: false,
-      error: err instanceof Error ? err.message : String(err),
-    };
-    externalIssue = {
-      provider: "azure-devops",
-      id: task.azureWorkItemId,
-      synced: false,
-      error: err instanceof Error ? err.message : String(err),
-    };
   }
   await db.insert(schema.taskEvents).values({
     taskId: task.id,

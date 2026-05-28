@@ -11,12 +11,23 @@ apps/web/src/server/integrations/
   types.ts          # shared provider contract
   registry.ts       # provider discovery
   credentials.ts    # encrypted per-user credentials
-  azure-devops.ts   # first provider implementation
+  store.ts          # generic project config + task issue links
+  azure-devops.ts
+  github-issues.ts
+  mock.ts
 ```
 
-The current production schema still stores Azure DevOps project config in
-`projects.azureDevOps` for backwards compatibility. New providers should use the
-provider contract first, then add project config storage and UI as needed.
+Generic project config is stored in `project_integrations`. Generic task links
+are stored in `task_external_issues`. Azure-specific columns still exist for
+backwards compatibility and are copied into the generic tables by migration.
+
+Built-in providers:
+
+```txt
+azure-devops
+github-issues
+mock
+```
 
 ## Provider Responsibilities
 
@@ -39,8 +50,9 @@ User-specific secrets are stored in `user_integrations` and encrypted with
 
 For SDK report submissions, there may be no logged-in Quad user. Providers can
 support a server-side bot credential through an env var, for example
-`AZURE_DEVOPS_PAT`. Dashboard and MCP actions should prefer the acting user's
-credential, then fall back only where the provider explicitly supports it.
+`AZURE_DEVOPS_PAT` or `GITHUB_TOKEN`. Dashboard and MCP actions should prefer
+the acting user's credential, then fall back only where the provider explicitly
+supports it.
 
 ## State Mapping
 

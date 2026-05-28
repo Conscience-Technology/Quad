@@ -7,6 +7,7 @@ export const TOOLS = [
   "quad_doctor",
   "quad_list_tasks",
   "quad_pick_task",
+  "quad_renew_task",
   "quad_get_task",
   "quad_list_integrations",
   "quad_test_integration",

@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "~/db";
-import { env } from "~/lib/env";
 import { authMcpRequest } from "~/lib/mcp-auth";
+import { env } from "~/lib/env";
+import { listIssueProviders } from "~/server/integrations/registry";
 import {
-  azureDevOpsProvider,
-  AZURE_DEVOPS_PROVIDER_ID,
-} from "~/server/integrations/azure-devops";
-import { getUserIntegrationSecret } from "~/server/integrations/credentials";
+  credentialForProvider,
+  getProjectIntegrationConfig,
+  providerConfigFromProject,
+} from "~/server/integrations/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,35 +40,36 @@ export async function GET(req: Request) {
           total: sql<number>`count(*)::int`,
           queued: sql<number>`count(*) filter (where ${schema.tasks.status} = 'queued')::int`,
           picked: sql<number>`count(*) filter (where ${schema.tasks.status} = 'picked')::int`,
+          stalePicked: sql<number>`count(*) filter (where ${schema.tasks.status} = 'picked' and ${schema.tasks.leaseExpiresAt} is not null and ${schema.tasks.leaseExpiresAt} < now())::int`,
         })
         .from(schema.tasks)
         .where(inArray(schema.tasks.projectId, projectIds))
-    : [{ total: 0, queued: 0, picked: 0 }];
+    : [{ total: 0, queued: 0, picked: 0, stalePicked: 0 }];
 
   const scopedProjects = r.auth.user.isSuperAdmin
     ? "all"
     : projectIds.length;
 
   const integrations = await Promise.all(
-    projects.map(async (project) => {
-      const userPat = await getUserIntegrationSecret(
-        AZURE_DEVOPS_PROVIDER_ID,
-        r.auth.user.id,
-        project.azureDevOps?.organization,
-      );
-      const serverPat = env().AZURE_DEVOPS_PAT;
-      return {
-        project: { id: project.id, slug: project.slug, name: project.name },
-        provider: AZURE_DEVOPS_PROVIDER_ID,
-        enabled: project.azureDevOps?.enabled === true,
-        configured: azureDevOpsProvider.isConfigured(project.azureDevOps, userPat || serverPat),
-        credentialSource: userPat ? "user" : serverPat ? "server" : "missing",
-        nextAction:
-          project.azureDevOps?.enabled && !(userPat || serverPat)
-            ? "Save a personal PAT in Account -> MCP keys or set AZURE_DEVOPS_PAT."
-            : null,
-      };
-    }),
+    projects.flatMap((project) =>
+      listIssueProviders().map(async (provider) => {
+        const integrationConfig = await getProjectIntegrationConfig(project.id, provider.id);
+        const config = providerConfigFromProject(project, provider.id, integrationConfig);
+        const credentials = await credentialForProvider(provider, r.auth.user.id, config);
+        const enabled = (config as { enabled?: boolean } | null | undefined)?.enabled === true;
+        return {
+          project: { id: project.id, slug: project.slug, name: project.name },
+          provider: provider.id,
+          enabled,
+          configured: provider.isConfigured(config, credentials),
+          credentialSource: credentials ? "configured" : "missing",
+          nextAction:
+            enabled && !credentials
+              ? `Save a personal credential in Account -> MCP keys or set ${provider.envCredentialName ?? "the provider env token"}.`
+              : null,
+        };
+      }),
+    ),
   );
 
   const checks = [
@@ -82,14 +84,14 @@ export async function GET(req: Request) {
     {
       name: "queued_tasks",
       ok: (taskCounts?.queued ?? 0) > 0,
-      message: `${taskCounts?.queued ?? 0} queued task(s), ${taskCounts?.picked ?? 0} picked task(s)`,
+      message: `${taskCounts?.queued ?? 0} queued task(s), ${taskCounts?.picked ?? 0} picked task(s), ${taskCounts?.stalePicked ?? 0} stale lease(s)`,
     },
     {
-      name: "azure_devops_credentials",
+      name: "issue_integrations",
       ok: integrations.every((i) => !i.enabled || i.configured),
       message: integrations.some((i) => i.enabled)
-        ? "Enabled Azure DevOps integrations checked"
-        : "No enabled Azure DevOps integration",
+        ? "Enabled issue integrations checked"
+        : "No enabled issue integration",
     },
   ];
 
@@ -115,7 +117,7 @@ export async function GET(req: Request) {
       slug: project.slug,
       name: project.name,
     })),
-    taskCounts: taskCounts ?? { total: 0, queued: 0, picked: 0 },
+    taskCounts: taskCounts ?? { total: 0, queued: 0, picked: 0, stalePicked: 0 },
     integrations,
     durationMs: Date.now() - startedAt,
   });

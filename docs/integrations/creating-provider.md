@@ -65,7 +65,21 @@ Use `user_integrations` for encrypted per-user credentials. Use
 `getUserIntegrationSecret(providerId, userId, organization)` when a provider has
 an organization/workspace boundary.
 
-## 4. Add Project Settings
+## 4. Store Project Config
+
+Use `project_integrations` for provider-specific project config:
+
+```txt
+project_id
+provider
+enabled
+config
+```
+
+`config` should contain provider keys such as organization, workspace, repo, or
+project names, plus state mapping. Keep it JSON-serializable.
+
+## 5. Add Project Settings
 
 Project settings should collect:
 
@@ -77,7 +91,8 @@ Project settings should collect:
 Keep external state values as strings. Providers should not require Quad to know
 their workflow enum.
 
-## 5. Add Tests or a Mock
+## 6. Add Tests or a Mock
 
 Provider code should be testable without calling the remote API. Keep URL
 builders, state mapping, and config checks as pure functions where possible.
+Add contract coverage to `apps/web/scripts/check-provider-contracts.ts`.

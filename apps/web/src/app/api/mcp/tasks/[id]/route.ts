@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "~/db";
 import { authMcpRequest, projectAllowed } from "~/lib/mcp-auth";
 import { getBytes, presignDownload } from "~/lib/storage";
+import { externalIssuePayload, getTaskExternalIssue } from "~/server/integrations/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,6 +71,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const timelineText = timeline
     ? Buffer.from(await getBytes(timeline.storageKey)).toString("utf8")
     : undefined;
+  const externalIssue = await getTaskExternalIssue(task.id);
 
   return NextResponse.json({
     task: {
@@ -82,13 +84,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       prUrl: task.prUrl,
       azureWorkItemId: task.azureWorkItemId,
       azureWorkItemUrl: task.azureWorkItemUrl,
-      externalIssue: task.azureWorkItemId
-        ? {
-            provider: "azure-devops",
-            id: task.azureWorkItemId,
-            url: task.azureWorkItemUrl,
-          }
-        : null,
+      claimedAt: task.claimedAt,
+      leaseExpiresAt: task.leaseExpiresAt,
+      externalIssue: externalIssuePayload(task, externalIssue),
     },
     markdown,
     frames: inlineFrames,

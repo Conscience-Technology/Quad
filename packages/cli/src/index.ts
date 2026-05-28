@@ -59,13 +59,17 @@ program
   .argument("[task-id]")
   .option("--next", "pick the next queued task")
   .option("-p, --project <id>", "project id when using --next")
-  .action(async (taskId: string | undefined, o: { next?: boolean; project?: string }) => {
+  .option("--lease-minutes <minutes>", "lease duration when using --next", "30")
+  .action(async (taskId: string | undefined, o: { next?: boolean; project?: string; leaseMinutes?: string }) => {
     const cfg = await loadConfig();
     let id = taskId;
     if (!id && o.next) {
       const r = await api<{ task: { id: string } | null }>(cfg, "/api/mcp/tasks/pick", {
         method: "POST",
-        body: JSON.stringify({ projectId: o.project }),
+        body: JSON.stringify({
+          projectId: o.project,
+          leaseMs: Number.parseInt(o.leaseMinutes ?? "30", 10) * 60 * 1000,
+        }),
       });
       if (!r.task) { console.error("no queued task"); process.exit(1); }
       id = r.task.id;
@@ -108,6 +112,19 @@ program
       ),
     );
     console.log(`→ ${relative(process.cwd(), outDir)}/TASK_BRIEF.md`);
+  });
+
+program
+  .command("lease <task-id>")
+  .description("Renew a picked task lease")
+  .option("--minutes <minutes>", "lease duration", "30")
+  .action(async (taskId: string, o: { minutes: string }) => {
+    const cfg = await loadConfig();
+    const result = await api<Record<string, unknown>>(cfg, `/api/mcp/tasks/${taskId}/lease`, {
+      method: "POST",
+      body: JSON.stringify({ leaseMs: Number.parseInt(o.minutes, 10) * 60 * 1000 }),
+    });
+    console.log(JSON.stringify(result, null, 2));
   });
 
 program

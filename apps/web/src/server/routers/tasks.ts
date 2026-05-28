@@ -17,6 +17,8 @@ import {
   updateAzureWorkItemState,
 } from "~/lib/azure-devops";
 import { getBytes, presignDownload } from "~/lib/storage";
+import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
+import { getAzureDevOpsConfig, upsertTaskExternalIssue } from "~/server/integrations/store";
 import { projectMemberProcedure } from "../auth-procedures";
 import { router } from "../trpc";
 
@@ -94,20 +96,21 @@ export const tasksRouter = router({
       if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
       const azurePat = await getAzureDevOpsPatForUser(
         ctx.user.id,
-        project.azureDevOps?.organization,
+        (await getAzureDevOpsConfig(project))?.organization,
       );
-      if (!isAzureDevOpsConfigured(project.azureDevOps, azurePat)) {
+      const azureDevOpsConfig = await getAzureDevOpsConfig(project);
+      if (!isAzureDevOpsConfigured(azureDevOpsConfig, azurePat)) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "Azure DevOps is not configured for this project, or your Azure DevOps PAT is missing.",
         });
       }
 
-      const workItem = await getAzureWorkItem(project.azureDevOps, input.workItemId, azurePat);
-      const url = workItem?.url ?? azureWorkItemUrl(project.azureDevOps!, input.workItemId);
-      const reportState = project.azureDevOps?.reportState?.trim() || "Reopened";
+      const workItem = await getAzureWorkItem(azureDevOpsConfig, input.workItemId, azurePat);
+      const url = workItem?.url ?? azureWorkItemUrl(azureDevOpsConfig!, input.workItemId);
+      const reportState = azureDevOpsConfig?.reportState?.trim() || "Reopened";
       const syncedState = await setAzureWorkItemState(
-        project.azureDevOps,
+        azureDevOpsConfig,
         input.workItemId,
         reportState,
         azurePat,
@@ -121,6 +124,16 @@ export const tasksRouter = router({
           updatedAt: new Date(),
         })
         .where(eq(schema.tasks.id, task.id));
+      await upsertTaskExternalIssue({
+        taskId: task.id,
+        provider: AZURE_DEVOPS_PROVIDER_ID,
+        externalId: input.workItemId,
+        externalUrl: url,
+        title: workItem?.title,
+        state: syncedState,
+        syncStatus: "synced",
+        meta: { previousState: workItem?.state },
+      });
       await ctx.db.insert(schema.taskEvents).values({
         taskId: task.id,
         kind: "status_changed",
@@ -137,7 +150,7 @@ export const tasksRouter = router({
       });
 
       await addAzureWorkItemComment(
-        project.azureDevOps,
+        azureDevOpsConfig,
         input.workItemId,
         `Linked to Quad task ${task.id}: ${task.title}`,
         azurePat,
@@ -176,31 +189,52 @@ export const tasksRouter = router({
         .limit(1);
       let azureDevOps: Record<string, unknown> | undefined;
       try {
+        const azureDevOpsConfig = project ? await getAzureDevOpsConfig(project) : null;
         const azurePat = await getAzureDevOpsPatForUser(
           ctx.user.id,
-          project?.azureDevOps?.organization,
+          azureDevOpsConfig?.organization,
         );
         const mappedState = await updateAzureWorkItemState(
-          project?.azureDevOps,
+          azureDevOpsConfig,
           task.azureWorkItemId,
           input.status,
           azurePat,
         );
         if (mappedState) {
+          if (!task.azureWorkItemId) throw new Error("Azure Work Item is not linked");
           const lines = [
             `Quad task status changed to \`${input.status}\` → Azure DevOps state \`${mappedState}\`.`,
             input.prUrl ? `PR: ${input.prUrl}` : "",
             input.note ? `Note: ${input.note}` : "",
           ].filter(Boolean);
           await addAzureWorkItemComment(
-            project?.azureDevOps,
+            azureDevOpsConfig,
             task.azureWorkItemId,
             lines.join("\n\n"),
             azurePat,
           );
+          await upsertTaskExternalIssue({
+            taskId: task.id,
+            provider: AZURE_DEVOPS_PROVIDER_ID,
+            externalId: task.azureWorkItemId,
+            externalUrl: task.azureWorkItemUrl,
+            state: mappedState,
+            syncStatus: "synced",
+            syncError: null,
+          });
           azureDevOps = { workItemId: task.azureWorkItemId, state: mappedState, synced: true };
         }
       } catch (err) {
+        if (task.azureWorkItemId) {
+          await upsertTaskExternalIssue({
+            taskId: task.id,
+            provider: AZURE_DEVOPS_PROVIDER_ID,
+            externalId: task.azureWorkItemId,
+            externalUrl: task.azureWorkItemUrl,
+            syncStatus: "failed",
+            syncError: err instanceof Error ? err.message : String(err),
+          });
+        }
         azureDevOps = {
           workItemId: task.azureWorkItemId,
           synced: false,

@@ -33,6 +33,7 @@ const Schema = z.object({
 
   OPENAI_API_KEY: z.string().optional(),
   AZURE_DEVOPS_PAT: z.string().optional(),
+  GITHUB_TOKEN: z.string().optional(),
   WHISPER_MONTHLY_MINUTES_CAP: z
     .string()
     .optional()

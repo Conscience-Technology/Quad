@@ -9,6 +9,8 @@ import { schema } from "~/db";
 import { addAzureWorkItemComment, getAzureDevOpsPatForUser } from "~/lib/azure-devops";
 import { buildTaskBrief } from "~/lib/brief";
 import { presignDownload } from "~/lib/storage";
+import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
+import { getAzureDevOpsConfig, upsertTaskExternalIssue } from "~/server/integrations/store";
 import { projectMemberProcedure } from "../auth-procedures";
 import { router } from "../trpc";
 
@@ -240,16 +242,25 @@ export const bugsRouter = router({
           .where(eq(schema.projects.id, input.projectId))
           .limit(1);
         try {
+          const azureDevOpsConfig = project ? await getAzureDevOpsConfig(project) : null;
           const azurePat = await getAzureDevOpsPatForUser(
             ctx.user.id,
-            project?.azureDevOps?.organization,
+            azureDevOpsConfig?.organization,
           );
           await addAzureWorkItemComment(
-            project?.azureDevOps,
+            azureDevOpsConfig,
             task.azureWorkItemId,
             `Quad comment from ${ctx.user.email}:\n\n${input.body}`,
             azurePat,
           );
+          await upsertTaskExternalIssue({
+            taskId: task.id,
+            provider: AZURE_DEVOPS_PROVIDER_ID,
+            externalId: task.azureWorkItemId,
+            externalUrl: task.azureWorkItemUrl,
+            syncStatus: "synced",
+            syncError: null,
+          });
           await ctx.db.insert(schema.taskEvents).values({
             taskId: task.id,
             kind: "comment_added",
@@ -257,6 +268,14 @@ export const bugsRouter = router({
             payload: { commentId: comment?.id, azureDevOps: { synced: true } },
           });
         } catch (err) {
+          await upsertTaskExternalIssue({
+            taskId: task.id,
+            provider: AZURE_DEVOPS_PROVIDER_ID,
+            externalId: task.azureWorkItemId,
+            externalUrl: task.azureWorkItemUrl,
+            syncStatus: "failed",
+            syncError: err instanceof Error ? err.message : String(err),
+          });
           await ctx.db.insert(schema.taskEvents).values({
             taskId: task.id,
             kind: "comment_added",

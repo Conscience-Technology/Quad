@@ -1,7 +1,13 @@
 import { azureDevOpsProvider } from "./azure-devops";
+import { githubIssuesProvider } from "./github-issues";
+import { mockIssueProvider } from "./mock";
 import type { ExternalIssueProvider, IssueProviderId } from "./types";
 
-const issueProviders = [azureDevOpsProvider] as const satisfies readonly ExternalIssueProvider[];
+const issueProviders = [
+  azureDevOpsProvider,
+  githubIssuesProvider,
+  mockIssueProvider,
+] as const satisfies readonly ExternalIssueProvider[];
 
 export function listIssueProviders(): readonly ExternalIssueProvider[] {
   return issueProviders;

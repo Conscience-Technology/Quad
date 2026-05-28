@@ -12,6 +12,7 @@ import {
   isAzureDevOpsConfigured,
   setAzureWorkItemState,
 } from "~/lib/azure-devops";
+import { getAzureDevOpsConfig } from "~/server/integrations/store";
 
 type ConsoleEntry = NonNullable<BugMeta["consoleLogs"]>[number];
 type NetworkEntry = NonNullable<BugMeta["networkErrors"]>[number];
@@ -282,7 +283,7 @@ async function syncAzureDevOpsFromReport(
       .where(eq(schema.projects.id, input.projectId))
       .limit(1);
     const project = projectRows[0];
-    const config = project?.azureDevOps;
+    const config = project ? await getAzureDevOpsConfig(project) : null;
 
     if (!isAzureDevOpsConfigured(config)) {
       await markBugAzureDevOpsSync(bug, {

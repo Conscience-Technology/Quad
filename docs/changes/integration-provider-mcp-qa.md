@@ -19,6 +19,7 @@ users can debug configuration problems without maintainer help.
 df12c4d add integration provider structure
 449451a improve integration setup ux
 cef33d9 add mcp qa and integration tools
+34148dd document integration provider mcp qa work
 ```
 
 ## Provider Architecture
@@ -31,6 +32,9 @@ apps/web/src/server/integrations/
   registry.ts
   credentials.ts
   azure-devops.ts
+  github-issues.ts
+  mock.ts
+  store.ts
 ```
 
 Key changes:
@@ -43,11 +47,15 @@ Key changes:
   model.
 - Added shared encrypted credential lookup through `credentials.ts`.
 - Added `registry.ts` as the provider discovery point.
+- Added `store.ts` to keep provider config and external issue links out of
+  Azure-specific project/task columns.
 
-Current built-in provider:
+Current built-in providers:
 
 ```txt
 azure-devops
+github-issues
+mock
 ```
 
 The provider contract currently covers:
@@ -100,6 +108,7 @@ GET  /api/mcp/doctor
 GET  /api/mcp/integrations
 POST /api/mcp/integrations
 POST /api/mcp/tasks/:id/issue
+POST /api/mcp/tasks/:id/lease
 ```
 
 Changed endpoints:
@@ -148,6 +157,7 @@ quad_doctor
 quad_list_integrations
 quad_test_integration
 quad_link_issue
+quad_renew_task
 ```
 
 Existing tool improvements:
@@ -157,6 +167,8 @@ Existing tool improvements:
 - `quad_pick_task` now correctly maps MCP `project_id` / `task_id` arguments to
   the REST API's `projectId` / `taskId` body.
 - Task reads and task lists include `externalIssue`.
+- `quad_pick_task` now starts a finite lease.
+- `quad_renew_task` renews a picked task lease.
 
 ## CLI Additions
 
@@ -167,6 +179,7 @@ quad doctor
 quad integration list
 quad integration test --project <project-id> --issue <issue-id>
 quad issue link <task-id> <issue-id>
+quad lease <task-id> --minutes 30
 ```
 
 Improved commands:
@@ -213,6 +226,7 @@ Validated locally:
 
 ```bash
 pnpm -r typecheck
+pnpm test:providers
 pnpm --filter @quad/mcp build
 pnpm --filter @quad/cli build
 pnpm --filter @quad/sdk build
@@ -225,17 +239,32 @@ The Next.js build confirms the new MCP API routes are included:
 /api/mcp/doctor
 /api/mcp/integrations
 /api/mcp/tasks/[id]/issue
+/api/mcp/tasks/[id]/lease
 ```
 
-## Remaining Follow-Ups
+## Completed Follow-Ups
 
-Recommended next steps:
+The follow-ups below were implemented after the initial provider/MCP work:
 
-- Add provider conformance tests.
-- Add a mock provider for local development and CI.
-- Add lease/expiry semantics for picked tasks.
-- Migrate project integration config from `projects.azureDevOps` into a generic
+- Added provider conformance tests through `pnpm test:providers`.
+- Added a mock provider for local development and CI.
+- Added lease/expiry semantics for picked tasks.
+- Migrated project integration config from `projects.azureDevOps` into a generic
   `project_integrations` table.
-- Add `externalIssue` to the database model instead of relying on Azure-specific
-  task columns.
-- Add GitHub Issues or Jira as the second provider to prove the abstraction.
+- Added `task_external_issues` as the external issue database model while
+  keeping Azure-specific task columns as compatibility fields.
+- Added GitHub Issues as the second real provider to prove the abstraction.
+
+## Compatibility Notes
+
+`projects.azureDevOps`, `tasks.azureWorkItemId`, and `tasks.azureWorkItemUrl`
+still exist for old deployments and dashboard paths. New MCP/API paths prefer:
+
+```txt
+project_integrations
+task_external_issues
+```
+
+The `0006_generic_integrations_and_leases` migration copies existing Azure
+config and task links into the generic tables so old data remains visible after
+deploy.

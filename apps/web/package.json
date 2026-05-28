@@ -12,6 +12,7 @@
     "start": "next start -p ${PORT:-3010}",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:providers": "tsx scripts/check-provider-contracts.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:studio": "drizzle-kit studio"
