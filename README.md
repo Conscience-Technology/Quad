@@ -266,6 +266,8 @@ External tracker sync is provider-based. Start with
 [docs/integrations/overview.md](./docs/integrations/overview.md) and
 [docs/integrations/creating-provider.md](./docs/integrations/creating-provider.md)
 when adding Jira, GitHub Issues, Linear, or another workflow system.
+The current provider/MCP QA work is summarized in
+[docs/changes/integration-provider-mcp-qa.md](./docs/changes/integration-provider-mcp-qa.md).
 
 ## Security
 
