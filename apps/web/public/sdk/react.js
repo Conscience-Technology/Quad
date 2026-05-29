@@ -1978,6 +1978,11 @@ var QuadApi = class {
       }
     });
     const onKey = (e) => {
+      const shortcut = matchesKey(shortcuts.bugMode, e) || matchesKey(shortcuts.overlay, e) || matchesKey(shortcuts.capture, e) || matchesKey(shortcuts.voice, e);
+      if (shortcut && e.repeat) {
+        e.preventDefault();
+        return;
+      }
       if (matchesKey(shortcuts.bugMode, e)) {
         e.preventDefault();
         this.toggleBugMode();
