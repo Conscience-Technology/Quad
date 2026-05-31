@@ -114,7 +114,8 @@ function matchesKey(combo, e) {
   if (combo.ctrl !== e.ctrlKey) return false;
   if (combo.meta !== e.metaKey) return false;
   const k = e.key.toLowerCase();
-  return k === combo.key;
+  if (k === combo.key) return true;
+  return matchesPhysicalKey(combo.key, e.code);
 }
 function matchesMouse(combo, e, kind = "click") {
   if (combo.key !== kind) return false;
@@ -126,6 +127,11 @@ function matchesMouse(combo, e, kind = "click") {
 }
 function isComboKey(c) {
   return c.key !== "" && c.key !== "click" && c.key !== "dblclick";
+}
+function matchesPhysicalKey(key, code) {
+  if (/^[a-z]$/.test(key)) return code === `Key${key.toUpperCase()}`;
+  if (/^[0-9]$/.test(key)) return code === `Digit${key}`;
+  return false;
 }
 
 // src/bug-mode.ts

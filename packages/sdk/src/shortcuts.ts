@@ -38,7 +38,8 @@ export function matchesKey(combo: Combo, e: KeyboardEvent): boolean {
   if (combo.ctrl !== e.ctrlKey) return false;
   if (combo.meta !== e.metaKey) return false;
   const k = e.key.toLowerCase();
-  return k === combo.key;
+  if (k === combo.key) return true;
+  return matchesPhysicalKey(combo.key, e.code);
 }
 
 export function matchesMouse(combo: Combo, e: MouseEvent, kind: "click" | "dblclick" = "click"): boolean {
@@ -52,4 +53,10 @@ export function matchesMouse(combo: Combo, e: MouseEvent, kind: "click" | "dblcl
 
 function isComboKey(c: Combo): boolean {
   return c.key !== "" && c.key !== "click" && c.key !== "dblclick";
+}
+
+function matchesPhysicalKey(key: string, code: string): boolean {
+  if (/^[a-z]$/.test(key)) return code === `Key${key.toUpperCase()}`;
+  if (/^[0-9]$/.test(key)) return code === `Digit${key}`;
+  return false;
 }
