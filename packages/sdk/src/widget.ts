@@ -7,7 +7,11 @@ import { WIDGET_CSS } from "./styles";
 
 export type WidgetCallbacks = {
   onToggleOverlay: () => void;
-  onSubmitOverlay: (body: string, files: File[], options?: { azureWorkItemId?: number }) => Promise<void>;
+  onSubmitOverlay: (
+    body: string,
+    files: File[],
+    options?: { azureWorkItemId?: number; relatedWorkItemIds?: number[] },
+  ) => Promise<void>;
 };
 
 export type WidgetOptions = {
@@ -119,14 +123,15 @@ export class Widget {
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
+      <p><strong>Send evidence to the work item.</strong> Use this when the discussion should stay in Azure DevOps, but the team needs the exact screen, files, console, network, and environment context.</p>
       <p>To point at a specific element, turn on <strong>Bug Mode</strong> and click it.</p>
-      <p>This panel is for freeform reports. Drop videos/screenshots below or paste (⌘/Ctrl+V).</p>
       <div class="drop" data-over="false">
         Drop a file here or click to select<br/>
         <small>Record with ⌘⇧5 on macOS, Win+G on Windows, then drop the file here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
       ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Issue / Work item # (optional)" />' : ""}
+      ${this.options.azureDevOpsEnabled ? '<input class="q-related-work-items" type="text" inputmode="numeric" placeholder="Related work items, comma-separated (optional)" />' : ""}
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status"></p>
@@ -239,6 +244,7 @@ export class Widget {
     const drop = body.querySelector<HTMLDivElement>(".drop")!;
     const fileInput = body.querySelector<HTMLInputElement>("input[type=file]")!;
     const workItemInput = body.querySelector<HTMLInputElement>("input.q-work-item");
+    const relatedWorkItemsInput = body.querySelector<HTMLInputElement>("input.q-related-work-items");
     const ta = body.querySelector<HTMLTextAreaElement>("textarea")!;
     const btn = body.querySelector<HTMLButtonElement>(".primary")!;
     const status = body.querySelector<HTMLParagraphElement>(".q-status")!;
@@ -304,13 +310,20 @@ export class Widget {
         status.className = "q-status error";
         return;
       }
+      const relatedWorkItemIds = parseWorkItemList(relatedWorkItemsInput?.value ?? "");
+      if (relatedWorkItemsInput?.value.trim() && relatedWorkItemIds.length === 0) {
+        status.textContent = "Related work items must be positive numbers";
+        status.className = "q-status error";
+        return;
+      }
       btn.disabled = true;
       status.className = "q-status";
       status.textContent = "Sending…";
       try {
-        await this.cb.onSubmitOverlay(body, staged, { azureWorkItemId });
+        await this.cb.onSubmitOverlay(body, staged, { azureWorkItemId, relatedWorkItemIds });
         ta.value = "";
         if (workItemInput) workItemInput.value = "";
+        if (relatedWorkItemsInput) relatedWorkItemsInput.value = "";
         staged = [];
         renderStaged();
         status.textContent = "Sent";
@@ -432,6 +445,18 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function parseWorkItemList(raw: string): number[] {
+  return Array.from(
+    new Set(
+      raw
+        .split(/[,\s]+/)
+        .map((part) => Number.parseInt(part.trim().replace(/^#/, ""), 10))
+        .filter((n) => Number.isFinite(n) && n > 0)
+        .map((n) => Math.trunc(n)),
+    ),
+  ).slice(0, 12);
 }
 
 function formatAgo(ts: number): string {

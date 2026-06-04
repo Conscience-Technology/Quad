@@ -6,11 +6,11 @@
 
 <img src=".github/assets/hero.svg" alt="Reporter pins an element, captures a session, maintainer confirms, Claude Code opens a PR" width="100%" />
 
-**The bug reporter that ships its reporter's context straight to your AI coding agent.**
+**The evidence layer that ships reporter context into your issue tracker and AI coding agent.**
 
 Reporter video, audio, DOM and network — on one ms-aligned timeline — flow
-through MCP / CLI into Claude Code. Zero context loss between *what the
-user saw* and *what the agent fixes*.
+into Azure DevOps comments, MCP / CLI, and Claude Code. Zero context loss
+between *what the user saw*, *what the team discusses*, and *what the agent fixes*.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-8b7cf6.svg)](./LICENSE)
 [![Self-hosted](https://img.shields.io/badge/self--hosted-first-67e8f9.svg)](#-run-anywhere-60-seconds)
@@ -18,7 +18,7 @@ user saw* and *what the agent fixes*.
 [![CI](https://github.com/Conscience-Technology/Quad/actions/workflows/ci.yml/badge.svg)](https://github.com/Conscience-Technology/Quad/actions/workflows/ci.yml)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-fb7185.svg)](./CONTRIBUTING.md)
 
-[Quickstart](#-run-anywhere-60-seconds) · [How it works](#-how-it-works) · [Deploy](#-deploy) · [Contributing](./CONTRIBUTING.md)
+[Quickstart](#-run-anywhere-60-seconds) · [How it works](#-how-it-works) · [Evidence Layer](./docs/evidence-layer.md) · [Deploy](#-deploy) · [Contributing](./CONTRIBUTING.md)
 
 </div>
 
@@ -78,8 +78,9 @@ super admin. Create your first project and copy the SDK key.
 │   • Source-map resolution                                            │
 │   • timeline.json merge                                              │
 │                                                                       │
-│  Maintainer reviews on the board (j/k/1-4/Enter) → Confirm        │
-│  → Task brief is frozen: markdown + frames + timeline + source       │
+│  Optional Azure DevOps sync → comment + state update on Work Item    │
+│  Maintainer can still review on the board → Confirm → Task brief     │
+│  is frozen: markdown + frames + timeline + source                    │
 └──────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼

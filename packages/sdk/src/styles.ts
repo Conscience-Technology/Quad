@@ -156,6 +156,7 @@ export const WIDGET_CSS = /* css */ `
   color: var(--star-300);
 }
 .q-panel input.q-work-item,
+.q-panel input.q-related-work-items,
 .q-panel textarea {
   width: 100%;
   background: var(--surface);
@@ -170,11 +171,13 @@ export const WIDGET_CSS = /* css */ `
   min-height: 90px;
   outline: none;
 }
-.q-panel input.q-work-item {
+.q-panel input.q-work-item,
+.q-panel input.q-related-work-items {
   margin: 0 0 10px;
   min-height: 40px;
 }
 .q-panel input.q-work-item:focus,
+.q-panel input.q-related-work-items:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
 .q-panel .primary {
   margin-top: 14px;

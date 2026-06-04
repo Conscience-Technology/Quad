@@ -339,7 +339,7 @@ class QuadApi {
   private async submitOverlay(
     body: string,
     files: File[],
-    options: { azureWorkItemId?: number } = {},
+    options: { azureWorkItemId?: number; relatedWorkItemIds?: number[] } = {},
   ): Promise<void> {
     if (!this.api) throw new Error("Quad: not initialized");
     const attachments: Array<{
@@ -363,6 +363,12 @@ class QuadApi {
       meta.customContext = {
         ...meta.customContext,
         azureWorkItemId: options.azureWorkItemId,
+      };
+    }
+    if (options.relatedWorkItemIds?.length) {
+      meta.customContext = {
+        ...meta.customContext,
+        relatedWorkItemIds: options.relatedWorkItemIds,
       };
     }
     await this.api.createSession({

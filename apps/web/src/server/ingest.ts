@@ -345,16 +345,18 @@ function renderAzureReportComment(
   bug: typeof schema.bugReports.$inferSelect,
 ): string {
   const pageUrl = readString(input.meta.customContext?.pageUrl);
+  const relatedWorkItemIds = readRelatedWorkItemIds(input.meta.customContext);
   const reporter = input.reporter?.email ?? input.reporter?.name ?? input.reporter?.id ?? input.reporterAnonKey ?? "anonymous";
   const attachments = input.attachments?.length ?? 0;
   const body = input.body.trim() || "(no description)";
   return [
-    `Quad bug report submitted`,
+    `Quad evidence submitted`,
     ``,
     `**Title:** ${bug.title}`,
     `**Reporter:** ${reporter}`,
     pageUrl ? `**Page:** ${pageUrl}` : "",
     `**Attachments:** ${attachments}`,
+    relatedWorkItemIds.length ? `**Related Work Items:** ${relatedWorkItemIds.map((id) => `#${id}`).join(", ")}` : "",
     ``,
     `**Description**`,
     body.slice(0, 2000),
@@ -376,6 +378,19 @@ function readAzureWorkItemId(meta: BugMeta): number | null {
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readRelatedWorkItemIds(customContext: Record<string, unknown> | undefined): number[] {
+  const value = customContext?.relatedWorkItemIds;
+  const raw = Array.isArray(value) ? value : typeof value === "string" ? value.split(/[,\s]+/) : [];
+  return Array.from(
+    new Set(
+      raw
+        .map((item) => (typeof item === "number" ? item : Number.parseInt(String(item).replace(/^#/, ""), 10)))
+        .filter((n) => Number.isFinite(n) && n > 0)
+        .map((n) => Math.trunc(n)),
+    ),
+  ).slice(0, 12);
 }
 
 function sanitizeMeta(m: IngestMeta) {

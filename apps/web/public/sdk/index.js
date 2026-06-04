@@ -1204,6 +1204,7 @@ var WIDGET_CSS = (
   color: var(--star-300);
 }
 .q-panel input.q-work-item,
+.q-panel input.q-related-work-items,
 .q-panel textarea {
   width: 100%;
   background: var(--surface);
@@ -1218,11 +1219,13 @@ var WIDGET_CSS = (
   min-height: 90px;
   outline: none;
 }
-.q-panel input.q-work-item {
+.q-panel input.q-work-item,
+.q-panel input.q-related-work-items {
   margin: 0 0 10px;
   min-height: 40px;
 }
 .q-panel input.q-work-item:focus,
+.q-panel input.q-related-work-items:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
 .q-panel .primary {
   margin-top: 14px;
@@ -1674,14 +1677,15 @@ var Widget = class {
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
+      <p><strong>Send evidence to the work item.</strong> Use this when the discussion should stay in Azure DevOps, but the team needs the exact screen, files, console, network, and environment context.</p>
       <p>To point at a specific element, turn on <strong>Bug Mode</strong> and click it.</p>
-      <p>This panel is for freeform reports. Drop videos/screenshots below or paste (\u2318/Ctrl+V).</p>
       <div class="drop" data-over="false">
         Drop a file here or click to select<br/>
         <small>Record with \u2318\u21E75 on macOS, Win+G on Windows, then drop the file here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
       ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Issue / Work item # (optional)" />' : ""}
+      ${this.options.azureDevOpsEnabled ? '<input class="q-related-work-items" type="text" inputmode="numeric" placeholder="Related work items, comma-separated (optional)" />' : ""}
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
       <p class="q-status"></p>
@@ -1773,6 +1777,7 @@ var Widget = class {
     const drop = body.querySelector(".drop");
     const fileInput = body.querySelector("input[type=file]");
     const workItemInput = body.querySelector("input.q-work-item");
+    const relatedWorkItemsInput = body.querySelector("input.q-related-work-items");
     const ta = body.querySelector("textarea");
     const btn = body.querySelector(".primary");
     const status = body.querySelector(".q-status");
@@ -1832,13 +1837,20 @@ var Widget = class {
         status.className = "q-status error";
         return;
       }
+      const relatedWorkItemIds = parseWorkItemList(relatedWorkItemsInput?.value ?? "");
+      if (relatedWorkItemsInput?.value.trim() && relatedWorkItemIds.length === 0) {
+        status.textContent = "Related work items must be positive numbers";
+        status.className = "q-status error";
+        return;
+      }
       btn.disabled = true;
       status.className = "q-status";
       status.textContent = "Sending\u2026";
       try {
-        await this.cb.onSubmitOverlay(body2, staged, { azureWorkItemId });
+        await this.cb.onSubmitOverlay(body2, staged, { azureWorkItemId, relatedWorkItemIds });
         ta.value = "";
         if (workItemInput) workItemInput.value = "";
+        if (relatedWorkItemsInput) relatedWorkItemsInput.value = "";
         staged = [];
         renderStaged();
         status.textContent = "Sent";
@@ -1944,6 +1956,13 @@ var Widget = class {
 };
 function escapeHtml2(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function parseWorkItemList(raw) {
+  return Array.from(
+    new Set(
+      raw.split(/[,\s]+/).map((part) => Number.parseInt(part.trim().replace(/^#/, ""), 10)).filter((n) => Number.isFinite(n) && n > 0).map((n) => Math.trunc(n))
+    )
+  ).slice(0, 12);
 }
 function formatAgo2(ts) {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1e3));
@@ -2233,6 +2252,12 @@ var QuadApi = class {
       meta.customContext = {
         ...meta.customContext,
         azureWorkItemId: options.azureWorkItemId
+      };
+    }
+    if (options.relatedWorkItemIds?.length) {
+      meta.customContext = {
+        ...meta.customContext,
+        relatedWorkItemIds: options.relatedWorkItemIds
       };
     }
     await this.api.createSession({
