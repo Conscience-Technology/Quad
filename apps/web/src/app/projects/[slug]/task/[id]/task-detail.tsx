@@ -99,7 +99,7 @@ export function TaskDetail({
               raw ↗
             </a>
           </div>
-          <Code className="block break-all text-[10px]">{task.briefStorageKey}</Code>
+          <Code className="block break-all">{task.briefStorageKey}</Code>
           {markdown ? (
             <pre className="text-xs font-mono whitespace-pre-wrap text-[var(--color-star-300)] max-h-[600px] overflow-y-auto bg-[var(--color-space-void)] p-4 rounded border border-[var(--color-space-border)]">
               {markdown}

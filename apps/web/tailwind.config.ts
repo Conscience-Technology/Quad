@@ -25,7 +25,7 @@ const config: Config = {
         "nebula-green": "var(--color-nebula-green)",
       },
       fontSize: {
-        "2xs": ["10px", "1.4"],
+        "2xs": ["11px", "1.45"],
       },
       fontFamily: {
         sans: [

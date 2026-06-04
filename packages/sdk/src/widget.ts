@@ -129,7 +129,7 @@ export class Widget {
       ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Issue / Work item # (optional)" />' : ""}
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
-      <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
+      <p class="q-status"></p>
       <section class="q-reports">
         <div class="header">
           <span class="label">Your reports</span>
@@ -350,13 +350,14 @@ export class Widget {
       </div>
       <div class="status"></div>
     `;
-    // Position: clamp to viewport
-    const px = Math.min(x, window.innerWidth - 300);
-    const py = Math.min(y, window.innerHeight - 200);
-    form.style.left = `${Math.max(8, px)}px`;
-    form.style.top = `${Math.max(8, py)}px`;
     this.root.appendChild(form);
     this.pinFormEl = form;
+    // Position after mounting so responsive CSS width/height are measured.
+    const rect = form.getBoundingClientRect();
+    const px = Math.min(x, window.innerWidth - rect.width - 8);
+    const py = Math.min(y, window.innerHeight - rect.height - 8);
+    form.style.left = `${Math.max(8, px)}px`;
+    form.style.top = `${Math.max(8, py)}px`;
 
     const ta = form.querySelector<HTMLTextAreaElement>("textarea")!;
     const submitBtn = form.querySelector<HTMLButtonElement>(".submit")!;

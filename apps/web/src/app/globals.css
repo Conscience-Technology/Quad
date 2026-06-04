@@ -59,6 +59,26 @@ button:active:not(:disabled),
   a:active, button:active, [role="button"]:active { transform: none; }
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  min-width: 0;
+}
+
 /* Selection */
 ::selection { background: rgba(139, 124, 246, 0.35); color: var(--color-star-100); }
 

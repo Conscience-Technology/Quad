@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Surface } from "~/components/ui";
+import { Button, Surface, Textarea } from "~/components/ui";
 
 type Frame = { id: string; tMs: number; url: string };
 type Segment = { startMs: number; endMs: number; text: string };
@@ -83,7 +83,7 @@ export function VideoPlayer({
   };
 
   return (
-    <div className="grid grid-cols-[1fr_260px] gap-4">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
       <div className="space-y-2 min-w-0">
         <video
           ref={ref}
@@ -120,15 +120,15 @@ export function VideoPlayer({
               <div
                 key={c.id}
                 title={`${c.authorKind} @ ${formatMs(c.videoMs)}: ${c.body}`}
-                className="absolute bottom-1 -ml-1.5 text-[var(--color-nebula-violet)]"
-                style={{ left: `${(c.videoMs / duration) * 100}%`, fontSize: 10 }}
+                className="absolute bottom-1 -ml-1.5 text-xs text-[var(--color-nebula-violet)]"
+                style={{ left: `${(c.videoMs / duration) * 100}%` }}
               >
                 ✦
               </div>
             ))}
           {hoverMs != null && (
             <div
-              className="absolute -top-5 text-[10px] font-mono text-[var(--color-star-300)] -translate-x-1/2"
+              className="absolute -top-6 -translate-x-1/2 rounded border border-space-border bg-space-void px-1.5 py-0.5 font-mono text-[11px] text-star-300"
               style={{ left: `${(hoverMs / Math.max(1, duration)) * 100}%` }}
             >
               {formatMs(hoverMs)}
@@ -136,8 +136,8 @@ export function VideoPlayer({
           )}
         </div>
         {/* Controls */}
-        <div className="flex items-center justify-between text-xs font-mono text-[var(--color-star-500)]">
-          <div className="flex gap-3">
+        <div className="flex flex-col gap-2 text-xs font-mono text-[var(--color-star-500)] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-3">
             <button onClick={() => ref.current?.play()} className="hover:text-[var(--color-star-100)]">▶</button>
             <button onClick={() => ref.current?.pause()} className="hover:text-[var(--color-star-100)]">‖</button>
             {[0.5, 1, 1.5, 2].map((r) => (
@@ -150,7 +150,7 @@ export function VideoPlayer({
               </button>
             ))}
           </div>
-          <span>{formatMs(currentMs)} / {formatMs(duration)} · <kbd>C</kbd> = pin</span>
+          <span className="break-words">{formatMs(currentMs)} / {formatMs(duration)} · <kbd>C</kbd> = pin</span>
         </div>
 
         {/* Pin draft form */}
@@ -159,7 +159,7 @@ export function VideoPlayer({
             <p className="text-xs text-[var(--color-nebula-violet)] uppercase tracking-wide mb-2">
               pin @ {formatMs(pinDraft.ms)}
             </p>
-            <textarea
+            <Textarea
               autoFocus
               value={pinDraft.body}
               onChange={(e) => setPinDraft({ ...pinDraft, body: e.target.value })}
@@ -174,30 +174,31 @@ export function VideoPlayer({
                 if (e.key === "Escape") setPinDraft(null);
               }}
               placeholder="Comment at this timestamp (Cmd/Ctrl+Enter to submit)"
-              className="w-full bg-[var(--color-space-surface)] border border-[var(--color-space-border)] text-[var(--color-star-100)] text-sm rounded p-2 outline-none focus:border-[var(--color-nebula-violet)] min-h-[60px]"
+              className="min-h-20"
             />
             <div className="flex gap-2 mt-2 text-xs">
-              <button
+              <Button
+                type="button"
+                variant="primary"
                 onClick={() => {
                   if (pinDraft.body.trim()) {
                     onAddPin(pinDraft.ms, pinDraft.body.trim());
                     setPinDraft(null);
                   }
                 }}
-                className="px-3 py-1 bg-[var(--color-nebula-violet)] text-[var(--color-space-void)] rounded"
               >
                 Submit
-              </button>
-              <button onClick={() => setPinDraft(null)} className="px-3 py-1 text-[var(--color-star-500)]">
+              </Button>
+              <Button type="button" variant="subtle" onClick={() => setPinDraft(null)}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </Surface>
         )}
       </div>
 
       {/* Transcript sidebar — current segment highlighted, click to seek */}
-      <aside className="space-y-1 max-h-[480px] overflow-y-auto">
+      <aside className="space-y-1 max-h-[480px] min-w-0 overflow-y-auto">
         <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)] sticky top-0 bg-[var(--color-space-bg)] py-1">
           Transcript
         </p>
@@ -210,13 +211,13 @@ export function VideoPlayer({
           <button
             key={`${s.startMs}-${i}`}
             onClick={() => seekTo(s.startMs)}
-            className={`block w-full text-left text-xs px-2 py-1.5 rounded transition-colors ${
+            className={`block w-full rounded px-2 py-2 text-left text-xs transition-colors ${
               i === activeSeg
                 ? "bg-[var(--color-space-elevated)] text-[var(--color-star-100)] border-l-2 border-[var(--color-nebula-violet)]"
                 : "text-[var(--color-star-500)] hover:text-[var(--color-star-100)] hover:bg-[var(--color-space-surface)]"
             }`}
           >
-            <span className="font-mono text-[var(--color-star-700)] mr-2">{formatMs(s.startMs)}</span>
+            <span className="mr-2 font-mono text-[var(--color-star-700)]">{formatMs(s.startMs)}</span>
             {s.text}
           </button>
         ))}

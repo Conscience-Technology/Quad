@@ -147,7 +147,7 @@ export function Code({
 }) {
   return (
     <code
-      className={`font-mono text-xs bg-space-void text-star-300 px-1.5 py-0.5 rounded border border-space-border ${className}`}
+      className={`font-mono text-[12px] leading-relaxed bg-space-void text-star-300 px-1.5 py-0.5 rounded border border-space-border ${className}`}
     >
       {children}
     </code>
@@ -158,7 +158,7 @@ export function Code({
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-mono bg-space-elevated border border-space-border-strong rounded text-star-500">
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-space-border-strong bg-space-elevated px-1 font-mono text-[11px] text-star-500">
       {children}
     </kbd>
   );
@@ -211,7 +211,7 @@ export function StatusDot({
   };
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-2xs uppercase tracking-wider text-star-500 ${className}`}
+      className={`inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-star-500 ${className}`}
     >
       <span
         className="inline-block w-1.5 h-1.5 rounded-full"
@@ -331,7 +331,7 @@ export function Pill({
   };
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 text-2xs font-mono uppercase tracking-wider rounded border ${tones[tone]}`}
+      className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-wider ${tones[tone]}`}
     >
       {children}
     </span>
@@ -415,7 +415,7 @@ export function ShortId({
   prefix?: string;
 }) {
   return (
-    <span className="font-mono text-2xs text-star-500 uppercase">
+    <span className="font-mono text-[11px] text-star-500 uppercase">
       {prefix}-{id.replace(/-/g, "").slice(0, 6).toUpperCase()}
     </span>
   );
@@ -425,7 +425,7 @@ export function ShortId({
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <h2 className="text-2xs uppercase tracking-wider text-star-500 font-medium">
+    <h2 className="text-[11px] uppercase tracking-wider text-star-500 font-medium">
       {children}
     </h2>
   );

@@ -35,7 +35,7 @@ export default async function AdminAudit() {
               </span>
             </div>
             {Object.keys(r.meta).length > 0 && (
-              <Code className="block mt-2 text-[10px] break-all">
+              <Code className="block mt-2 break-all">
                 {JSON.stringify(r.meta)}
               </Code>
             )}

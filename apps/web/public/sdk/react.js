@@ -591,15 +591,17 @@ var CaptureSession = class {
       position: fixed;
       top: 16px;
       right: 16px;
+      max-width: calc(100vw - 32px);
       background: var(--elevated);
       border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 8px 14px;
+      border-radius: 14px;
+      padding: 8px 10px;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       font-family: ui-monospace, monospace;
-      font-size: 12px;
+      font-size: 13px;
       color: var(--star-300);
       z-index: 2147483604;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -607,9 +609,9 @@ var CaptureSession = class {
     bar.innerHTML = `
       <span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--rose);box-shadow:0 0 8px var(--rose);animation:q-pulse 1.4s ease-in-out infinite"></span>
       <span class="t">00:00</span>
-      <button class="stop" title="Stop" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u25A0</button>
-      <button class="mute" title="Toggle mic" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:13px">\u{1F3A4}</button>
-      <button class="pin" title="Pin current element" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:13px">+Pin</button>
+      <button class="stop" title="Stop" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u25A0</button>
+      <button class="mute" title="Toggle mic" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u{1F3A4}</button>
+      <button class="pin" title="Pin current element" style="min-height:28px;background:transparent;border:1px solid var(--border);border-radius:999px;color:var(--star-300);cursor:pointer;font-size:13px;padding:3px 8px">Pin</button>
     `;
     if (!this.shadow.querySelector("style[data-q-pulse]")) {
       const s = document.createElement("style");
@@ -1073,6 +1075,20 @@ var WIDGET_CSS = (
   font-size: 14px;
   line-height: 1.55;
 }
+:host *,
+:host *::before,
+:host *::after {
+  box-sizing: border-box;
+}
+:host button,
+:host input,
+:host textarea {
+  font: inherit;
+  min-width: 0;
+}
+:host button {
+  min-height: 32px;
+}
 
 /* Right-edge toggle: 4 dots, the brand mark */
 .q-toggle {
@@ -1114,7 +1130,8 @@ var WIDGET_CSS = (
   right: 0;
   top: 0;
   bottom: 0;
-  width: 380px;
+  width: min(420px, calc(100vw - 16px));
+  max-width: 100vw;
   background: var(--elevated);
   border-left: 1px solid var(--border);
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
@@ -1128,6 +1145,7 @@ var WIDGET_CSS = (
   transform: translateX(0);
 }
 .q-panel header {
+  min-width: 0;
   padding: 16px 18px;
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -1135,42 +1153,51 @@ var WIDGET_CSS = (
   align-items: center;
 }
 .q-panel header h1 {
+  min-width: 0;
   margin: 0;
-  font-size: 14px;
-  letter-spacing: 0.02em;
-  color: var(--star-300);
+  font-size: 16px;
+  letter-spacing: 0;
+  color: var(--star-100);
+  overflow-wrap: anywhere;
 }
 .q-panel header button {
   background: none;
   border: none;
   color: var(--star-500);
   cursor: pointer;
-  font-size: 18px;
-  padding: 0 4px;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 6px;
 }
 .q-panel header button:hover { color: var(--star-100); }
 .q-panel .body {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   padding: 18px;
 }
 .q-panel .body p {
   margin: 0 0 12px;
   color: var(--star-300);
-  font-size: 13px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
 .q-panel .body small {
   color: var(--star-500);
-  font-size: 11px;
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
 }
 .q-panel .drop {
   margin: 14px 0;
-  padding: 24px 14px;
+  padding: 22px 14px;
   border: 1px dashed var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   text-align: center;
   color: var(--star-500);
-  font-size: 12px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
   transition: border 160ms var(--ease), background 160ms var(--ease);
 }
 .q-panel .drop[data-over="true"] {
@@ -1183,21 +1210,20 @@ var WIDGET_CSS = (
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 8px;
   color: var(--star-100);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1.45;
   padding: 10px 12px;
   resize: vertical;
   min-height: 90px;
   outline: none;
 }
 .q-panel input.q-work-item {
-  box-sizing: border-box;
   margin: 0 0 10px;
-  min-height: 0;
+  min-height: 40px;
 }
-.q-panel textarea { box-sizing: border-box; }
 .q-panel input.q-work-item:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
 .q-panel .primary {
@@ -1206,14 +1232,22 @@ var WIDGET_CSS = (
   background: var(--violet);
   color: var(--void);
   border: 0;
-  border-radius: 4px;
-  padding: 10px;
-  font-size: 13px;
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   transition: opacity 160ms var(--ease);
 }
 .q-panel .primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .q-panel .primary:hover:not(:disabled) { opacity: 0.9; }
+.q-status {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--star-500);
+  overflow-wrap: anywhere;
+}
+.q-status.error { color: var(--rose); }
 
 /* Floating pin form */
 .q-pin-form {
@@ -1221,14 +1255,15 @@ var WIDGET_CSS = (
   z-index: 2147483602;
   background: var(--elevated);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 14px;
-  width: 280px;
+  width: min(320px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 24px rgba(139, 124, 246, 0.15);
 }
 .q-pin-form .selector {
   font-family: ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--star-500);
   margin-bottom: 8px;
   white-space: nowrap;
@@ -1239,10 +1274,11 @@ var WIDGET_CSS = (
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 8px;
   color: var(--star-100);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1.45;
   padding: 8px;
   resize: vertical;
   min-height: 60px;
@@ -1259,9 +1295,9 @@ var WIDGET_CSS = (
   background: var(--violet);
   color: var(--void);
   border: 0;
-  border-radius: 3px;
-  padding: 7px;
-  font-size: 12px;
+  border-radius: 8px;
+  padding: 9px;
+  font-size: 14px;
   cursor: pointer;
 }
 .q-pin-form button.ghost {
@@ -1270,7 +1306,7 @@ var WIDGET_CSS = (
   border: 1px solid var(--border);
 }
 .q-pin-form .status {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--star-500);
   margin-top: 8px;
 }
@@ -1280,14 +1316,16 @@ var WIDGET_CSS = (
 .q-toast {
   position: fixed;
   bottom: 24px;
-  right: 24px;
+  right: 16px;
+  max-width: min(360px, calc(100vw - 32px));
   background: var(--elevated);
   border: 1px solid var(--border);
   border-left: 2px solid var(--violet);
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 10px 14px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--star-300);
+  overflow-wrap: anywhere;
   z-index: 2147483603;
   animation: q-fadein 160ms var(--ease);
 }
@@ -1310,14 +1348,14 @@ var WIDGET_CSS = (
   gap: 8px;
 }
 .q-reports .label {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--star-500);
 }
 .q-reports .right { display: inline-flex; align-items: center; gap: 8px; }
 .q-reports .count {
-  font-size: 10px;
+  font-size: 12px;
   font-family: ui-monospace, monospace;
   color: var(--star-500);
 }
@@ -1325,9 +1363,9 @@ var WIDGET_CSS = (
   background: transparent;
   border: 1px solid var(--border);
   color: var(--star-500);
-  padding: 3px 8px;
-  font-size: 10px;
-  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: 6px;
   cursor: pointer;
   transition: color 120ms var(--ease), border-color 120ms var(--ease), background 120ms var(--ease);
 }
@@ -1342,7 +1380,7 @@ var WIDGET_CSS = (
 }
 .q-reports .show-all:disabled { cursor: not-allowed; }
 .q-reports .empty {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--star-500);
   padding: 12px 0;
 }
@@ -1362,14 +1400,14 @@ var WIDGET_CSS = (
   gap: 2px;
 }
 .q-reports .item .text {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--star-100);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .q-reports .item .meta {
-  font-size: 10px;
+  font-size: 12px;
   font-family: ui-monospace, monospace;
   color: var(--star-500);
   white-space: nowrap;
@@ -1377,8 +1415,8 @@ var WIDGET_CSS = (
   text-overflow: ellipsis;
 }
 .q-reports .item .eye {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border: 0;
   background: transparent;
   color: var(--star-500);
@@ -1415,12 +1453,12 @@ var WIDGET_CSS = (
   border-left: 2px solid var(--violet);
   border-radius: 4px;
   padding: 3px 6px 3px 8px;
-  max-width: 360px;
+  max-width: min(360px, calc(100vw - 16px));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--star-300);
 }
-.q-reveal-tag .dot { color: var(--violet); font-size: 10px; }
+.q-reveal-tag .dot { color: var(--violet); font-size: 12px; }
 .q-reveal-tag .body {
   flex: 1;
   min-width: 0;
@@ -1443,14 +1481,15 @@ var WIDGET_CSS = (
 .q-reveal-popover {
   position: fixed;
   z-index: 2147483597;
-  width: 320px;
+  width: min(340px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
   background: var(--elevated);
   border: 1px solid var(--border);
   border-left: 2px solid var(--violet);
   border-radius: 6px;
   padding: 12px 14px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--star-300);
   animation: q-fadein 140ms var(--ease);
 }
@@ -1461,13 +1500,13 @@ var WIDGET_CSS = (
   margin-bottom: 6px;
 }
 .q-reveal-popover .who {
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--violet);
 }
 .q-reveal-popover .when {
-  font-size: 10px;
+  font-size: 12px;
   font-family: ui-monospace, monospace;
   color: var(--star-500);
 }
@@ -1483,7 +1522,7 @@ var WIDGET_CSS = (
   gap: 4px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 12px;
 }
 .q-reveal-popover .meta > div {
   display: flex;
@@ -1492,7 +1531,7 @@ var WIDGET_CSS = (
 }
 .q-reveal-popover .meta span {
   width: 70px;
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--star-500);
@@ -1501,7 +1540,7 @@ var WIDGET_CSS = (
 .q-reveal-popover .meta code {
   flex: 1;
   font-family: ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--star-300);
   word-break: break-all;
   background: var(--void);
@@ -1518,7 +1557,7 @@ var WIDGET_CSS = (
   border: 1px solid var(--border);
   color: var(--star-500);
   padding: 4px 10px;
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 4px;
   cursor: pointer;
   transition: color 120ms var(--ease), border-color 120ms var(--ease);
@@ -1526,6 +1565,25 @@ var WIDGET_CSS = (
 .q-reveal-popover .hide:hover {
   color: var(--star-100);
   border-color: var(--star-500);
+}
+@media (max-width: 480px) {
+  .q-toggle {
+    padding: 12px 7px;
+  }
+  .q-panel {
+    width: 100vw;
+  }
+  .q-panel header,
+  .q-panel .body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .q-reports {
+    margin-left: -14px;
+    margin-right: -14px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
 }
 `
 );
@@ -1628,7 +1686,7 @@ var Widget = class {
       ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Issue / Work item # (optional)" />' : ""}
       <textarea placeholder="What went wrong?"></textarea>
       <button class="primary">Submit</button>
-      <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
+      <p class="q-status"></p>
       <section class="q-reports">
         <div class="header">
           <span class="label">Your reports</span>
@@ -1818,12 +1876,13 @@ var Widget = class {
       </div>
       <div class="status"></div>
     `;
-    const px = Math.min(x, window.innerWidth - 300);
-    const py = Math.min(y, window.innerHeight - 200);
-    form.style.left = `${Math.max(8, px)}px`;
-    form.style.top = `${Math.max(8, py)}px`;
     this.root.appendChild(form);
     this.pinFormEl = form;
+    const rect = form.getBoundingClientRect();
+    const px = Math.min(x, window.innerWidth - rect.width - 8);
+    const py = Math.min(y, window.innerHeight - rect.height - 8);
+    form.style.left = `${Math.max(8, px)}px`;
+    form.style.top = `${Math.max(8, py)}px`;
     const ta = form.querySelector("textarea");
     const submitBtn = form.querySelector(".submit");
     const cancelBtn = form.querySelector(".ghost");

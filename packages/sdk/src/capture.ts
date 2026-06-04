@@ -170,15 +170,17 @@ export class CaptureSession {
       position: fixed;
       top: 16px;
       right: 16px;
+      max-width: calc(100vw - 32px);
       background: var(--elevated);
       border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 8px 14px;
+      border-radius: 14px;
+      padding: 8px 10px;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       font-family: ui-monospace, monospace;
-      font-size: 12px;
+      font-size: 13px;
       color: var(--star-300);
       z-index: 2147483604;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -186,9 +188,9 @@ export class CaptureSession {
     bar.innerHTML = `
       <span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--rose);box-shadow:0 0 8px var(--rose);animation:q-pulse 1.4s ease-in-out infinite"></span>
       <span class="t">00:00</span>
-      <button class="stop" title="Stop" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">■</button>
-      <button class="mute" title="Toggle mic" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:13px">🎤</button>
-      <button class="pin" title="Pin current element" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:13px">+Pin</button>
+      <button class="stop" title="Stop" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">■</button>
+      <button class="mute" title="Toggle mic" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">🎤</button>
+      <button class="pin" title="Pin current element" style="min-height:28px;background:transparent;border:1px solid var(--border);border-radius:999px;color:var(--star-300);cursor:pointer;font-size:13px;padding:3px 8px">Pin</button>
     `;
     // Inject the pulse keyframes if not already present.
     if (!this.shadow.querySelector("style[data-q-pulse]")) {

@@ -44,12 +44,12 @@ export function BugDetail({
     .map((c) => ({ id: c.id, videoMs: c.videoMs ?? 0, authorKind: c.authorKind, body: c.body }));
 
   return (
-    <div className="grid grid-cols-[1fr_320px] gap-8 max-w-6xl">
+    <div className="grid max-w-7xl gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-6 min-w-0">
         <header className="space-y-2">
           <p className="text-xs text-[var(--color-star-500)] uppercase tracking-wide">{bug.kind} · {status}</p>
-          <h1 className="text-2xl tracking-tight">{bug.title}</h1>
-          <p className="text-xs text-[var(--color-star-500)] font-mono truncate">{bug.targetRoute ?? "/"} · {bug.pageUrl}</p>
+          <h1 className="max-w-4xl text-2xl tracking-tight break-words">{bug.title}</h1>
+          <p className="text-xs text-[var(--color-star-500)] font-mono break-all">{bug.targetRoute ?? "/"} · {bug.pageUrl}</p>
         </header>
 
         {media.videoUrl && (
@@ -115,10 +115,10 @@ export function BugDetail({
             )}
             <Code className="block break-all">{bug.targetSelector}</Code>
             {bug.targetComponentPath && (
-              <p className="text-xs text-[var(--color-star-500)] font-mono">{bug.targetComponentPath}</p>
+              <p className="text-xs text-[var(--color-star-500)] font-mono break-all">{bug.targetComponentPath}</p>
             )}
             {bug.targetSourceLocation?.file && (
-              <p className="text-xs text-[var(--color-nebula-cyan)] font-mono">
+              <p className="text-xs text-[var(--color-nebula-cyan)] font-mono break-all">
                 {bug.targetSourceLocation.file}
                 {bug.targetSourceLocation.line ? `:${bug.targetSourceLocation.line}` : ""}
               </p>
@@ -178,7 +178,7 @@ export function BugDetail({
         </section>
       </div>
 
-      <aside className="space-y-4">
+      <aside className="space-y-4 xl:sticky xl:top-16 xl:self-start">
         {requestedAzureWorkItemId && (
           <Surface className="space-y-2">
             <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">External Issue</p>
