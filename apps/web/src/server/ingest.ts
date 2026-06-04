@@ -5,7 +5,9 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "~/db";
 import type { BugReport, BugMeta } from "~/db/schema";
+import { env } from "~/lib/env";
 import { computeFingerprint, normalizeRoute } from "~/lib/fingerprint";
+import { presignDownload } from "~/lib/storage";
 import {
   addAzureWorkItemComment,
   azureWorkItemUrl,
@@ -283,7 +285,16 @@ async function syncAzureDevOpsFromReport(
       .where(eq(schema.projects.id, input.projectId))
       .limit(1);
     const project = projectRows[0];
-    const config = project ? await getAzureDevOpsConfig(project) : null;
+    if (!project) {
+      await markBugAzureDevOpsSync(bug, {
+        attemptedAt,
+        workItemId,
+        synced: false,
+        error: "Project not found",
+      });
+      return;
+    }
+    const config = await getAzureDevOpsConfig(project);
 
     if (!isAzureDevOpsConfigured(config)) {
       await markBugAzureDevOpsSync(bug, {
@@ -300,7 +311,7 @@ async function syncAzureDevOpsFromReport(
     await addAzureWorkItemComment(
       config,
       workItemId,
-      renderAzureReportComment(input, bug),
+      await renderAzureReportComment(input, bug, project),
     );
 
     await markBugAzureDevOpsSync(bug, {
@@ -340,14 +351,17 @@ async function markBugAzureDevOpsSync(
     .where(eq(schema.bugReports.id, bug.id));
 }
 
-function renderAzureReportComment(
+async function renderAzureReportComment(
   input: CreateSessionInput,
   bug: typeof schema.bugReports.$inferSelect,
-): string {
+  project: typeof schema.projects.$inferSelect,
+): Promise<string> {
   const pageUrl = readString(input.meta.customContext?.pageUrl);
   const relatedWorkItemIds = readRelatedWorkItemIds(input.meta.customContext);
   const reporter = input.reporter?.email ?? input.reporter?.name ?? input.reporter?.id ?? input.reporterAnonKey ?? "anonymous";
   const attachments = input.attachments?.length ?? 0;
+  const evidenceUrl = `${env().API_URL.replace(/\/$/, "")}/projects/${project.slug}/bug/${bug.id}`;
+  const attachmentLines = await renderAttachmentLinks(input.attachments ?? []);
   const body = input.body.trim() || "(no description)";
   return [
     `Quad evidence submitted`,
@@ -355,12 +369,29 @@ function renderAzureReportComment(
     `**Title:** ${bug.title}`,
     `**Reporter:** ${reporter}`,
     pageUrl ? `**Page:** ${pageUrl}` : "",
+    `**Quad evidence:** [Open report in Quad](${evidenceUrl})`,
     `**Attachments:** ${attachments}`,
+    attachmentLines.length ? attachmentLines.join("\n") : "",
+    attachments ? `_Direct download links expire in 7 days. The Quad report link remains the stable evidence record._` : "",
     relatedWorkItemIds.length ? `**Related Work Items:** ${relatedWorkItemIds.map((id) => `#${id}`).join(", ")}` : "",
     ``,
     `**Description**`,
     body.slice(0, 2000),
   ].filter(Boolean).join("\n");
+}
+
+async function renderAttachmentLinks(
+  attachments: NonNullable<CreateSessionInput["attachments"]>,
+): Promise<string[]> {
+  const rows = attachments.slice(0, 12);
+  return Promise.all(
+    rows.map(async (attachment, index) => {
+      const url = await presignDownload(attachment.key, 60 * 60 * 24 * 7);
+      const label = `${attachment.kind} ${index + 1}`;
+      const size = formatBytes(attachment.sizeBytes);
+      return `- ${label} · ${attachment.mime} · ${size} · [download](${url})`;
+    }),
+  );
 }
 
 function readAzureWorkItemId(meta: BugMeta): number | null {
@@ -378,6 +409,18 @@ function readAzureWorkItemId(meta: BugMeta): number | null {
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0B";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value >= 10 || unit === 0 ? value.toFixed(0) : value.toFixed(1)}${units[unit]}`;
 }
 
 function readRelatedWorkItemIds(customContext: Record<string, unknown> | undefined): number[] {
