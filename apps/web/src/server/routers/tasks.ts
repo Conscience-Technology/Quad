@@ -10,15 +10,22 @@ import { schema } from "~/db";
 import {
   addAzureWorkItemComment,
   azureWorkItemUrl,
+  formatAzureMention,
   getAzureDevOpsPatForUser,
   getAzureWorkItem,
   isAzureDevOpsConfigured,
+  searchAzureIdentities,
   setAzureWorkItemState,
   updateAzureWorkItemState,
 } from "~/lib/azure-devops";
 import { getBytes, presignDownload } from "~/lib/storage";
 import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
-import { getAzureDevOpsConfig, upsertTaskExternalIssue } from "~/server/integrations/store";
+import {
+  externalIssuePayload,
+  getAzureDevOpsConfig,
+  getTaskExternalIssue,
+  upsertTaskExternalIssue,
+} from "~/server/integrations/store";
 import { projectMemberProcedure } from "../auth-procedures";
 import { router } from "../trpc";
 
@@ -60,7 +67,7 @@ export const tasksRouter = router({
         .where(and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.projectId, input.projectId)))
         .limit(1);
       if (!task) throw new TRPCError({ code: "NOT_FOUND" });
-      const [briefUrl, markdownBytes, events] = await Promise.all([
+      const [briefUrl, markdownBytes, events, externalIssue] = await Promise.all([
         presignDownload(task.briefStorageKey, 300),
         getBytes(task.briefStorageKey).catch(() => null),
         ctx.db
@@ -68,9 +75,40 @@ export const tasksRouter = router({
           .from(schema.taskEvents)
           .where(eq(schema.taskEvents.taskId, task.id))
           .orderBy(asc(schema.taskEvents.createdAt)),
+        getTaskExternalIssue(task.id, AZURE_DEVOPS_PROVIDER_ID),
       ]);
       const markdown = markdownBytes ? Buffer.from(markdownBytes).toString("utf8") : null;
-      return { task, briefUrl, markdown, events };
+      return {
+        task: { ...task, externalIssue: externalIssuePayload(task, externalIssue) },
+        briefUrl,
+        markdown,
+        events,
+      };
+    }),
+
+  searchAzureIdentities: projectMemberProcedure
+    .input(
+      z.object({
+        projectId: z.string().uuid(),
+        query: z.string().trim().min(2).max(80),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const [project] = await ctx.db
+        .select()
+        .from(schema.projects)
+        .where(eq(schema.projects.id, input.projectId))
+        .limit(1);
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      const azureDevOpsConfig = await getAzureDevOpsConfig(project);
+      const azurePat = await getAzureDevOpsPatForUser(ctx.user.id, azureDevOpsConfig?.organization);
+      if (!isAzureDevOpsConfigured(azureDevOpsConfig, azurePat)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Azure DevOps is not configured for this project, or your Azure DevOps PAT is missing.",
+        });
+      }
+      return searchAzureIdentities(azureDevOpsConfig, input.query, azurePat);
     }),
 
   linkAzureWorkItem: projectMemberProcedure
@@ -158,6 +196,116 @@ export const tasksRouter = router({
       );
 
       return { ok: true, workItem, url };
+    }),
+
+  addAzureComment: projectMemberProcedure
+    .input(
+      z.object({
+        projectId: z.string().uuid(),
+        taskId: z.string().uuid(),
+        body: z.string().trim().min(1).max(4_000),
+        mentions: z
+          .array(
+            z.object({
+              id: z.string().min(1),
+              displayName: z.string().optional(),
+              uniqueName: z.string().optional(),
+            }),
+          )
+          .max(10)
+          .default([]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [task] = await ctx.db
+        .select()
+        .from(schema.tasks)
+        .where(and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.projectId, input.projectId)))
+        .limit(1);
+      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!task.azureWorkItemId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Link an Azure Work Item before posting an Azure comment.",
+        });
+      }
+
+      const [project] = await ctx.db
+        .select()
+        .from(schema.projects)
+        .where(eq(schema.projects.id, input.projectId))
+        .limit(1);
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+
+      const azureDevOpsConfig = await getAzureDevOpsConfig(project);
+      const azurePat = await getAzureDevOpsPatForUser(ctx.user.id, azureDevOpsConfig?.organization);
+      if (!isAzureDevOpsConfigured(azureDevOpsConfig, azurePat)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Azure DevOps is not configured for this project, or your Azure DevOps PAT is missing.",
+        });
+      }
+
+      const mentionMarkdown = input.mentions
+        .map((mention) => formatAzureMention(mention.id))
+        .join(" ");
+      const markdown = [
+        mentionMarkdown,
+        `Quad comment from ${ctx.user.email}:`,
+        input.body,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      await addAzureWorkItemComment(
+        azureDevOpsConfig,
+        task.azureWorkItemId,
+        markdown,
+        azurePat,
+      );
+
+      const [comment] = await ctx.db
+        .insert(schema.comments)
+        .values({
+          bugReportId: task.bugReportId,
+          level: "bug",
+          authorKind: "member",
+          authorUserId: ctx.user.id,
+          body: input.body,
+        })
+        .returning();
+
+      const linkedExternalIssue = await getTaskExternalIssue(task.id, AZURE_DEVOPS_PROVIDER_ID);
+      await upsertTaskExternalIssue({
+        taskId: task.id,
+        provider: AZURE_DEVOPS_PROVIDER_ID,
+        externalId: task.azureWorkItemId,
+        externalUrl: linkedExternalIssue?.externalUrl ?? task.azureWorkItemUrl,
+        title: linkedExternalIssue?.title,
+        state: linkedExternalIssue?.state,
+        syncStatus: "synced",
+        syncError: null,
+        meta: {
+          lastCommentId: comment?.id,
+          mentions: input.mentions.map((mention) => ({
+            id: mention.id,
+            displayName: mention.displayName,
+            uniqueName: mention.uniqueName,
+          })),
+        },
+      });
+      await ctx.db.insert(schema.taskEvents).values({
+        taskId: task.id,
+        kind: "comment_added",
+        actorUserId: ctx.user.id,
+        payload: {
+          commentId: comment?.id,
+          azureDevOps: { workItemId: task.azureWorkItemId, synced: true },
+          mentions: input.mentions,
+        },
+      });
+
+      return { ok: true, commentId: comment?.id };
     }),
 
   updateStatus: projectMemberProcedure

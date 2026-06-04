@@ -3,6 +3,12 @@ import { env } from "~/lib/env";
 import type { ExternalIssue, ExternalIssueProvider, TaskStatus } from "./types";
 
 export type AzureDevOpsCredentials = string;
+export type AzureDevOpsIdentity = {
+  id: string;
+  displayName: string;
+  uniqueName?: string;
+  imageUrl?: string;
+};
 
 export const AZURE_DEVOPS_PROVIDER_ID = "azure-devops" as const;
 
@@ -114,6 +120,47 @@ export const azureDevOpsProvider: ExternalIssueProvider<
   },
 };
 
+export async function searchAzureDevOpsIdentities(
+  config: AzureDevOpsConfig,
+  query: string,
+  credentials?: AzureDevOpsCredentials | null,
+): Promise<AzureDevOpsIdentity[]> {
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length < 2) return [];
+  const json = await azureIdentityFetch<{
+    value?: Array<{
+      id?: string;
+      displayName?: string;
+      providerDisplayName?: string;
+      uniqueName?: string;
+      imageUrl?: string;
+      properties?: {
+        Mail?: { $value?: string };
+      };
+    }>;
+  }>(
+    config,
+    `_apis/identities?searchFilter=General&filterValue=${encodeURIComponent(
+      normalizedQuery,
+    )}&queryMembership=None&api-version=7.1`,
+    {},
+    credentials,
+  );
+  return (json.value ?? [])
+    .map((identity) => ({
+      id: identity.id ?? "",
+      displayName: identity.displayName ?? identity.providerDisplayName ?? identity.uniqueName ?? "",
+      uniqueName: identity.uniqueName ?? identity.properties?.Mail?.$value,
+      imageUrl: identity.imageUrl,
+    }))
+    .filter((identity) => identity.id && identity.displayName)
+    .slice(0, 8);
+}
+
+export function azureDevOpsMentionMarkdown(identityId: string): string {
+  return `@<${identityId}>`;
+}
+
 function baseUrl(config: AzureDevOpsConfig): string {
   const organization = encodeURIComponent(config.organization ?? "");
   const project = encodeURIComponent(config.project ?? "");
@@ -130,6 +177,37 @@ async function azureFetch<T = unknown>(
   if (!pat) throw new Error("AZURE_DEVOPS_PAT is not set");
   const token = Buffer.from(`:${pat}`).toString("base64");
   const res = await fetch(`${baseUrl(config)}/${path}`, {
+    ...init,
+    headers: {
+      accept: "application/json",
+      authorization: `Basic ${token}`,
+      "content-type": "application/json",
+      ...init.headers,
+    },
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Azure DevOps ${res.status}: ${detail.slice(0, 300)}`);
+  }
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}
+
+function identityBaseUrl(config: AzureDevOpsConfig): string {
+  const organization = encodeURIComponent(config.organization ?? "");
+  return `https://vssps.dev.azure.com/${organization}`;
+}
+
+async function azureIdentityFetch<T = unknown>(
+  config: AzureDevOpsConfig,
+  path: string,
+  init: RequestInit = {},
+  credentials?: AzureDevOpsCredentials | null,
+): Promise<T> {
+  const pat = credentials || env().AZURE_DEVOPS_PAT;
+  if (!pat) throw new Error("AZURE_DEVOPS_PAT is not set");
+  const token = Buffer.from(`:${pat}`).toString("base64");
+  const res = await fetch(`${identityBaseUrl(config)}/${path}`, {
     ...init,
     headers: {
       accept: "application/json",

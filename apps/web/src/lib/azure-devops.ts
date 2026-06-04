@@ -1,13 +1,16 @@
 import type { AzureDevOpsConfig } from "~/db/schema";
 import {
   azureDevOpsProvider,
+  azureDevOpsMentionMarkdown,
   AZURE_DEVOPS_PROVIDER_ID,
+  searchAzureDevOpsIdentities,
+  type AzureDevOpsIdentity,
   type AzureWorkItem,
 } from "~/server/integrations/azure-devops";
 import { getUserIntegrationSecret } from "~/server/integrations/credentials";
 import type { TaskStatus } from "~/server/integrations/types";
 
-export type { AzureWorkItem };
+export type { AzureDevOpsIdentity, AzureWorkItem };
 
 export function isAzureDevOpsConfigured(
   config: AzureDevOpsConfig | null | undefined,
@@ -80,4 +83,17 @@ export async function addAzureWorkItemComment(
     markdown,
     credentials: pat,
   });
+}
+
+export async function searchAzureIdentities(
+  config: AzureDevOpsConfig | null | undefined,
+  query: string,
+  pat?: string | null,
+): Promise<AzureDevOpsIdentity[]> {
+  if (!config || !isAzureDevOpsConfigured(config, pat)) return [];
+  return searchAzureDevOpsIdentities(config, query, pat);
+}
+
+export function formatAzureMention(identityId: string): string {
+  return azureDevOpsMentionMarkdown(identityId);
 }

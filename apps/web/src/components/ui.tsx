@@ -6,6 +6,7 @@ import type {
   HTMLAttributes,
   InputHTMLAttributes,
   ReactNode,
+  TextareaHTMLAttributes,
 } from "react";
 
 const EASE = {
@@ -62,6 +63,19 @@ export function Input({
     <input
       {...rest}
       className={`w-full bg-transparent border-0 border-b border-space-border text-star-100 text-sm py-2 outline-none focus:border-nebula-violet focus:shadow-none transition-colors placeholder:text-star-700 ${className}`}
+      style={{ ...EASE, boxShadow: "none", ...(rest.style ?? {}) }}
+    />
+  );
+}
+
+export function Textarea({
+  className = "",
+  ...rest
+}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...rest}
+      className={`w-full min-h-24 resize-y bg-space-void border border-space-border rounded-md text-star-100 text-sm p-3 outline-none focus:border-nebula-violet transition-colors placeholder:text-star-700 ${className}`}
       style={{ ...EASE, boxShadow: "none", ...(rest.style ?? {}) }}
     />
   );
