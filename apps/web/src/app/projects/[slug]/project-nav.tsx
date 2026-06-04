@@ -155,7 +155,7 @@ function ProjectSwitcher({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border border-space-border hover:border-space-border-strong hover:bg-space-hover transition-colors"
+        className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md border border-space-border bg-space-surface/60 px-2.5 py-2 transition-colors hover:border-space-border-strong hover:bg-space-hover"
         style={{
           transitionTimingFunction: "var(--ease-cosmos)",
           transitionDuration: "140ms",
@@ -246,9 +246,9 @@ function NavItem({
   return (
     <Link
       href={href}
-      className={`flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-md text-[13px] transition-colors ${
+      className={`flex min-h-9 items-center justify-between gap-3 rounded-md px-2.5 py-2 text-[13px] transition-colors ${
         active
-          ? "bg-nebula-violet/12 text-star-100"
+          ? "bg-nebula-violet/10 text-star-100 shadow-[inset_2px_0_0_var(--color-nebula-violet)]"
           : "text-star-300 hover:text-star-100 hover:bg-space-hover"
       }`}
       style={{
@@ -265,7 +265,9 @@ function NavItem({
         <span className="truncate">{label}</span>
       </span>
       {count !== undefined && count > 0 && (
-        <span className="text-2xs text-star-500 font-mono shrink-0">{count}</span>
+        <span className="shrink-0 rounded border border-space-border bg-space-void px-1.5 py-0.5 text-2xs font-mono text-star-500">
+          {count}
+        </span>
       )}
     </Link>
   );

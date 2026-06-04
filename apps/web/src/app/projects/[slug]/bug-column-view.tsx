@@ -72,8 +72,8 @@ export function BugColumnView({
   const list = q.data ?? [];
 
   return (
-    <div className="space-y-5 max-w-4xl">
-      <header className="flex items-start justify-between gap-6">
+    <div className="space-y-5 max-w-5xl">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="space-y-1 min-w-0">
           <div className="flex items-baseline gap-3">
             <h1 className="text-xl tracking-tight">{title}</h1>
@@ -96,14 +96,14 @@ export function BugColumnView({
         <EmptyState title="Empty" />
       )}
 
-      <div className="space-y-0.5">
+      <div className="space-y-1">
         {list.map((b, i) => {
           const isSel = cursor === i;
           return (
             <div
               key={b.id}
               onMouseEnter={() => setCursor(i)}
-              className={`group flex items-center gap-3 px-3 py-2 rounded-md border transition-colors ${
+              className={`group flex flex-col gap-2 rounded-md border px-3 py-3 transition-colors sm:flex-row sm:items-center sm:gap-3 ${
                 isSel
                   ? "border-nebula-violet/30 bg-space-hover"
                   : "border-transparent hover:border-space-border hover:bg-space-hover"
@@ -132,7 +132,7 @@ export function BugColumnView({
                   <span>{relativeTime(b.updatedAt)}</span>
                 </span>
               </Link>
-              <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 {NEXT_FOR[status].map((next) => (
                   <Button
                     key={next}

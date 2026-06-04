@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Code, Field, Input, Surface } from "~/components/ui";
+import { Button, Field, Input, Select, Surface, Textarea } from "~/components/ui";
 import { trpc } from "~/lib/trpc/react";
 import type { AzureDevOpsConfig, ProjectRepo } from "~/db/schema";
 
@@ -74,17 +74,20 @@ export function SettingsGeneralPanel({
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-5xl space-y-8">
       <section>
         <h2 className="text-xs uppercase tracking-wide text-[var(--color-star-500)] mb-3">
           Setup
         </h2>
         <Surface>
-          <div className="grid gap-3 sm:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {setupItems.map((item) => (
-              <div key={item.label} className="min-w-0">
-                <p className={`text-xs ${item.done ? "text-[var(--color-nebula-cyan)]" : "text-[var(--color-star-500)]"}`}>
-                  {item.done ? "●" : "○"} {item.label}
+              <div
+                key={item.label}
+                className="min-w-0 rounded-md border border-space-border bg-space-void/50 px-3 py-2"
+              >
+                <p className={`text-xs ${item.done ? "text-nebula-cyan" : "text-star-500"}`}>
+                  {item.done ? "●" : "○"} <span className="text-star-300">{item.label}</span>
                 </p>
               </div>
             ))}
@@ -120,11 +123,11 @@ export function SettingsGeneralPanel({
               label="Allowed origins"
               hint="Domains the SDK is allowed to call from. One per line. Empty = allow any origin (dev convenience)."
             >
-              <textarea
+              <Textarea
                 value={originsText}
                 onChange={(e) => setOriginsText(e.currentTarget.value)}
                 placeholder="https://app.example.com&#10;https://staging.example.com"
-                className="w-full min-h-[100px] bg-[var(--color-space-surface)] border border-[var(--color-space-border)] text-[var(--color-star-100)] text-sm rounded p-3 outline-none focus:border-[var(--color-nebula-violet)] font-mono"
+                className="min-h-[112px] font-mono"
               />
             </Field>
             <div className="flex items-center gap-3">
@@ -170,19 +173,18 @@ export function SettingsGeneralPanel({
             }}
           >
             <Field label="Provider">
-              <select
+              <Select
                 value={repoProvider}
                 onChange={(e) =>
                   setRepoProvider(e.currentTarget.value as ProjectRepo["provider"])
                 }
-                className="w-full bg-transparent border-0 border-b border-[var(--color-space-border)] text-[var(--color-star-100)] text-sm py-2 outline-none focus:border-[var(--color-nebula-violet)]"
               >
                 <option value="github">github</option>
                 <option value="gitlab">gitlab</option>
                 <option value="local">local</option>
-              </select>
+              </Select>
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Owner">
                 <Input
                   type="text"
@@ -200,7 +202,7 @@ export function SettingsGeneralPanel({
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Default branch">
                 <Input
                   type="text"
@@ -278,7 +280,7 @@ export function SettingsGeneralPanel({
               update.mutate({ projectId, azureDevOps });
             }}
           >
-            <label className="flex items-center gap-2 text-sm text-[var(--color-star-300)]">
+            <label className="flex items-center gap-2 rounded-md border border-space-border bg-space-void/50 px-3 py-2 text-sm text-star-300">
               <input
                 type="checkbox"
                 checked={adoEnabled}
@@ -286,7 +288,7 @@ export function SettingsGeneralPanel({
               />
               Enable Azure DevOps sync
             </label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Organization">
                 <Input
                   type="text"
@@ -316,7 +318,7 @@ export function SettingsGeneralPanel({
                 placeholder="Reopened"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="to_do →">
                 <Input type="text" list="azure-devops-states" value={adoToDo} onChange={(e) => setAdoToDo(e.currentTarget.value)} />
               </Field>

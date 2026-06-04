@@ -67,13 +67,13 @@ export function TaskDetail({
   const canPostAzureComment = Boolean(task.azureWorkItemId);
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-8 max-w-6xl">
+    <div className="grid max-w-7xl gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="space-y-6 min-w-0">
         <header className="space-y-2">
           <p className="text-xs text-[var(--color-star-500)] uppercase tracking-wide">
             task · {task.status}
           </p>
-          <h1 className="text-2xl tracking-tight">{task.title}</h1>
+          <h1 className="max-w-4xl text-2xl tracking-tight">{task.title}</h1>
         </header>
 
         {task.maintainerInstruction && (
@@ -147,8 +147,16 @@ npx quad pull ${task.id}
         </p>
       </div>
 
-      <aside className="space-y-4">
+      <aside className="space-y-4 xl:sticky xl:top-16 xl:self-start">
         <Surface className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-medium text-star-100">Azure DevOps</h2>
+            {connectedWorkItemId && (
+              <span className="rounded border border-nebula-cyan/20 bg-nebula-cyan/10 px-1.5 py-0.5 text-2xs uppercase tracking-wider text-nebula-cyan">
+                linked
+              </span>
+            )}
+          </div>
           <Field
             label="Azure Work Item"
             hint="Enter a number once. Quad links the task, moves Azure Boards to the report-submitted state, and adds a trace comment."
@@ -226,6 +234,12 @@ npx quad pull ${task.id}
         </Surface>
 
         <Surface className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-medium text-star-100">Comment</h2>
+            {selectedMentions.length > 0 && (
+              <span className="text-2xs text-star-500">{selectedMentions.length} mention</span>
+            )}
+          </div>
           <Field
             label="Azure Comment"
             hint={
@@ -311,6 +325,7 @@ npx quad pull ${task.id}
             value={azureComment}
             onChange={(e) => setAzureComment(e.currentTarget.value)}
             disabled={!canPostAzureComment}
+            className="min-h-28"
             placeholder="Comment to add to Azure Boards..."
           />
           <Button
@@ -337,6 +352,7 @@ npx quad pull ${task.id}
         </Surface>
 
         <Surface className="space-y-3">
+          <h2 className="text-sm font-medium text-star-100">Task State</h2>
           <Field
             label="Status"
             hint={task.azureWorkItemId ? "Status changes sync to the connected external issue when credentials are available." : undefined}

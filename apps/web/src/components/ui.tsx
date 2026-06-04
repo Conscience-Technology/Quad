@@ -6,6 +6,7 @@ import type {
   HTMLAttributes,
   InputHTMLAttributes,
   ReactNode,
+  SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
 
@@ -27,20 +28,20 @@ export function Button({
   size?: "sm" | "md";
 }) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition disabled:opacity-40 disabled:cursor-not-allowed select-none";
+    "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition disabled:opacity-40 disabled:cursor-not-allowed select-none whitespace-nowrap";
   const sizes: Record<typeof size, string> = {
-    sm: "px-2.5 py-1 text-xs",
-    md: "px-3 py-1.5 text-[13px]",
+    sm: "min-h-7 px-2.5 py-1 text-xs",
+    md: "min-h-9 px-3.5 py-2 text-[13px]",
   };
   const styles: Record<typeof variant, string> = {
     primary:
-      "bg-nebula-violet text-space-void hover:opacity-90 shadow-[0_0_0_1px_var(--color-nebula-violet)]",
+      "bg-nebula-violet text-space-void hover:bg-nebula-cyan shadow-[0_0_0_1px_var(--color-nebula-violet)]",
     ghost:
-      "text-star-300 hover:text-star-100 hover:bg-space-hover",
+      "text-star-300 hover:text-star-100 hover:bg-space-hover border border-transparent hover:border-space-border",
     subtle:
-      "text-star-500 hover:text-star-100 hover:bg-space-hover",
+      "text-star-500 hover:text-star-100 hover:bg-space-hover border border-transparent hover:border-space-border",
     danger:
-      "text-nebula-rose hover:bg-nebula-rose/10",
+      "text-nebula-rose hover:bg-nebula-rose/10 border border-transparent hover:border-nebula-rose/30",
   };
   return (
     <button
@@ -62,7 +63,20 @@ export function Input({
   return (
     <input
       {...rest}
-      className={`w-full bg-transparent border-0 border-b border-space-border text-star-100 text-sm py-2 outline-none focus:border-nebula-violet focus:shadow-none transition-colors placeholder:text-star-700 ${className}`}
+      className={`w-full min-h-9 rounded-md border border-space-border bg-space-void/60 px-3 py-2 text-sm text-star-100 outline-none transition-colors placeholder:text-star-700 hover:border-space-border-strong focus:border-nebula-violet focus:bg-space-void focus:shadow-none ${className}`}
+      style={{ ...EASE, boxShadow: "none", ...(rest.style ?? {}) }}
+    />
+  );
+}
+
+export function Select({
+  className = "",
+  ...rest
+}: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...rest}
+      className={`w-full min-h-9 rounded-md border border-space-border bg-space-void/60 px-3 py-2 text-sm text-star-100 outline-none transition-colors hover:border-space-border-strong focus:border-nebula-violet focus:bg-space-void focus:shadow-none ${className}`}
       style={{ ...EASE, boxShadow: "none", ...(rest.style ?? {}) }}
     />
   );
@@ -75,7 +89,7 @@ export function Textarea({
   return (
     <textarea
       {...rest}
-      className={`w-full min-h-24 resize-y bg-space-void border border-space-border rounded-md text-star-100 text-sm p-3 outline-none focus:border-nebula-violet transition-colors placeholder:text-star-700 ${className}`}
+      className={`w-full min-h-24 resize-y rounded-md border border-space-border bg-space-void/60 p-3 text-sm text-star-100 outline-none transition-colors placeholder:text-star-700 hover:border-space-border-strong focus:border-nebula-violet focus:bg-space-void ${className}`}
       style={{ ...EASE, boxShadow: "none", ...(rest.style ?? {}) }}
     />
   );
@@ -115,7 +129,7 @@ export function Surface({
   return (
     <div
       {...rest}
-      className={`bg-space-surface rounded-lg border border-space-border p-5 ${className}`}
+      className={`bg-space-surface/95 rounded-lg border border-space-border p-5 shadow-[0_1px_0_rgba(255,255,255,0.03),0_12px_32px_rgba(0,0,0,0.16)] ${className}`}
     >
       {children}
     </div>

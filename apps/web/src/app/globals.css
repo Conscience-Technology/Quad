@@ -30,11 +30,11 @@
   --color-nebula-amber: #fbbf24;
   --color-nebula-green: #4ade80;
 
-  /* Motion — heavy ease-out so things start fast and settle smoothly. */
+  /* Motion — short transitions only, to keep forms and lists feeling immediate. */
   --ease-cosmos: cubic-bezier(0.16, 1, 0.3, 1);
-  --duration-quick: 90ms;
-  --duration-base: 140ms;
-  --duration-slow: 220ms;
+  --duration-quick: 70ms;
+  --duration-base: 110ms;
+  --duration-slow: 180ms;
 }
 
 /* Snappy defaults on every clickable surface. Listed properties (not `all`)
@@ -87,7 +87,7 @@ body {
     system-ui, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
   font-size: 14px;
   line-height: 1.55;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss06", "tnum";

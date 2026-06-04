@@ -31,8 +31,8 @@ export default async function ProjectLayout({
   const user = await getCurrentUser();
 
   return (
-    <div className="min-h-screen grid grid-cols-[240px_1fr]">
-      <aside className="border-r border-space-border bg-space-bg flex flex-col sticky top-0 h-screen">
+    <div className="min-h-screen lg:grid lg:grid-cols-[248px_1fr]">
+      <aside className="border-b border-space-border bg-space-bg flex flex-col lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
         <div className="px-4 py-3.5 border-b border-space-border">
           <BrandWordmark />
         </div>
@@ -59,7 +59,7 @@ export default async function ProjectLayout({
               : undefined
           }
         />
-        <main className="flex-1 px-8 py-8">{children}</main>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
       </div>
     </div>
   );
