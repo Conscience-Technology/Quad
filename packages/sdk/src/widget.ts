@@ -127,10 +127,21 @@ export class Widget {
     body.innerHTML = `
       <p><strong>업무 항목에 증거를 보냅니다.</strong> Azure DevOps에서 논의는 계속하되, 현재 화면, 파일, 콘솔, 네트워크, 환경 정보를 함께 남길 때 사용하세요.</p>
       <p>특정 화면 요소를 지정하려면 <strong>버그 모드</strong>를 켠 뒤 요소를 클릭하세요.</p>
-      <label class="q-field">
-        <span>작성자</span>
-        <input class="q-reporter-name" type="text" autocomplete="name" placeholder="예: 이학준 TPM" />
-      </label>
+      <div class="q-reporter-setup" data-empty="true" data-editing="true">
+        <div class="q-reporter-current">
+          <span>작성자</span>
+          <strong class="q-reporter-display"></strong>
+          <button class="q-reporter-edit" type="button">변경</button>
+        </div>
+        <label class="q-field q-reporter-editor">
+          <span>작성자 이름</span>
+          <div class="q-reporter-row">
+            <input class="q-reporter-name" type="text" autocomplete="name" placeholder="예: 이학준 TPM" />
+            <button class="q-reporter-save" type="button">저장</button>
+          </div>
+          <small>한 번 저장하면 이 브라우저에서 계속 사용됩니다. Azure DevOps 댓글 본문에 제보자로 남습니다.</small>
+        </label>
+      </div>
       <div class="drop" data-over="false">
         파일을 여기에 놓거나 클릭해서 선택<br/>
         <small>macOS는 ⌘⇧5, Windows는 Win+G로 녹화한 뒤 여기에 놓으세요</small>
@@ -156,21 +167,61 @@ export class Widget {
     p.appendChild(body);
 
     this.wireOverlayBody(body);
-    this.syncReporterInput(body);
+    this.syncReporterIdentity(body);
     this.wireReportsList(body);
     return p;
   }
 
-  private syncReporterInput(body: HTMLDivElement): void {
+  private syncReporterIdentity(body: HTMLDivElement): void {
+    const setup = body.querySelector<HTMLDivElement>(".q-reporter-setup");
     const reporterInput = body.querySelector<HTMLInputElement>("input.q-reporter-name");
-    if (!reporterInput) return;
-    reporterInput.value = this.cb.getReporterName() ?? "";
-    reporterInput.addEventListener("change", () => {
-      this.cb.onReporterNameChange(reporterInput.value.trim());
+    const display = body.querySelector<HTMLElement>(".q-reporter-display");
+    const editBtn = body.querySelector<HTMLButtonElement>(".q-reporter-edit");
+    const saveBtn = body.querySelector<HTMLButtonElement>(".q-reporter-save");
+    if (!setup || !reporterInput || !display || !editBtn || !saveBtn) return;
+
+    const render = (editing?: boolean) => {
+      const name = this.cb.getReporterName()?.trim() ?? "";
+      const isEmpty = !name;
+      setup.dataset.empty = isEmpty ? "true" : "false";
+      setup.dataset.editing = (editing ?? isEmpty) ? "true" : "false";
+      display.textContent = name || "미설정";
+      reporterInput.value = name;
+    };
+
+    const save = () => {
+      const name = reporterInput.value.trim();
+      this.cb.onReporterNameChange(name);
+      render(!name);
+      if (name) this.toast("작성자 이름이 저장되었습니다");
+    };
+
+    editBtn.addEventListener("click", () => {
+      render(true);
+      reporterInput.focus();
+      reporterInput.select();
     });
-    reporterInput.addEventListener("blur", () => {
-      this.cb.onReporterNameChange(reporterInput.value.trim());
+    saveBtn.addEventListener("click", save);
+    reporterInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        save();
+      }
     });
+    reporterInput.addEventListener("blur", (e) => {
+      if (e.relatedTarget === saveBtn) return;
+      if (setup.dataset.empty === "true" && reporterInput.value.trim()) save();
+    });
+    render();
+  }
+
+  private focusReporterSetup(): void {
+    const setup = this.bodyEl.querySelector<HTMLDivElement>(".q-reporter-setup");
+    const reporterInput = this.bodyEl.querySelector<HTMLInputElement>("input.q-reporter-name");
+    if (!setup || !reporterInput) return;
+    setup.dataset.editing = "true";
+    this.setOverlayOpen(true);
+    reporterInput.focus();
   }
 
   // ---- Reports list -------------------------------------------------------
@@ -317,6 +368,12 @@ export class Widget {
 
     btn.addEventListener("click", async () => {
       const body = ta.value.trim();
+      if (!this.cb.getReporterName()?.trim()) {
+        status.textContent = "작성자 이름을 먼저 저장해 주세요";
+        status.className = "q-status error";
+        this.focusReporterSetup();
+        return;
+      }
       if (!body && staged.length === 0) {
         status.textContent = "설명이나 첨부 파일이 필요합니다";
         status.className = "q-status error";
@@ -399,6 +456,12 @@ export class Widget {
 
     const doSubmit = async () => {
       const body = ta.value.trim();
+      if (!this.cb.getReporterName()?.trim()) {
+        status.className = "status error";
+        status.textContent = "작성자 이름을 먼저 저장해 주세요";
+        this.focusReporterSetup();
+        return;
+      }
       if (!body) {
         status.className = "status error";
         status.textContent = "코멘트가 필요합니다";

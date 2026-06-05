@@ -1217,6 +1217,77 @@ var WIDGET_CSS = (
   text-transform: uppercase;
   color: var(--star-500);
 }
+.q-reporter-setup {
+  margin: 14px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.q-reporter-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.q-reporter-current span {
+  flex: 0 0 auto;
+  color: var(--star-500);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.q-reporter-current strong {
+  flex: 1;
+  min-width: 0;
+  color: var(--star-100);
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-reporter-current button,
+.q-reporter-row button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--star-300);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+}
+.q-reporter-current button:hover,
+.q-reporter-row button:hover {
+  border-color: var(--violet);
+  color: var(--star-100);
+}
+.q-reporter-editor {
+  display: none;
+  margin: 0;
+  padding: 12px;
+}
+.q-reporter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+.q-reporter-row input.q-reporter-name {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.q-reporter-setup[data-empty="true"] .q-reporter-current,
+.q-reporter-setup[data-editing="true"] .q-reporter-current {
+  display: none;
+}
+.q-reporter-setup[data-editing="true"] .q-reporter-editor {
+  display: block;
+}
 .q-panel input.q-reporter-name,
 .q-panel input.q-work-item,
 .q-panel input.q-related-work-items,
@@ -1239,6 +1310,9 @@ var WIDGET_CSS = (
 .q-panel input.q-related-work-items {
   margin: 0 0 10px;
   min-height: 40px;
+}
+.q-reporter-row input.q-reporter-name {
+  margin: 0;
 }
 .q-panel input.q-reporter-name:focus,
 .q-panel input.q-work-item:focus,
@@ -1696,10 +1770,21 @@ var Widget = class {
     body.innerHTML = `
       <p><strong>\uC5C5\uBB34 \uD56D\uBAA9\uC5D0 \uC99D\uAC70\uB97C \uBCF4\uB0C5\uB2C8\uB2E4.</strong> Azure DevOps\uC5D0\uC11C \uB17C\uC758\uB294 \uACC4\uC18D\uD558\uB418, \uD604\uC7AC \uD654\uBA74, \uD30C\uC77C, \uCF58\uC194, \uB124\uD2B8\uC6CC\uD06C, \uD658\uACBD \uC815\uBCF4\uB97C \uD568\uAED8 \uB0A8\uAE38 \uB54C \uC0AC\uC6A9\uD558\uC138\uC694.</p>
       <p>\uD2B9\uC815 \uD654\uBA74 \uC694\uC18C\uB97C \uC9C0\uC815\uD558\uB824\uBA74 <strong>\uBC84\uADF8 \uBAA8\uB4DC</strong>\uB97C \uCF20 \uB4A4 \uC694\uC18C\uB97C \uD074\uB9AD\uD558\uC138\uC694.</p>
-      <label class="q-field">
-        <span>\uC791\uC131\uC790</span>
-        <input class="q-reporter-name" type="text" autocomplete="name" placeholder="\uC608: \uC774\uD559\uC900 TPM" />
-      </label>
+      <div class="q-reporter-setup" data-empty="true" data-editing="true">
+        <div class="q-reporter-current">
+          <span>\uC791\uC131\uC790</span>
+          <strong class="q-reporter-display"></strong>
+          <button class="q-reporter-edit" type="button">\uBCC0\uACBD</button>
+        </div>
+        <label class="q-field q-reporter-editor">
+          <span>\uC791\uC131\uC790 \uC774\uB984</span>
+          <div class="q-reporter-row">
+            <input class="q-reporter-name" type="text" autocomplete="name" placeholder="\uC608: \uC774\uD559\uC900 TPM" />
+            <button class="q-reporter-save" type="button">\uC800\uC7A5</button>
+          </div>
+          <small>\uD55C \uBC88 \uC800\uC7A5\uD558\uBA74 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uACC4\uC18D \uC0AC\uC6A9\uB429\uB2C8\uB2E4. Azure DevOps \uB313\uAE00 \uBCF8\uBB38\uC5D0 \uC81C\uBCF4\uC790\uB85C \uB0A8\uC2B5\uB2C8\uB2E4.</small>
+        </label>
+      </div>
       <div class="drop" data-over="false">
         \uD30C\uC77C\uC744 \uC5EC\uAE30\uC5D0 \uB193\uAC70\uB098 \uD074\uB9AD\uD574\uC11C \uC120\uD0DD<br/>
         <small>macOS\uB294 \u2318\u21E75, Windows\uB294 Win+G\uB85C \uB179\uD654\uD55C \uB4A4 \uC5EC\uAE30\uC5D0 \uB193\uC73C\uC138\uC694</small>
@@ -1724,20 +1809,55 @@ var Widget = class {
     p.appendChild(header);
     p.appendChild(body);
     this.wireOverlayBody(body);
-    this.syncReporterInput(body);
+    this.syncReporterIdentity(body);
     this.wireReportsList(body);
     return p;
   }
-  syncReporterInput(body) {
+  syncReporterIdentity(body) {
+    const setup = body.querySelector(".q-reporter-setup");
     const reporterInput = body.querySelector("input.q-reporter-name");
-    if (!reporterInput) return;
-    reporterInput.value = this.cb.getReporterName() ?? "";
-    reporterInput.addEventListener("change", () => {
-      this.cb.onReporterNameChange(reporterInput.value.trim());
+    const display = body.querySelector(".q-reporter-display");
+    const editBtn = body.querySelector(".q-reporter-edit");
+    const saveBtn = body.querySelector(".q-reporter-save");
+    if (!setup || !reporterInput || !display || !editBtn || !saveBtn) return;
+    const render = (editing) => {
+      const name = this.cb.getReporterName()?.trim() ?? "";
+      const isEmpty = !name;
+      setup.dataset.empty = isEmpty ? "true" : "false";
+      setup.dataset.editing = editing ?? isEmpty ? "true" : "false";
+      display.textContent = name || "\uBBF8\uC124\uC815";
+      reporterInput.value = name;
+    };
+    const save = () => {
+      const name = reporterInput.value.trim();
+      this.cb.onReporterNameChange(name);
+      render(!name);
+      if (name) this.toast("\uC791\uC131\uC790 \uC774\uB984\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4");
+    };
+    editBtn.addEventListener("click", () => {
+      render(true);
+      reporterInput.focus();
+      reporterInput.select();
+    });
+    saveBtn.addEventListener("click", save);
+    reporterInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        save();
+      }
     });
     reporterInput.addEventListener("blur", () => {
-      this.cb.onReporterNameChange(reporterInput.value.trim());
+      if (setup.dataset.empty === "true" && reporterInput.value.trim()) save();
     });
+    render();
+  }
+  focusReporterSetup() {
+    const setup = this.bodyEl.querySelector(".q-reporter-setup");
+    const reporterInput = this.bodyEl.querySelector("input.q-reporter-name");
+    if (!setup || !reporterInput) return;
+    setup.dataset.editing = "true";
+    this.setOverlayOpen(true);
+    reporterInput.focus();
   }
   // ---- Reports list -------------------------------------------------------
   wireReportsList(body) {
@@ -1858,6 +1978,12 @@ var Widget = class {
     });
     btn.addEventListener("click", async () => {
       const body2 = ta.value.trim();
+      if (!this.cb.getReporterName()?.trim()) {
+        status.textContent = "\uC791\uC131\uC790 \uC774\uB984\uC744 \uBA3C\uC800 \uC800\uC7A5\uD574 \uC8FC\uC138\uC694";
+        status.className = "q-status error";
+        this.focusReporterSetup();
+        return;
+      }
       if (!body2 && staged.length === 0) {
         status.textContent = "\uC124\uBA85\uC774\uB098 \uCCA8\uBD80 \uD30C\uC77C\uC774 \uD544\uC694\uD569\uB2C8\uB2E4";
         status.className = "q-status error";
@@ -1933,6 +2059,12 @@ var Widget = class {
     ta.focus();
     const doSubmit = async () => {
       const body = ta.value.trim();
+      if (!this.cb.getReporterName()?.trim()) {
+        status.className = "status error";
+        status.textContent = "\uC791\uC131\uC790 \uC774\uB984\uC744 \uBA3C\uC800 \uC800\uC7A5\uD574 \uC8FC\uC138\uC694";
+        this.focusReporterSetup();
+        return;
+      }
       if (!body) {
         status.className = "status error";
         status.textContent = "\uCF54\uBA58\uD2B8\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4";
