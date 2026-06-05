@@ -29,6 +29,7 @@ export type { QuadOptions } from "./types";
 
 const VERSION = "0.0.0";
 const ANON_COOKIE = "quad_anon";
+const REPORTER_NAME_KEY = "quad.reporter_name.v1";
 
 class QuadApi {
   private opts: Required<Pick<QuadOptions, "apiKey" | "endpoint">> &
@@ -85,6 +86,8 @@ class QuadApi {
     this.widget = new Widget(
       {
         onToggleOverlay: () => this.toggleOverlay(),
+        getReporterName: () => this.reporterName(),
+        onReporterNameChange: (name) => this.setReporterName(name),
         onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options),
       },
       {
@@ -115,7 +118,7 @@ class QuadApi {
           title: input.title,
           body: "(Capture session)",
           meta: this.snapshotMeta(),
-          reporter: this.user,
+          reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey(),
           attachments: input.attachments,
         });
@@ -187,6 +190,7 @@ class QuadApi {
 
   identify(user: { id: string; email?: string; name?: string }): void {
     this.user = user;
+    if (user.name) this.setReporterName(user.name);
   }
 
   setContext(ctx: Record<string, unknown>): void {
@@ -210,7 +214,7 @@ class QuadApi {
         title: input.title,
         body: input.body ?? "",
         meta: this.snapshotMeta(),
-        reporter: this.user,
+        reporter: this.reporter(),
         reporterAnonKey: this.ensureAnonKey(),
       });
     } catch (err) {
@@ -314,7 +318,7 @@ class QuadApi {
         const result = await this.api.createPin({
           pin,
           meta: this.snapshotMeta(),
-          reporter: this.user,
+          reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey(),
         });
         // Cache locally so the reporter can find / reveal it later, but
@@ -375,10 +379,37 @@ class QuadApi {
       title,
       body,
       meta,
-      reporter: this.user,
+      reporter: this.reporter(),
       reporterAnonKey: this.ensureAnonKey(),
       attachments,
     });
+  }
+
+  private reporter(): QuadOptions["user"] | undefined {
+    const name = this.reporterName();
+    if (this.user) return name ? { ...this.user, name } : this.user;
+    return name ? { id: this.ensureAnonKey(), name } : undefined;
+  }
+
+  private reporterName(): string | undefined {
+    const explicit = this.user?.name?.trim();
+    if (explicit) return explicit;
+    try {
+      return localStorage.getItem(REPORTER_NAME_KEY)?.trim() || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private setReporterName(name: string): void {
+    const normalized = name.trim().slice(0, 120);
+    if (this.user) this.user = { ...this.user, name: normalized || this.user.name };
+    try {
+      if (normalized) localStorage.setItem(REPORTER_NAME_KEY, normalized);
+      else localStorage.removeItem(REPORTER_NAME_KEY);
+    } catch {
+      /* ignore storage failures */
+    }
   }
 
   private snapshotMeta(): ReportMeta {

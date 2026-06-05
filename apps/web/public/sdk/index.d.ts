@@ -45,6 +45,9 @@ declare class QuadApi {
     private toggleOverlay;
     private openPinForm;
     private submitOverlay;
+    private reporter;
+    private reporterName;
+    private setReporterName;
     private snapshotMeta;
     /** Stable anon identifier per-browser, stored as a host-app cookie. */
     private ensureAnonKey;

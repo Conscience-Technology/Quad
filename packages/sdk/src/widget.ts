@@ -7,6 +7,8 @@ import { WIDGET_CSS } from "./styles";
 
 export type WidgetCallbacks = {
   onToggleOverlay: () => void;
+  getReporterName: () => string | undefined;
+  onReporterNameChange: (name: string) => void;
   onSubmitOverlay: (
     body: string,
     files: File[],
@@ -125,6 +127,10 @@ export class Widget {
     body.innerHTML = `
       <p><strong>Send evidence to the work item.</strong> Use this when the discussion should stay in Azure DevOps, but the team needs the exact screen, files, console, network, and environment context.</p>
       <p>To point at a specific element, turn on <strong>Bug Mode</strong> and click it.</p>
+      <label class="q-field">
+        <span>Reporter</span>
+        <input class="q-reporter-name" type="text" autocomplete="name" placeholder="e.g. 이학준 TPM" />
+      </label>
       <div class="drop" data-over="false">
         Drop a file here or click to select<br/>
         <small>Record with ⌘⇧5 on macOS, Win+G on Windows, then drop the file here</small>
@@ -150,8 +156,21 @@ export class Widget {
     p.appendChild(body);
 
     this.wireOverlayBody(body);
+    this.syncReporterInput(body);
     this.wireReportsList(body);
     return p;
+  }
+
+  private syncReporterInput(body: HTMLDivElement): void {
+    const reporterInput = body.querySelector<HTMLInputElement>("input.q-reporter-name");
+    if (!reporterInput) return;
+    reporterInput.value = this.cb.getReporterName() ?? "";
+    reporterInput.addEventListener("change", () => {
+      this.cb.onReporterNameChange(reporterInput.value.trim());
+    });
+    reporterInput.addEventListener("blur", () => {
+      this.cb.onReporterNameChange(reporterInput.value.trim());
+    });
   }
 
   // ---- Reports list -------------------------------------------------------

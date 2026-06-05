@@ -155,6 +155,19 @@ export const WIDGET_CSS = /* css */ `
   background: rgba(139, 124, 246, 0.06);
   color: var(--star-300);
 }
+.q-field {
+  display: block;
+  margin: 14px 0;
+}
+.q-field span {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--star-500);
+}
+.q-panel input.q-reporter-name,
 .q-panel input.q-work-item,
 .q-panel input.q-related-work-items,
 .q-panel textarea {
@@ -171,11 +184,13 @@ export const WIDGET_CSS = /* css */ `
   min-height: 90px;
   outline: none;
 }
+.q-panel input.q-reporter-name,
 .q-panel input.q-work-item,
 .q-panel input.q-related-work-items {
   margin: 0 0 10px;
   min-height: 40px;
 }
+.q-panel input.q-reporter-name:focus,
 .q-panel input.q-work-item:focus,
 .q-panel input.q-related-work-items:focus,
 .q-panel textarea:focus { border-color: var(--violet); }

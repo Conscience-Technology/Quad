@@ -358,7 +358,7 @@ async function renderAzureReportComment(
 ): Promise<string> {
   const pageUrl = readString(input.meta.customContext?.pageUrl);
   const relatedWorkItemIds = readRelatedWorkItemIds(input.meta.customContext);
-  const reporter = input.reporter?.email ?? input.reporter?.name ?? input.reporter?.id ?? input.reporterAnonKey ?? "anonymous";
+  const reporter = input.reporter?.name ?? input.reporter?.email ?? input.reporter?.id ?? input.reporterAnonKey ?? "anonymous";
   const attachments = input.attachments?.length ?? 0;
   const evidenceUrl = `${env().API_URL.replace(/\/$/, "")}/projects/${project.slug}/bug/${bug.id}`;
   const attachmentLines = await renderAttachmentLinks(input.attachments ?? []);

@@ -1203,6 +1203,19 @@ var WIDGET_CSS = (
   background: rgba(139, 124, 246, 0.06);
   color: var(--star-300);
 }
+.q-field {
+  display: block;
+  margin: 14px 0;
+}
+.q-field span {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--star-500);
+}
+.q-panel input.q-reporter-name,
 .q-panel input.q-work-item,
 .q-panel input.q-related-work-items,
 .q-panel textarea {
@@ -1219,11 +1232,13 @@ var WIDGET_CSS = (
   min-height: 90px;
   outline: none;
 }
+.q-panel input.q-reporter-name,
 .q-panel input.q-work-item,
 .q-panel input.q-related-work-items {
   margin: 0 0 10px;
   min-height: 40px;
 }
+.q-panel input.q-reporter-name:focus,
 .q-panel input.q-work-item:focus,
 .q-panel input.q-related-work-items:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
@@ -1679,6 +1694,10 @@ var Widget = class {
     body.innerHTML = `
       <p><strong>Send evidence to the work item.</strong> Use this when the discussion should stay in Azure DevOps, but the team needs the exact screen, files, console, network, and environment context.</p>
       <p>To point at a specific element, turn on <strong>Bug Mode</strong> and click it.</p>
+      <label class="q-field">
+        <span>Reporter</span>
+        <input class="q-reporter-name" type="text" autocomplete="name" placeholder="e.g. \uC774\uD559\uC900 TPM" />
+      </label>
       <div class="drop" data-over="false">
         Drop a file here or click to select<br/>
         <small>Record with \u2318\u21E75 on macOS, Win+G on Windows, then drop the file here</small>
@@ -1703,8 +1722,20 @@ var Widget = class {
     p.appendChild(header);
     p.appendChild(body);
     this.wireOverlayBody(body);
+    this.syncReporterInput(body);
     this.wireReportsList(body);
     return p;
+  }
+  syncReporterInput(body) {
+    const reporterInput = body.querySelector("input.q-reporter-name");
+    if (!reporterInput) return;
+    reporterInput.value = this.cb.getReporterName() ?? "";
+    reporterInput.addEventListener("change", () => {
+      this.cb.onReporterNameChange(reporterInput.value.trim());
+    });
+    reporterInput.addEventListener("blur", () => {
+      this.cb.onReporterNameChange(reporterInput.value.trim());
+    });
   }
   // ---- Reports list -------------------------------------------------------
   wireReportsList(body) {
@@ -1978,6 +2009,7 @@ function formatAgo2(ts) {
 // src/index.ts
 var VERSION = "0.0.0";
 var ANON_COOKIE = "quad_anon";
+var REPORTER_NAME_KEY = "quad.reporter_name.v1";
 var QuadApi = class {
   opts = {
     apiKey: "",
@@ -2022,6 +2054,8 @@ var QuadApi = class {
     this.widget = new Widget(
       {
         onToggleOverlay: () => this.toggleOverlay(),
+        getReporterName: () => this.reporterName(),
+        onReporterNameChange: (name) => this.setReporterName(name),
         onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options)
       },
       {
@@ -2048,7 +2082,7 @@ var QuadApi = class {
           title: input.title,
           body: "(Capture session)",
           meta: this.snapshotMeta(),
-          reporter: this.user,
+          reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey(),
           attachments: input.attachments
         });
@@ -2112,6 +2146,7 @@ var QuadApi = class {
   }
   identify(user) {
     this.user = user;
+    if (user.name) this.setReporterName(user.name);
   }
   setContext(ctx) {
     this.context = { ...this.context, ...ctx };
@@ -2131,7 +2166,7 @@ var QuadApi = class {
         title: input.title,
         body: input.body ?? "",
         meta: this.snapshotMeta(),
-        reporter: this.user,
+        reporter: this.reporter(),
         reporterAnonKey: this.ensureAnonKey()
       });
     } catch (err) {
@@ -2220,7 +2255,7 @@ var QuadApi = class {
         const result = await this.api.createPin({
           pin,
           meta: this.snapshotMeta(),
-          reporter: this.user,
+          reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey()
         });
         add({
@@ -2264,10 +2299,33 @@ var QuadApi = class {
       title,
       body,
       meta,
-      reporter: this.user,
+      reporter: this.reporter(),
       reporterAnonKey: this.ensureAnonKey(),
       attachments
     });
+  }
+  reporter() {
+    const name = this.reporterName();
+    if (this.user) return name ? { ...this.user, name } : this.user;
+    return name ? { id: this.ensureAnonKey(), name } : void 0;
+  }
+  reporterName() {
+    const explicit = this.user?.name?.trim();
+    if (explicit) return explicit;
+    try {
+      return localStorage.getItem(REPORTER_NAME_KEY)?.trim() || void 0;
+    } catch {
+      return void 0;
+    }
+  }
+  setReporterName(name) {
+    const normalized = name.trim().slice(0, 120);
+    if (this.user) this.user = { ...this.user, name: normalized || this.user.name };
+    try {
+      if (normalized) localStorage.setItem(REPORTER_NAME_KEY, normalized);
+      else localStorage.removeItem(REPORTER_NAME_KEY);
+    } catch {
+    }
   }
   snapshotMeta() {
     return {
