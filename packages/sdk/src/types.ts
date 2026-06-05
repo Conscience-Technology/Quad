@@ -10,8 +10,6 @@ export type QuadOptions = {
   endpoint?: string; // defaults to same-origin
   user?: { id: string; email?: string; name?: string };
   shortcut?: Partial<{
-    bugMode: QuadShortcut; // default "alt+shift+b"
-    pin: QuadShortcut; // default "alt+click"
     capture: QuadShortcut; // default "alt+shift+r"
     voice: QuadShortcut; // default "alt+shift+v"
     overlay: QuadShortcut; // default "alt+shift+q"

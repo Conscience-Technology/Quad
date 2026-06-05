@@ -21,6 +21,7 @@ import {
 import type {
   ConsoleEntry,
   NetworkEntry,
+  PinPayload,
   QuadOptions,
   ReportMeta,
 } from "./types";
@@ -50,6 +51,8 @@ class QuadApi {
   private networkRing = new Ring<NetworkEntry>(20);
   private cleanupFns: Array<() => void> = [];
   private installed = false;
+  private pendingPointerResolve: ((target: PinPayload) => void) | null = null;
+  private pendingPointerReject: (() => void) | null = null;
 
   init(opts: QuadOptions): void {
     if (!isBrowser() || this.installed) return;
@@ -76,8 +79,6 @@ class QuadApi {
     // (Cmd+Shift+B = Chrome bookmarks bar, Cmd+Shift+R = force reload,
     // Cmd+Shift+Q = quit Chrome on macOS).
     const shortcuts = {
-      bugMode: parse(opts.shortcut?.bugMode ?? "alt+shift+b"),
-      pin: parse(opts.shortcut?.pin ?? "alt+click"),
       overlay: parse(opts.shortcut?.overlay ?? "alt+shift+q"),
       capture: parse(opts.shortcut?.capture ?? "alt+shift+r"),
       voice: parse(opts.shortcut?.voice ?? "alt+shift+v"),
@@ -87,6 +88,8 @@ class QuadApi {
     this.widget = new Widget(
       {
         onToggleOverlay: () => this.toggleOverlay(),
+        onRequestPointerTarget: () => this.requestPointerTarget(),
+        onClearPointerTarget: () => this.clearPointerTarget(),
         getReporterName: () => this.reporterName(),
         onReporterNameChange: (name) => this.setReporterName(name),
         getAzureDevOpsPatStatus: () => this.getAzureDevOpsPatStatus(),
@@ -99,8 +102,8 @@ class QuadApi {
         mentionUsers: opts.azureDevOps?.mentionUsers ?? [],
       },
     );
-    this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
-      onPin: (el, x, y) => this.openPinForm(el, x, y),
+    this.bugMode = new BugMode(this.widget, this.widget.host, {
+      onPin: (el) => this.completePointerTarget(el),
     });
     // Mac users see ⌥ / Option, Windows + Linux see Alt. Same physical key.
     this.optKey = /Mac|iPhone|iPad/i.test(navigator?.platform ?? "") ? "Option" : "Alt";
@@ -130,17 +133,13 @@ class QuadApi {
         this.widget?.toast(`증거 저장 완료 · ${Math.round(input.durationMs / 1000)}초`);
       },
       onPin: () => {
-        // Toggle bug mode on so the next Option+Click captures the pin; the
-        // pin is then attached to the bug_report independently from the capture.
-        if (!this.bugMode?.isOn()) this.toggleBugMode();
-        this.widget?.toast(`${this.optKey}+클릭으로 요소를 지정하세요`);
+        void this.requestPointerTarget();
       },
     });
 
     // Global keydown
     const onKey = (e: KeyboardEvent) => {
       const shortcut =
-        matchesKey(shortcuts.bugMode, e) ||
         matchesKey(shortcuts.overlay, e) ||
         matchesKey(shortcuts.capture, e) ||
         matchesKey(shortcuts.voice, e);
@@ -148,10 +147,7 @@ class QuadApi {
         e.preventDefault();
         return;
       }
-      if (matchesKey(shortcuts.bugMode, e)) {
-        e.preventDefault();
-        this.toggleBugMode();
-      } else if (matchesKey(shortcuts.overlay, e)) {
+      if (matchesKey(shortcuts.overlay, e)) {
         e.preventDefault();
         this.toggleOverlay();
       } else if (matchesKey(shortcuts.capture, e)) {
@@ -172,7 +168,7 @@ class QuadApi {
         }
       } else if (e.key === "Escape") {
         if (this.capture?.isActive()) void this.capture.stop();
-        else if (this.bugMode?.isOn()) this.toggleBugMode();
+        else if (this.bugMode?.isOn()) this.cancelPointerTarget();
         else if (this.widget?.isOverlayOpen()) this.toggleOverlay();
       }
     };
@@ -301,17 +297,41 @@ class QuadApi {
 
   // ---- Internal -------------------------------------------------------------
 
-  private toggleBugMode(): void {
-    if (!this.bugMode) return;
-    this.bugMode.setOn(!this.bugMode.isOn());
-    this.widget?.toast(
-      this.bugMode.isOn() ? `버그 모드 켜짐 - ${this.optKey}+클릭으로 요소 지정` : "버그 모드 꺼짐",
-    );
-  }
-
   private toggleOverlay(): void {
     if (!this.widget) return;
     this.widget.setOverlayOpen(!this.widget.isOverlayOpen());
+  }
+
+  private requestPointerTarget(): Promise<PinPayload> {
+    if (!this.bugMode || !this.widget) return Promise.reject(new Error("Quad가 초기화되지 않았습니다"));
+    this.cancelPointerTarget();
+    this.widget.setOverlayOpen(true);
+    this.bugMode.setOn(true);
+    this.widget.toast("문제 위치로 지정할 화면 요소를 클릭하세요");
+    return new Promise((resolve, reject) => {
+      this.pendingPointerResolve = resolve;
+      this.pendingPointerReject = () => reject(new Error("문제 위치 지정이 취소되었습니다"));
+    });
+  }
+
+  private completePointerTarget(el: Element): void {
+    const target = buildPin(el, "");
+    this.pendingPointerResolve?.(target);
+    this.pendingPointerResolve = null;
+    this.pendingPointerReject = null;
+    this.widget?.toast("문제 위치가 지정되었습니다");
+  }
+
+  private cancelPointerTarget(): void {
+    if (this.bugMode?.isOn()) this.bugMode.setOn(false);
+    this.pendingPointerReject?.();
+    this.pendingPointerResolve = null;
+    this.pendingPointerReject = null;
+  }
+
+  private clearPointerTarget(): void {
+    this.cancelPointerTarget();
+    this.bugMode?.clearSelection();
   }
 
   private openPinForm(el: Element, x: number, y: number): void {
@@ -368,14 +388,27 @@ class QuadApi {
     }
     const title = body.slice(0, 80) || "(첨부 증거)";
     const meta = this.snapshotMeta(this.azureContext(options));
-    await this.api.createSession({
+    const result = await this.api.createSession({
       title,
       body,
       meta,
       reporter: this.reporter(),
       reporterAnonKey: this.ensureAnonKey(),
       attachments,
+      target: options.target,
     });
+    if (options.target) {
+      Local.add({
+        id: result.id,
+        createdAt: Date.now(),
+        route: options.target.route,
+        pageUrl: options.target.pageUrl,
+        selector: options.target.selector,
+        domPath: options.target.domPath,
+        componentPath: options.target.componentPath,
+        body,
+      });
+    }
   }
 
   private reporter(): QuadOptions["user"] | undefined {

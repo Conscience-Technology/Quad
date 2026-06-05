@@ -12,8 +12,6 @@ type QuadOptions = {
         name?: string;
     };
     shortcut?: Partial<{
-        bugMode: QuadShortcut;
-        pin: QuadShortcut;
         capture: QuadShortcut;
         voice: QuadShortcut;
         overlay: QuadShortcut;

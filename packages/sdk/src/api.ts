@@ -40,6 +40,7 @@ export type IngestSessionInput = {
   reporter?: { id?: string; email?: string; name?: string };
   reporterAnonKey?: string;
   attachments?: Array<{ key: string; mime: string; sizeBytes: number; kind: "video" | "audio" | "screenshot" }>;
+  target?: PinPayload;
 };
 
 export class Api {

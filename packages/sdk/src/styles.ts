@@ -156,19 +156,89 @@ export const WIDGET_CSS = /* css */ `
 .q-panel .drop {
   margin: 2px 0 14px;
   padding: 26px 14px;
-  border: 1.5px dashed rgba(139, 124, 246, 0.55);
+  border: 1.5px dashed rgba(139, 124, 246, 0.78);
   border-radius: 8px;
-  background: rgba(139, 124, 246, 0.08);
+  background: rgba(139, 124, 246, 0.14);
   text-align: center;
-  color: var(--star-200);
+  color: var(--star-100);
   font-size: 14px;
+  font-weight: 650;
   overflow-wrap: anywhere;
   transition: border 160ms var(--ease), background 160ms var(--ease);
 }
+.q-panel .drop small {
+  color: var(--star-300);
+  font-weight: 500;
+}
 .q-panel .drop[data-over="true"] {
   border-color: var(--violet);
-  background: rgba(139, 124, 246, 0.16);
+  background: rgba(139, 124, 246, 0.22);
   color: var(--star-100);
+}
+.q-pointer-card {
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.q-pointer-button {
+  width: 100%;
+  border: 1px solid rgba(139, 124, 246, 0.58);
+  border-radius: 8px;
+  background: rgba(139, 124, 246, 0.14);
+  color: var(--star-100);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  padding: 9px 10px;
+}
+.q-pointer-button:hover:not(:disabled) {
+  border-color: var(--violet);
+  background: rgba(139, 124, 246, 0.22);
+}
+.q-pointer-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+.q-pointer-summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin-top: 8px;
+}
+.q-pointer-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--star-500);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-pointer-clear {
+  display: none;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--star-300);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+.q-pointer-card[data-selected="true"] {
+  border-color: rgba(139, 124, 246, 0.52);
+  background: rgba(139, 124, 246, 0.08);
+}
+.q-pointer-card[data-selected="true"] .q-pointer-label,
+.q-pointer-card[data-picking="true"] .q-pointer-label {
+  color: var(--star-100);
+}
+.q-pointer-card[data-selected="true"] .q-pointer-clear {
+  display: inline-flex;
 }
 .q-field {
   display: block;
@@ -396,6 +466,11 @@ export const WIDGET_CSS = /* css */ `
 .q-mention-option[aria-selected="true"] {
   background: rgba(139, 124, 246, 0.18);
   color: var(--star-100);
+}
+.q-mention-empty {
+  color: var(--star-500);
+  font-size: 13px;
+  padding: 10px;
 }
 .q-mention-avatar {
   flex: 0 0 28px;
@@ -705,6 +780,24 @@ export const WIDGET_CSS = /* css */ `
 }
 
 /* Reveal layer (pins shown on the host page when toggled visible) */
+.q-pointer-outline {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483598;
+  border: 1.5px solid var(--violet);
+  border-radius: 4px;
+  background: rgba(139, 124, 246, 0.08);
+  box-shadow: 0 0 0 3px rgba(139, 124, 246, 0.16);
+  transition: all 80ms var(--ease);
+}
+.q-pointer-outline[data-kind="hover"] {
+  border-style: dashed;
+  background: rgba(139, 124, 246, 0.05);
+}
+.q-pointer-outline[data-kind="selected"] {
+  border-width: 2px;
+  box-shadow: 0 0 0 4px rgba(139, 124, 246, 0.18), 0 0 24px rgba(139, 124, 246, 0.28);
+}
 .q-reveal-outline {
   position: fixed;
   pointer-events: none;

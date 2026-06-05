@@ -1,4 +1,4 @@
-import { Q as QuadOptions } from './types-0Tew8_NE.js';
+import { Q as QuadOptions } from './types-BPIuT2P4.js';
 
 type CaptureMode = "screen+mic" | "mic-only";
 
@@ -16,6 +16,8 @@ declare class QuadApi {
     private networkRing;
     private cleanupFns;
     private installed;
+    private pendingPointerResolve;
+    private pendingPointerReject;
     init(opts: QuadOptions): void;
     close(): void;
     identify(user: {
@@ -41,8 +43,11 @@ declare class QuadApi {
     private bootstrapPins;
     /** Minimal native confirm so we don't ship a custom modal just for this. */
     private askCaptureMode;
-    private toggleBugMode;
     private toggleOverlay;
+    private requestPointerTarget;
+    private completePointerTarget;
+    private cancelPointerTarget;
+    private clearPointerTarget;
     private openPinForm;
     private submitOverlay;
     private reporter;

@@ -133,67 +133,29 @@ var Api = class {
   }
 };
 
-// src/shortcuts.ts
-var IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-function parse(combo) {
-  const parts = combo.toLowerCase().split("+").map((s) => s.trim());
-  const out = { alt: false, shift: false, ctrl: false, meta: false, key: "" };
-  for (const p of parts) {
-    if (p === "alt" || p === "option") out.alt = true;
-    else if (p === "shift") out.shift = true;
-    else if (p === "ctrl" || p === "control") out.ctrl = true;
-    else if (p === "cmd" || p === "command" || p === "meta") out.meta = true;
-    else if (p === "mod") {
-      if (IS_MAC) out.meta = true;
-      else out.ctrl = true;
-    } else {
-      out.key = p;
-    }
-  }
-  return out;
-}
-function matchesKey(combo, e) {
-  if (!isComboKey(combo)) return false;
-  if (combo.alt !== e.altKey) return false;
-  if (combo.shift !== e.shiftKey) return false;
-  if (combo.ctrl !== e.ctrlKey) return false;
-  if (combo.meta !== e.metaKey) return false;
-  const k = e.key.toLowerCase();
-  if (k === combo.key) return true;
-  return matchesPhysicalKey(combo.key, e.code);
-}
-function matchesMouse(combo, e, kind = "click") {
-  if (combo.key !== kind) return false;
-  if (combo.alt !== e.altKey) return false;
-  if (combo.shift !== e.shiftKey) return false;
-  if (combo.ctrl !== e.ctrlKey) return false;
-  if (combo.meta !== e.metaKey) return false;
-  return true;
-}
-function isComboKey(c) {
-  return c.key !== "" && c.key !== "click" && c.key !== "dblclick";
-}
-function matchesPhysicalKey(key, code) {
-  if (/^[a-z]$/.test(key)) return code === `Key${key.toUpperCase()}`;
-  if (/^[0-9]$/.test(key)) return code === `Digit${key}`;
-  return false;
-}
-
 // src/bug-mode.ts
 var BugMode = class {
-  constructor(widget, hostNode, pinCombo, handlers) {
+  constructor(widget, hostNode, handlers) {
     this.widget = widget;
     this.hostNode = hostNode;
     this.handlers = handlers;
-    this.pinCombo = pinCombo;
+    window.addEventListener("scroll", this.schedule, { capture: true, passive: true });
+    window.addEventListener("resize", this.schedule, { passive: true });
   }
   widget;
   hostNode;
   handlers;
   on = false;
-  pinCombo;
+  hoverOutline = null;
+  selectedOutline = null;
+  hoverEl = null;
+  selectedEl = null;
+  rafId = null;
   destroy() {
     this.setOn(false);
+    this.clearSelection();
+    window.removeEventListener("scroll", this.schedule, true);
+    window.removeEventListener("resize", this.schedule);
   }
   setOn(on) {
     if (on === this.on) {
@@ -204,8 +166,13 @@ var BugMode = class {
     this.widget.setBugMode(on);
     if (on) {
       document.addEventListener("click", this.onClick, true);
+      document.addEventListener("mousemove", this.onMouseMove, true);
     } else {
       document.removeEventListener("click", this.onClick, true);
+      document.removeEventListener("mousemove", this.onMouseMove, true);
+      this.hoverEl = null;
+      this.hoverOutline?.remove();
+      this.hoverOutline = null;
     }
   }
   isOn() {
@@ -213,13 +180,59 @@ var BugMode = class {
   }
   onClick = (e) => {
     if (!this.on) return;
-    if (!matchesMouse(this.pinCombo, e, "click")) return;
     const el = this.pickElement(e);
     if (!el) return;
     e.preventDefault();
     e.stopPropagation();
+    this.selectedEl = el;
+    this.setOn(false);
+    this.schedule();
     this.handlers.onPin(el, e.clientX, e.clientY);
   };
+  onMouseMove = (e) => {
+    if (!this.on) return;
+    this.hoverEl = this.pickElement(e);
+    this.schedule();
+  };
+  clearSelection() {
+    this.selectedEl = null;
+    this.selectedOutline?.remove();
+    this.selectedOutline = null;
+  }
+  schedule = () => {
+    if (!this.on && !this.selectedEl) return;
+    if (this.rafId != null) return;
+    this.rafId = requestAnimationFrame(() => {
+      this.rafId = null;
+      this.renderOutlines();
+    });
+  };
+  renderOutlines() {
+    this.renderOutline("hover", this.hoverEl, this.on);
+    this.renderOutline("selected", this.selectedEl, Boolean(this.selectedEl));
+  }
+  renderOutline(kind, el, show) {
+    let outline = kind === "hover" ? this.hoverOutline : this.selectedOutline;
+    if (!show || !el) {
+      outline?.remove();
+      if (kind === "hover") this.hoverOutline = null;
+      else this.selectedOutline = null;
+      return;
+    }
+    if (!outline) {
+      outline = document.createElement("div");
+      outline.className = "q-pointer-outline";
+      outline.dataset.kind = kind;
+      this.widget.root.appendChild(outline);
+      if (kind === "hover") this.hoverOutline = outline;
+      else this.selectedOutline = outline;
+    }
+    const rect = el.getBoundingClientRect();
+    outline.style.left = `${rect.left}px`;
+    outline.style.top = `${rect.top}px`;
+    outline.style.width = `${rect.width}px`;
+    outline.style.height = `${rect.height}px`;
+  }
   /** Find the element under the cursor while ignoring our own widget. */
   pickElement(e) {
     const path = e.composedPath?.() ?? [];
@@ -1095,6 +1108,44 @@ function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// src/shortcuts.ts
+var IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+function parse(combo) {
+  const parts = combo.toLowerCase().split("+").map((s) => s.trim());
+  const out = { alt: false, shift: false, ctrl: false, meta: false, key: "" };
+  for (const p of parts) {
+    if (p === "alt" || p === "option") out.alt = true;
+    else if (p === "shift") out.shift = true;
+    else if (p === "ctrl" || p === "control") out.ctrl = true;
+    else if (p === "cmd" || p === "command" || p === "meta") out.meta = true;
+    else if (p === "mod") {
+      if (IS_MAC) out.meta = true;
+      else out.ctrl = true;
+    } else {
+      out.key = p;
+    }
+  }
+  return out;
+}
+function matchesKey(combo, e) {
+  if (!isComboKey(combo)) return false;
+  if (combo.alt !== e.altKey) return false;
+  if (combo.shift !== e.shiftKey) return false;
+  if (combo.ctrl !== e.ctrlKey) return false;
+  if (combo.meta !== e.metaKey) return false;
+  const k = e.key.toLowerCase();
+  if (k === combo.key) return true;
+  return matchesPhysicalKey(combo.key, e.code);
+}
+function isComboKey(c) {
+  return c.key !== "" && c.key !== "click" && c.key !== "dblclick";
+}
+function matchesPhysicalKey(key, code) {
+  if (/^[a-z]$/.test(key)) return code === `Key${key.toUpperCase()}`;
+  if (/^[0-9]$/.test(key)) return code === `Digit${key}`;
+  return false;
+}
+
 // src/styles.ts
 var WIDGET_CSS = (
   /* css */
@@ -1251,19 +1302,89 @@ var WIDGET_CSS = (
 .q-panel .drop {
   margin: 2px 0 14px;
   padding: 26px 14px;
-  border: 1.5px dashed rgba(139, 124, 246, 0.55);
+  border: 1.5px dashed rgba(139, 124, 246, 0.78);
   border-radius: 8px;
-  background: rgba(139, 124, 246, 0.08);
+  background: rgba(139, 124, 246, 0.14);
   text-align: center;
-  color: var(--star-200);
+  color: var(--star-100);
   font-size: 14px;
+  font-weight: 650;
   overflow-wrap: anywhere;
   transition: border 160ms var(--ease), background 160ms var(--ease);
 }
+.q-panel .drop small {
+  color: var(--star-300);
+  font-weight: 500;
+}
 .q-panel .drop[data-over="true"] {
   border-color: var(--violet);
-  background: rgba(139, 124, 246, 0.16);
+  background: rgba(139, 124, 246, 0.22);
   color: var(--star-100);
+}
+.q-pointer-card {
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.q-pointer-button {
+  width: 100%;
+  border: 1px solid rgba(139, 124, 246, 0.58);
+  border-radius: 8px;
+  background: rgba(139, 124, 246, 0.14);
+  color: var(--star-100);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  padding: 9px 10px;
+}
+.q-pointer-button:hover:not(:disabled) {
+  border-color: var(--violet);
+  background: rgba(139, 124, 246, 0.22);
+}
+.q-pointer-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+.q-pointer-summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin-top: 8px;
+}
+.q-pointer-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--star-500);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-pointer-clear {
+  display: none;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--star-300);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+.q-pointer-card[data-selected="true"] {
+  border-color: rgba(139, 124, 246, 0.52);
+  background: rgba(139, 124, 246, 0.08);
+}
+.q-pointer-card[data-selected="true"] .q-pointer-label,
+.q-pointer-card[data-picking="true"] .q-pointer-label {
+  color: var(--star-100);
+}
+.q-pointer-card[data-selected="true"] .q-pointer-clear {
+  display: inline-flex;
 }
 .q-field {
   display: block;
@@ -1491,6 +1612,11 @@ var WIDGET_CSS = (
 .q-mention-option[aria-selected="true"] {
   background: rgba(139, 124, 246, 0.18);
   color: var(--star-100);
+}
+.q-mention-empty {
+  color: var(--star-500);
+  font-size: 13px;
+  padding: 10px;
 }
 .q-mention-avatar {
   flex: 0 0 28px;
@@ -1800,6 +1926,24 @@ var WIDGET_CSS = (
 }
 
 /* Reveal layer (pins shown on the host page when toggled visible) */
+.q-pointer-outline {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483598;
+  border: 1.5px solid var(--violet);
+  border-radius: 4px;
+  background: rgba(139, 124, 246, 0.08);
+  box-shadow: 0 0 0 3px rgba(139, 124, 246, 0.16);
+  transition: all 80ms var(--ease);
+}
+.q-pointer-outline[data-kind="hover"] {
+  border-style: dashed;
+  background: rgba(139, 124, 246, 0.05);
+}
+.q-pointer-outline[data-kind="selected"] {
+  border-width: 2px;
+  box-shadow: 0 0 0 4px rgba(139, 124, 246, 0.18), 0 0 24px rgba(139, 124, 246, 0.28);
+}
 .q-reveal-outline {
   position: fixed;
   pointer-events: none;
@@ -2055,6 +2199,13 @@ var Widget = class {
         <small>macOS\uB294 \u2318\u21E75, Windows\uB294 Win+G\uB85C \uB179\uD654\uD55C \uB4A4 \uC5EC\uAE30\uC5D0 \uB193\uC73C\uC138\uC694</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
+      <div class="q-pointer-card" data-selected="false" data-picking="false">
+        <button class="q-pointer-button" type="button">\uBB38\uC81C \uC704\uCE58 \uC9C0\uC815</button>
+        <div class="q-pointer-summary">
+          <span class="q-pointer-label">\uC120\uD0DD\uB41C \uC704\uCE58 \uC5C6\uC74C</span>
+          <button class="q-pointer-clear" type="button">\uD574\uC81C</button>
+        </div>
+      </div>
       ${this.options.azureDevOpsEnabled ? '<input class="q-user-story-work-item" type="number" inputmode="numeric" min="1" placeholder="User Story \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
       ${this.options.azureDevOpsEnabled ? '<input class="q-task-work-item" type="number" inputmode="numeric" min="1" placeholder="Task \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
       <div class="q-comment-wrap">
@@ -2119,6 +2270,7 @@ var Widget = class {
     p.appendChild(header);
     p.appendChild(body);
     this.wireOverlayBody(body);
+    this.wirePointerTarget(body);
     this.wireSettingsModal(body);
     this.syncReporterIdentity(body);
     if (this.options.azureDevOpsEnabled) {
@@ -2250,6 +2402,41 @@ var Widget = class {
       }
     });
   }
+  wirePointerTarget(body) {
+    const card = body.querySelector(".q-pointer-card");
+    const button = body.querySelector(".q-pointer-button");
+    const label = body.querySelector(".q-pointer-label");
+    const clear = body.querySelector(".q-pointer-clear");
+    if (!card || !button || !label || !clear) return;
+    let target;
+    const targetBox = card;
+    const render = () => {
+      card.dataset.selected = target ? "true" : "false";
+      targetBox.quadPointerTarget = target;
+      label.textContent = target ? target.label || target.componentPath || target.selector : "\uC120\uD0DD\uB41C \uC704\uCE58 \uC5C6\uC74C";
+      button.textContent = target ? "\uBB38\uC81C \uC704\uCE58 \uB2E4\uC2DC \uC9C0\uC815" : "\uBB38\uC81C \uC704\uCE58 \uC9C0\uC815";
+    };
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      card.dataset.picking = "true";
+      label.textContent = "\uBB38\uC81C \uC704\uCE58\uB85C \uC9C0\uC815\uD560 \uD654\uBA74 \uC694\uC18C\uB97C \uD074\uB9AD\uD558\uC138\uC694";
+      try {
+        target = await this.cb.onRequestPointerTarget();
+      } catch {
+        target = void 0;
+      } finally {
+        card.dataset.picking = "false";
+        button.disabled = false;
+        render();
+      }
+    });
+    clear.addEventListener("click", () => {
+      target = void 0;
+      this.cb.onClearPointerTarget();
+      render();
+    });
+    render();
+  }
   wireAzureTargets(body) {
     const userStoryInput = body.querySelector("input.q-user-story-work-item");
     const taskInput = body.querySelector("input.q-task-work-item");
@@ -2297,14 +2484,22 @@ var Widget = class {
     };
     const render = () => {
       const match = findMentionMatch(textarea);
-      if (!match || users.length === 0) {
+      if (!match) {
         close();
+        return;
+      }
+      if (users.length === 0) {
+        activeMatch = match;
+        menu.dataset.open = "true";
+        menu.innerHTML = `<div class="q-mention-empty">\uBA58\uC158 \uBAA9\uB85D\uC774 \uC124\uC815\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4</div>`;
         return;
       }
       const q = match.query.toLowerCase();
       const candidates = users.filter((user) => mentionSearchText(user).includes(q)).slice(0, 7);
       if (candidates.length === 0) {
-        close();
+        activeMatch = match;
+        menu.dataset.open = "true";
+        menu.innerHTML = `<div class="q-mention-empty">\uAC80\uC0C9 \uACB0\uACFC \uC5C6\uC74C</div>`;
         return;
       }
       activeMatch = match;
@@ -2425,6 +2620,7 @@ var Widget = class {
   wireOverlayBody(body) {
     const drop = body.querySelector(".drop");
     const fileInput = body.querySelector("input[type=file]");
+    const pointerCard = body.querySelector(".q-pointer-card");
     const userStoryInput = body.querySelector("input.q-user-story-work-item");
     const taskInput = body.querySelector("input.q-task-work-item");
     const ta = body.querySelector("textarea.q-comment-body");
@@ -2501,10 +2697,20 @@ var Widget = class {
       try {
         await this.cb.onSubmitOverlay(body2, staged, {
           ...azureTargets,
-          azureMentionEmails: ta.quadMentionEmails ?? []
+          azureMentionEmails: ta.quadMentionEmails ?? [],
+          target: pointerCard?.quadPointerTarget ? { ...pointerCard.quadPointerTarget, body: body2 } : void 0
         });
         ta.value = "";
         ta.quadMentionEmails?.splice(0, ta.quadMentionEmails.length);
+        if (pointerCard) {
+          pointerCard.quadPointerTarget = void 0;
+          pointerCard.dataset.selected = "false";
+          const label = pointerCard.querySelector(".q-pointer-label");
+          const pickButton = pointerCard.querySelector(".q-pointer-button");
+          if (label) label.textContent = "\uC120\uD0DD\uB41C \uC704\uCE58 \uC5C6\uC74C";
+          if (pickButton) pickButton.textContent = "\uBB38\uC81C \uC704\uCE58 \uC9C0\uC815";
+        }
+        this.cb.onClearPointerTarget();
         staged = [];
         renderStaged();
         status.textContent = "\uC804\uC1A1 \uC644\uB8CC";
@@ -2756,6 +2962,8 @@ var QuadApi = class {
   networkRing = new Ring(20);
   cleanupFns = [];
   installed = false;
+  pendingPointerResolve = null;
+  pendingPointerReject = null;
   init(opts) {
     if (!isBrowser() || this.installed) return;
     this.opts = { endpoint: "", ...opts };
@@ -2774,8 +2982,6 @@ var QuadApi = class {
       );
     }
     const shortcuts = {
-      bugMode: parse(opts.shortcut?.bugMode ?? "alt+shift+b"),
-      pin: parse(opts.shortcut?.pin ?? "alt+click"),
       overlay: parse(opts.shortcut?.overlay ?? "alt+shift+q"),
       capture: parse(opts.shortcut?.capture ?? "alt+shift+r"),
       voice: parse(opts.shortcut?.voice ?? "alt+shift+v")
@@ -2783,6 +2989,8 @@ var QuadApi = class {
     this.widget = new Widget(
       {
         onToggleOverlay: () => this.toggleOverlay(),
+        onRequestPointerTarget: () => this.requestPointerTarget(),
+        onClearPointerTarget: () => this.clearPointerTarget(),
         getReporterName: () => this.reporterName(),
         onReporterNameChange: (name) => this.setReporterName(name),
         getAzureDevOpsPatStatus: () => this.getAzureDevOpsPatStatus(),
@@ -2795,8 +3003,8 @@ var QuadApi = class {
         mentionUsers: opts.azureDevOps?.mentionUsers ?? []
       }
     );
-    this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
-      onPin: (el, x, y) => this.openPinForm(el, x, y)
+    this.bugMode = new BugMode(this.widget, this.widget.host, {
+      onPin: (el) => this.completePointerTarget(el)
     });
     this.optKey = /Mac|iPhone|iPad/i.test(navigator?.platform ?? "") ? "Option" : "Alt";
     this.reveal = new RevealLayer(this.widget.root);
@@ -2822,20 +3030,16 @@ var QuadApi = class {
         this.widget?.toast(`\uC99D\uAC70 \uC800\uC7A5 \uC644\uB8CC \xB7 ${Math.round(input.durationMs / 1e3)}\uCD08`);
       },
       onPin: () => {
-        if (!this.bugMode?.isOn()) this.toggleBugMode();
-        this.widget?.toast(`${this.optKey}+\uD074\uB9AD\uC73C\uB85C \uC694\uC18C\uB97C \uC9C0\uC815\uD558\uC138\uC694`);
+        void this.requestPointerTarget();
       }
     });
     const onKey = (e) => {
-      const shortcut = matchesKey(shortcuts.bugMode, e) || matchesKey(shortcuts.overlay, e) || matchesKey(shortcuts.capture, e) || matchesKey(shortcuts.voice, e);
+      const shortcut = matchesKey(shortcuts.overlay, e) || matchesKey(shortcuts.capture, e) || matchesKey(shortcuts.voice, e);
       if (shortcut && e.repeat) {
         e.preventDefault();
         return;
       }
-      if (matchesKey(shortcuts.bugMode, e)) {
-        e.preventDefault();
-        this.toggleBugMode();
-      } else if (matchesKey(shortcuts.overlay, e)) {
+      if (matchesKey(shortcuts.overlay, e)) {
         e.preventDefault();
         this.toggleOverlay();
       } else if (matchesKey(shortcuts.capture, e)) {
@@ -2856,7 +3060,7 @@ var QuadApi = class {
         }
       } else if (e.key === "Escape") {
         if (this.capture?.isActive()) void this.capture.stop();
-        else if (this.bugMode?.isOn()) this.toggleBugMode();
+        else if (this.bugMode?.isOn()) this.cancelPointerTarget();
         else if (this.widget?.isOverlayOpen()) this.toggleOverlay();
       }
     };
@@ -2968,16 +3172,37 @@ var QuadApi = class {
     return "screen+mic";
   }
   // ---- Internal -------------------------------------------------------------
-  toggleBugMode() {
-    if (!this.bugMode) return;
-    this.bugMode.setOn(!this.bugMode.isOn());
-    this.widget?.toast(
-      this.bugMode.isOn() ? `\uBC84\uADF8 \uBAA8\uB4DC \uCF1C\uC9D0 - ${this.optKey}+\uD074\uB9AD\uC73C\uB85C \uC694\uC18C \uC9C0\uC815` : "\uBC84\uADF8 \uBAA8\uB4DC \uAEBC\uC9D0"
-    );
-  }
   toggleOverlay() {
     if (!this.widget) return;
     this.widget.setOverlayOpen(!this.widget.isOverlayOpen());
+  }
+  requestPointerTarget() {
+    if (!this.bugMode || !this.widget) return Promise.reject(new Error("Quad\uAC00 \uCD08\uAE30\uD654\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4"));
+    this.cancelPointerTarget();
+    this.widget.setOverlayOpen(true);
+    this.bugMode.setOn(true);
+    this.widget.toast("\uBB38\uC81C \uC704\uCE58\uB85C \uC9C0\uC815\uD560 \uD654\uBA74 \uC694\uC18C\uB97C \uD074\uB9AD\uD558\uC138\uC694");
+    return new Promise((resolve, reject) => {
+      this.pendingPointerResolve = resolve;
+      this.pendingPointerReject = () => reject(new Error("\uBB38\uC81C \uC704\uCE58 \uC9C0\uC815\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4"));
+    });
+  }
+  completePointerTarget(el) {
+    const target = buildPin(el, "");
+    this.pendingPointerResolve?.(target);
+    this.pendingPointerResolve = null;
+    this.pendingPointerReject = null;
+    this.widget?.toast("\uBB38\uC81C \uC704\uCE58\uAC00 \uC9C0\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4");
+  }
+  cancelPointerTarget() {
+    if (this.bugMode?.isOn()) this.bugMode.setOn(false);
+    this.pendingPointerReject?.();
+    this.pendingPointerResolve = null;
+    this.pendingPointerReject = null;
+  }
+  clearPointerTarget() {
+    this.cancelPointerTarget();
+    this.bugMode?.clearSelection();
   }
   openPinForm(el, x, y) {
     if (!this.widget) return;
@@ -3016,14 +3241,27 @@ var QuadApi = class {
     }
     const title = body.slice(0, 80) || "(\uCCA8\uBD80 \uC99D\uAC70)";
     const meta = this.snapshotMeta(this.azureContext(options));
-    await this.api.createSession({
+    const result = await this.api.createSession({
       title,
       body,
       meta,
       reporter: this.reporter(),
       reporterAnonKey: this.ensureAnonKey(),
-      attachments
+      attachments,
+      target: options.target
     });
+    if (options.target) {
+      add({
+        id: result.id,
+        createdAt: Date.now(),
+        route: options.target.route,
+        pageUrl: options.target.pageUrl,
+        selector: options.target.selector,
+        domPath: options.target.domPath,
+        componentPath: options.target.componentPath,
+        body
+      });
+    }
   }
   reporter() {
     const name = this.reporterName();

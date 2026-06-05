@@ -14,6 +14,33 @@ const Attachment = z.object({
   kind: z.enum(["video", "audio", "screenshot"]),
 });
 
+const BBox = z.object({
+  x: z.number(),
+  y: z.number(),
+  w: z.number(),
+  h: z.number(),
+});
+
+const SourceLocation = z.object({
+  file: z.string().optional(),
+  line: z.number().optional(),
+  column: z.number().optional(),
+  function: z.string().optional(),
+});
+
+const Target = z.object({
+  selector: z.string(),
+  domPath: z.string(),
+  componentPath: z.string().optional(),
+  sourceLocation: SourceLocation.optional(),
+  bbox: BBox,
+  route: z.string(),
+  pageUrl: z.string(),
+  outerHtmlPreview: z.string(),
+  body: z.string(),
+  label: z.string().max(200).optional(),
+});
+
 const Body = z.object({
   title: z.string().max(200),
   body: z.string().max(8000),
@@ -27,6 +54,7 @@ const Body = z.object({
     .optional(),
   reporterAnonKey: z.string().optional(),
   attachments: z.array(Attachment).max(20).optional(),
+  target: Target.optional(),
 });
 
 export async function OPTIONS(req: Request) {
@@ -67,6 +95,7 @@ export async function POST(req: Request) {
       reporter: payload.reporter,
       reporterAnonKey: payload.reporterAnonKey,
       attachments: payload.attachments,
+      target: payload.target,
     });
     setImmediate(() => { void processBugReport(result.id); });
     return withCors(req, project.allowedOrigins, NextResponse.json(result));
