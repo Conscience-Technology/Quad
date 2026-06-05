@@ -13,6 +13,7 @@ import {
   azureWorkItemUrl,
   formatAzureMention,
   isAzureDevOpsConfigured,
+  searchAzureIdentities,
   setAzureWorkItemState,
 } from "~/lib/azure-devops";
 import { getAzureDevOpsConfig } from "~/server/integrations/store";
@@ -361,6 +362,7 @@ async function syncAzureDevOpsFromReport(
       });
       return;
     }
+    if (!config) return;
 
     const state = config?.reportState?.trim() || "Reopened";
     const results: Array<{ workItemId: number; state: string | null; url: string | undefined }> = [];
@@ -369,7 +371,7 @@ async function syncAzureDevOpsFromReport(
       await addAzureWorkItemComment(
         config,
         workItemId,
-        await renderAzureReportComment(input, bug, project, workItemIds),
+        await renderAzureReportComment(input, bug, project, config, sdkPat, workItemIds),
         sdkPat,
       );
       results.push({
@@ -423,11 +425,16 @@ async function renderAzureReportComment(
   input: EvidenceSyncInput,
   bug: typeof schema.bugReports.$inferSelect,
   project: typeof schema.projects.$inferSelect,
+  config: NonNullable<Awaited<ReturnType<typeof getAzureDevOpsConfig>>>,
+  sdkPat: string,
   syncedWorkItemIds: number[],
 ): Promise<string> {
   const pageUrl = readString(input.meta.customContext?.pageUrl);
   const relatedWorkItemIds = readRelatedWorkItemIds(input.meta.customContext);
-  const mentions = readAzureMentions(input.meta.customContext);
+  const mentions = [
+    ...readAzureMentions(input.meta.customContext),
+    ...(await resolveAzureMentionEmails(config, sdkPat, readAzureMentionEmails(input.meta.customContext))),
+  ];
   const reporter = input.reporter?.name ?? input.reporter?.email ?? input.reporter?.id ?? input.reporterAnonKey ?? "anonymous";
   const attachments = input.attachments?.length ?? 0;
   const evidenceUrl = `${env().API_URL.replace(/\/$/, "")}/projects/${project.slug}/bug/${bug.id}`;
@@ -529,6 +536,40 @@ function readAzureMentions(customContext: Record<string, unknown> | undefined): 
     });
   }
   return mentions.slice(0, 10);
+}
+
+function readAzureMentionEmails(customContext: Record<string, unknown> | undefined): string[] {
+  const value = customContext?.azureMentionEmails;
+  const raw = Array.isArray(value) ? value : typeof value === "string" ? value.split(/[,\s;]+/) : [];
+  return Array.from(
+    new Set(
+      raw
+        .map((item) => String(item).trim().toLowerCase())
+        .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)),
+    ),
+  ).slice(0, 10);
+}
+
+async function resolveAzureMentionEmails(
+  config: NonNullable<Awaited<ReturnType<typeof getAzureDevOpsConfig>>>,
+  pat: string,
+  emails: string[],
+): Promise<AzureMention[]> {
+  const mentions: AzureMention[] = [];
+  for (const email of emails) {
+    const identities = await searchAzureIdentities(config, email, pat);
+    const identity =
+      identities.find((item) => item.uniqueName?.toLowerCase() === email) ??
+      identities.find((item) => item.displayName.toLowerCase() === email) ??
+      identities[0];
+    if (!identity) continue;
+    mentions.push({
+      id: identity.id,
+      displayName: identity.displayName,
+      uniqueName: identity.uniqueName,
+    });
+  }
+  return mentions;
 }
 
 function sanitizeMeta(m: IngestMeta) {

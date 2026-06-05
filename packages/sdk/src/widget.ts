@@ -10,8 +10,8 @@ export type AzureSubmitOptions = {
   azureWorkItemIds?: number[];
   userStoryWorkItemId?: number;
   taskWorkItemId?: number;
-  relatedWorkItemIds?: number[];
   azureMentions?: AzureDevOpsMention[];
+  azureMentionEmails?: string[];
 };
 
 export type WidgetCallbacks = {
@@ -81,7 +81,7 @@ export class Widget {
   private makeToggle(): HTMLDivElement {
     const d = document.createElement("div");
     d.className = "q-toggle";
-    d.title = "Quad - 증거 보내기 (Alt+Shift+Q)";
+    d.title = "Quad - QA 제보 (Alt+Shift+Q)";
     for (let i = 0; i < 4; i++) {
       const dot = document.createElement("span");
       dot.className = "dot";
@@ -127,52 +127,23 @@ export class Widget {
 
     const header = document.createElement("header");
     const h1 = document.createElement("h1");
-    h1.textContent = "증거 보내기";
+    h1.textContent = "QA 제보";
+    const settings = document.createElement("button");
+    settings.textContent = "설정";
+    settings.className = "q-settings-open";
+    settings.title = "작성자 및 Azure PAT 설정";
+    settings.addEventListener("click", () => this.setSettingsOpen(true));
     const close = document.createElement("button");
     close.textContent = "×";
     close.title = "닫기 (Esc)";
     close.addEventListener("click", () => this.cb.onToggleOverlay());
     header.appendChild(h1);
+    header.appendChild(settings);
     header.appendChild(close);
 
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
-      <p><strong>업무 항목에 증거를 보냅니다.</strong> Azure DevOps에서 논의는 계속하되, 현재 화면, 파일, 콘솔, 네트워크, 환경 정보를 함께 남길 때 사용하세요.</p>
-      <p>특정 화면 요소를 지정하려면 <strong>버그 모드</strong>를 켠 뒤 요소를 클릭하세요.</p>
-      <div class="q-reporter-setup" data-empty="true" data-editing="true">
-        <div class="q-reporter-current">
-          <span>작성자</span>
-          <strong class="q-reporter-display"></strong>
-          <button class="q-reporter-edit" type="button">변경</button>
-        </div>
-        <label class="q-field q-reporter-editor">
-          <span>작성자 이름</span>
-          <div class="q-reporter-row">
-            <input class="q-reporter-name" type="text" autocomplete="name" placeholder="예: 이학준 TPM" />
-            <button class="q-reporter-save" type="button">저장</button>
-          </div>
-          <small>한 번 저장하면 이 브라우저에서 계속 사용됩니다. Azure DevOps 댓글 본문에 제보자로 남습니다.</small>
-        </label>
-      </div>
-      ${this.options.azureDevOpsEnabled ? `
-      <div class="q-azure-pat" data-configured="false" data-editing="true">
-        <div class="q-azure-pat-current">
-          <span>Azure PAT</span>
-          <strong class="q-azure-pat-label">미설정</strong>
-          <button class="q-azure-pat-edit" type="button">수정</button>
-        </div>
-        <label class="q-field q-azure-pat-editor">
-          <span>Azure DevOps PAT</span>
-          <div class="q-reporter-row">
-            <input class="q-azure-pat-input" type="password" autocomplete="off" placeholder="개인 Azure DevOps PAT" />
-            <button class="q-azure-pat-save" type="button">저장</button>
-          </div>
-          <small>한 번 저장하면 서버에 암호화 저장됩니다. 상태 변경과 댓글은 이 PAT 계정으로 수행됩니다.</small>
-          <button class="q-azure-pat-delete" type="button">저장된 PAT 삭제</button>
-        </label>
-        <p class="q-azure-pat-status"></p>
-      </div>` : ""}
       <div class="drop" data-over="false">
         파일을 여기에 놓거나 클릭해서 선택<br/>
         <small>macOS는 ⌘⇧5, Windows는 Win+G로 녹화한 뒤 여기에 놓으세요</small>
@@ -180,11 +151,9 @@ export class Widget {
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
       ${this.options.azureDevOpsEnabled ? '<input class="q-user-story-work-item" type="number" inputmode="numeric" min="1" placeholder="User Story 번호 (선택)" />' : ""}
       ${this.options.azureDevOpsEnabled ? '<input class="q-task-work-item" type="number" inputmode="numeric" min="1" placeholder="Task 번호 (선택)" />' : ""}
-      ${this.options.azureDevOpsEnabled ? '<input class="q-related-work-items" type="text" inputmode="numeric" placeholder="관련 Work Item 번호, 쉼표로 구분 (선택)" />' : ""}
       ${this.options.azureDevOpsEnabled ? `
       <div class="q-mention-box">
-        <input class="q-mention-search" type="text" placeholder="@멘션할 사용자 이름 또는 이메일 검색" />
-        <div class="q-mention-results"></div>
+        <input class="q-mention-search" type="text" placeholder="태그할 Azure 이메일 입력 후 Enter" />
         <div class="q-mention-selected"></div>
       </div>` : ""}
       <textarea placeholder="무엇이 문제였나요?"></textarea>
@@ -200,11 +169,54 @@ export class Widget {
         </div>
         <div class="list"></div>
       </section>
+      <div class="q-settings-modal" data-open="false">
+        <div class="q-settings-backdrop"></div>
+        <section class="q-settings-card">
+          <header>
+            <h2>설정</h2>
+            <button class="q-settings-close" type="button" title="설정 닫기">×</button>
+          </header>
+          <div class="q-reporter-setup" data-empty="true" data-editing="true">
+            <div class="q-reporter-current">
+              <span>작성자</span>
+              <strong class="q-reporter-display"></strong>
+              <button class="q-reporter-edit" type="button">변경</button>
+            </div>
+            <label class="q-field q-reporter-editor">
+              <span>작성자 이름</span>
+              <div class="q-reporter-row">
+                <input class="q-reporter-name" type="text" autocomplete="name" placeholder="예: 이학준 TPM" />
+                <button class="q-reporter-save" type="button">저장</button>
+              </div>
+              <small>한 번 저장하면 이 브라우저에서 계속 사용됩니다.</small>
+            </label>
+          </div>
+          ${this.options.azureDevOpsEnabled ? `
+          <div class="q-azure-pat" data-configured="false" data-editing="true">
+            <div class="q-azure-pat-current">
+              <span>Azure PAT</span>
+              <strong class="q-azure-pat-label">미설정</strong>
+              <button class="q-azure-pat-edit" type="button">수정</button>
+            </div>
+            <label class="q-field q-azure-pat-editor">
+              <span>Azure DevOps PAT</span>
+              <div class="q-reporter-row">
+                <input class="q-azure-pat-input" type="password" autocomplete="off" placeholder="개인 Azure DevOps PAT" />
+                <button class="q-azure-pat-save" type="button">저장</button>
+              </div>
+              <small>상태 변경과 댓글은 이 PAT 계정으로 수행됩니다.</small>
+              <button class="q-azure-pat-delete" type="button">저장된 PAT 삭제</button>
+            </label>
+            <p class="q-azure-pat-status"></p>
+          </div>` : ""}
+        </section>
+      </div>
     `;
     p.appendChild(header);
     p.appendChild(body);
 
     this.wireOverlayBody(body);
+    this.wireSettingsModal(body);
     this.syncReporterIdentity(body);
     if (this.options.azureDevOpsEnabled) {
       this.syncAzurePatSetup(body);
@@ -213,6 +225,21 @@ export class Widget {
     }
     this.wireReportsList(body);
     return p;
+  }
+
+  private wireSettingsModal(body: HTMLDivElement): void {
+    const modal = body.querySelector<HTMLDivElement>(".q-settings-modal");
+    const close = body.querySelector<HTMLButtonElement>(".q-settings-close");
+    const backdrop = body.querySelector<HTMLDivElement>(".q-settings-backdrop");
+    if (!modal || !close || !backdrop) return;
+    close.addEventListener("click", () => this.setSettingsOpen(false));
+    backdrop.addEventListener("click", () => this.setSettingsOpen(false));
+  }
+
+  private setSettingsOpen(open: boolean): void {
+    const modal = this.bodyEl?.querySelector<HTMLDivElement>(".q-settings-modal");
+    if (!modal) return;
+    modal.dataset.open = open ? "true" : "false";
   }
 
   private syncReporterIdentity(body: HTMLDivElement): void {
@@ -264,6 +291,7 @@ export class Widget {
     if (!setup || !reporterInput) return;
     setup.dataset.editing = "true";
     this.setOverlayOpen(true);
+    this.setSettingsOpen(true);
     reporterInput.focus();
   }
 
@@ -336,81 +364,59 @@ export class Widget {
   private wireAzureTargets(body: HTMLDivElement): void {
     const userStoryInput = body.querySelector<HTMLInputElement>("input.q-user-story-work-item");
     const taskInput = body.querySelector<HTMLInputElement>("input.q-task-work-item");
-    const relatedInput = body.querySelector<HTMLInputElement>("input.q-related-work-items");
-    if (!userStoryInput && !taskInput && !relatedInput) return;
+    if (!userStoryInput && !taskInput) return;
     const saved = readSavedAzureTargets();
     if (userStoryInput && saved.userStoryWorkItemId) userStoryInput.value = String(saved.userStoryWorkItemId);
     if (taskInput && saved.taskWorkItemId) taskInput.value = String(saved.taskWorkItemId);
-    if (relatedInput && saved.relatedWorkItemIds?.length) relatedInput.value = saved.relatedWorkItemIds.join(", ");
     const save = () => {
-      const next = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "", relatedInput?.value ?? "");
+      const next = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "");
       writeSavedAzureTargets(next);
     };
     userStoryInput?.addEventListener("change", save);
     taskInput?.addEventListener("change", save);
-    relatedInput?.addEventListener("change", save);
   }
 
   private wireAzureMentions(body: HTMLDivElement): void {
     const input = body.querySelector<HTMLInputElement>("input.q-mention-search");
-    const results = body.querySelector<HTMLDivElement>(".q-mention-results");
     const selected = body.querySelector<HTMLDivElement>(".q-mention-selected");
-    if (!input || !results || !selected) return;
-    const mentions: AzureDevOpsMention[] = [];
+    if (!input || !selected) return;
+    const emails: string[] = [];
     const renderSelected = () => {
-      selected.innerHTML = mentions.map((mention, index) => `
+      selected.innerHTML = emails.map((email, index) => `
         <button class="q-mention-chip" type="button" data-index="${index}">
-          ${escapeHtml(mention.displayName ?? mention.uniqueName ?? mention.id)} ×
+          ${escapeHtml(email)} ×
         </button>
       `).join("");
       selected.querySelectorAll<HTMLButtonElement>("button.q-mention-chip").forEach((btn) => {
         btn.addEventListener("click", () => {
           const index = Number.parseInt(btn.dataset.index ?? "", 10);
-          if (Number.isFinite(index)) mentions.splice(index, 1);
+          if (Number.isFinite(index)) emails.splice(index, 1);
           renderSelected();
         });
       });
     };
-    let timer: number | undefined;
-    input.addEventListener("input", () => {
-      if (timer) window.clearTimeout(timer);
-      const query = input.value.trim();
-      if (query.length < 2) {
-        results.innerHTML = "";
-        return;
-      }
-      timer = window.setTimeout(async () => {
-        results.innerHTML = `<p>검색 중…</p>`;
-        try {
-          const found = await this.cb.onSearchAzureDevOpsIdentities(query);
-          results.innerHTML = found.length
-            ? found.map((identity) => `
-              <button class="q-mention-result" type="button" data-id="${escapeHtml(identity.id)}" data-name="${escapeHtml(identity.displayName)}" data-unique="${escapeHtml(identity.uniqueName ?? "")}">
-                <strong>${escapeHtml(identity.displayName)}</strong>
-                ${identity.uniqueName ? `<span>${escapeHtml(identity.uniqueName)}</span>` : ""}
-              </button>
-            `).join("")
-            : `<p>검색 결과가 없습니다</p>`;
-          results.querySelectorAll<HTMLButtonElement>("button.q-mention-result").forEach((btn) => {
-            btn.addEventListener("click", () => {
-              const id = btn.dataset.id;
-              if (!id || mentions.some((mention) => mention.id === id)) return;
-              mentions.push({
-                id,
-                displayName: btn.dataset.name,
-                uniqueName: btn.dataset.unique || undefined,
-              });
-              input.value = "";
-              results.innerHTML = "";
-              renderSelected();
-            });
-          });
-        } catch (err) {
-          results.innerHTML = `<p class="error">${escapeHtml(err instanceof Error ? err.message : "사용자 검색 실패")}</p>`;
+    const addEmails = () => {
+      const parts = input.value
+        .split(/[,\s;]+/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+      for (const email of parts) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
+        if (!emails.some((existing) => existing.toLowerCase() === email.toLowerCase())) {
+          emails.push(email);
         }
-      }, 250);
+      }
+      input.value = "";
+      renderSelected();
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === "," || e.key === ";") {
+        e.preventDefault();
+        addEmails();
+      }
     });
-    (selected as HTMLDivElement & { quadMentions?: AzureDevOpsMention[] }).quadMentions = mentions;
+    input.addEventListener("blur", addEmails);
+    (selected as HTMLDivElement & { quadMentionEmails?: string[] }).quadMentionEmails = emails;
     renderSelected();
   }
 
@@ -505,9 +511,8 @@ export class Widget {
     const fileInput = body.querySelector<HTMLInputElement>("input[type=file]")!;
     const userStoryInput = body.querySelector<HTMLInputElement>("input.q-user-story-work-item");
     const taskInput = body.querySelector<HTMLInputElement>("input.q-task-work-item");
-    const relatedWorkItemsInput = body.querySelector<HTMLInputElement>("input.q-related-work-items");
     const mentionSelected = body.querySelector<HTMLDivElement>(".q-mention-selected") as
-      | (HTMLDivElement & { quadMentions?: AzureDevOpsMention[] })
+      | (HTMLDivElement & { quadMentionEmails?: string[] })
       | null;
     const ta = body.querySelector<HTMLTextAreaElement>("textarea")!;
     const btn = body.querySelector<HTMLButtonElement>(".primary")!;
@@ -576,16 +581,9 @@ export class Widget {
       const azureTargets = parseAzureTargets(
         userStoryInput?.value ?? "",
         taskInput?.value ?? "",
-        relatedWorkItemsInput?.value ?? "",
       );
       if ((userStoryInput?.value.trim() || taskInput?.value.trim()) && (azureTargets.azureWorkItemIds?.length ?? 0) === 0) {
         status.textContent = "User Story 또는 Task 번호는 양수여야 합니다";
-        status.className = "q-status error";
-        return;
-      }
-      const relatedWorkItemIds = azureTargets.relatedWorkItemIds ?? [];
-      if (relatedWorkItemsInput?.value.trim() && relatedWorkItemIds.length === 0) {
-        status.textContent = "관련 Work Item 번호는 양수여야 합니다";
         status.className = "q-status error";
         return;
       }
@@ -596,7 +594,7 @@ export class Widget {
       try {
         await this.cb.onSubmitOverlay(body, staged, {
           ...azureTargets,
-          azureMentions: mentionSelected?.quadMentions ?? [],
+          azureMentionEmails: mentionSelected?.quadMentionEmails ?? [],
         });
         ta.value = "";
         staged = [];
@@ -675,7 +673,7 @@ export class Widget {
         status.textContent = "코멘트가 필요합니다";
         return;
       }
-      const azureTargets = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "", "");
+      const azureTargets = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "");
       if ((userStoryInput?.value.trim() || taskInput?.value.trim()) && (azureTargets.azureWorkItemIds?.length ?? 0) === 0) {
         status.className = "status error";
         status.textContent = "User Story 또는 Task 번호는 양수여야 합니다";
@@ -758,10 +756,9 @@ function parseWorkItemList(raw: string): number[] {
 
 const AZURE_TARGETS_KEY = "quad.azure_targets.v1";
 
-function parseAzureTargets(userStoryRaw: string, taskRaw: string, relatedRaw: string): AzureSubmitOptions {
+function parseAzureTargets(userStoryRaw: string, taskRaw: string): AzureSubmitOptions {
   const userStoryWorkItemId = parseSingleWorkItem(userStoryRaw);
   const taskWorkItemId = parseSingleWorkItem(taskRaw);
-  const relatedWorkItemIds = parseWorkItemList(relatedRaw);
   const azureWorkItemIds = Array.from(
     new Set([userStoryWorkItemId, taskWorkItemId].filter((n): n is number => Boolean(n))),
   );
@@ -769,7 +766,6 @@ function parseAzureTargets(userStoryRaw: string, taskRaw: string, relatedRaw: st
     azureWorkItemIds,
     userStoryWorkItemId,
     taskWorkItemId,
-    relatedWorkItemIds,
   };
 }
 
@@ -789,7 +785,6 @@ function readSavedAzureTargets(): AzureSubmitOptions {
       userStoryWorkItemId: typeof parsed.userStoryWorkItemId === "number" ? parsed.userStoryWorkItemId : undefined,
       taskWorkItemId: typeof parsed.taskWorkItemId === "number" ? parsed.taskWorkItemId : undefined,
       azureWorkItemIds: Array.isArray(parsed.azureWorkItemIds) ? parsed.azureWorkItemIds.filter((n) => typeof n === "number") : undefined,
-      relatedWorkItemIds: Array.isArray(parsed.relatedWorkItemIds) ? parsed.relatedWorkItemIds.filter((n) => typeof n === "number") : undefined,
     };
   } catch {
     return {};
@@ -802,7 +797,6 @@ function writeSavedAzureTargets(targets: AzureSubmitOptions): void {
       userStoryWorkItemId: targets.userStoryWorkItemId,
       taskWorkItemId: targets.taskWorkItemId,
       azureWorkItemIds: targets.azureWorkItemIds,
-      relatedWorkItemIds: targets.relatedWorkItemIds,
     }));
   } catch {
     /* ignore storage failures */

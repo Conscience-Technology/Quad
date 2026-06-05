@@ -103,6 +103,7 @@ export const WIDGET_CSS = /* css */ `
   align-items: center;
 }
 .q-panel header h1 {
+  flex: 1;
   min-width: 0;
   margin: 0;
   font-size: 16px;
@@ -118,6 +119,19 @@ export const WIDGET_CSS = /* css */ `
   font-size: 22px;
   line-height: 1;
   padding: 0 6px;
+}
+.q-panel header button.q-settings-open {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--star-300);
+  font-size: 12px;
+  line-height: 1;
+  min-height: 30px;
+  padding: 6px 9px;
+}
+.q-panel header button.q-settings-open:hover {
+  border-color: var(--violet);
+  color: var(--star-100);
 }
 .q-panel header button:hover { color: var(--star-100); }
 .q-panel .body {
@@ -140,20 +154,21 @@ export const WIDGET_CSS = /* css */ `
   line-height: 1.45;
 }
 .q-panel .drop {
-  margin: 14px 0;
-  padding: 22px 14px;
-  border: 1px dashed var(--border);
+  margin: 2px 0 14px;
+  padding: 26px 14px;
+  border: 1.5px dashed rgba(139, 124, 246, 0.55);
   border-radius: 8px;
+  background: rgba(139, 124, 246, 0.08);
   text-align: center;
-  color: var(--star-500);
+  color: var(--star-200);
   font-size: 14px;
   overflow-wrap: anywhere;
   transition: border 160ms var(--ease), background 160ms var(--ease);
 }
 .q-panel .drop[data-over="true"] {
   border-color: var(--violet);
-  background: rgba(139, 124, 246, 0.06);
-  color: var(--star-300);
+  background: rgba(139, 124, 246, 0.16);
+  color: var(--star-100);
 }
 .q-field {
   display: block;
@@ -297,7 +312,8 @@ export const WIDGET_CSS = /* css */ `
   align-items: center;
   min-width: 0;
 }
-.q-reporter-row input.q-reporter-name {
+.q-reporter-row input.q-reporter-name,
+.q-reporter-row input.q-azure-pat-input {
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -313,8 +329,6 @@ export const WIDGET_CSS = /* css */ `
 .q-panel input.q-azure-pat-input,
 .q-panel input.q-user-story-work-item,
 .q-panel input.q-task-work-item,
-.q-panel input.q-work-item,
-.q-panel input.q-related-work-items,
 .q-panel input.q-mention-search,
 .q-panel textarea {
   width: 100%;
@@ -334,8 +348,6 @@ export const WIDGET_CSS = /* css */ `
 .q-panel input.q-azure-pat-input,
 .q-panel input.q-user-story-work-item,
 .q-panel input.q-task-work-item,
-.q-panel input.q-work-item,
-.q-panel input.q-related-work-items,
 .q-panel input.q-mention-search {
   margin: 0 0 10px;
   min-height: 40px;
@@ -347,44 +359,10 @@ export const WIDGET_CSS = /* css */ `
 .q-panel input.q-azure-pat-input:focus,
 .q-panel input.q-user-story-work-item:focus,
 .q-panel input.q-task-work-item:focus,
-.q-panel input.q-work-item:focus,
-.q-panel input.q-related-work-items:focus,
 .q-panel input.q-mention-search:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
 .q-mention-box {
   margin: 0 0 10px;
-}
-.q-mention-results {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: -4px 0 8px;
-}
-.q-mention-results p {
-  margin: 0;
-  font-size: 12px;
-}
-.q-mention-results p.error {
-  color: var(--rose);
-}
-.q-mention-result {
-  width: 100%;
-  min-height: 38px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--star-100);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 7px 9px;
-  text-align: left;
-}
-.q-mention-result span {
-  color: var(--star-500);
-  font-size: 12px;
 }
 .q-mention-selected {
   display: flex;
@@ -399,6 +377,51 @@ export const WIDGET_CSS = /* css */ `
   cursor: pointer;
   font-size: 12px;
   padding: 4px 8px;
+}
+.q-settings-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483605;
+  display: none;
+}
+.q-settings-modal[data-open="true"] {
+  display: block;
+}
+.q-settings-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+}
+.q-settings-card {
+  position: absolute;
+  top: 52px;
+  left: 18px;
+  right: 18px;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  padding: 0 14px 14px;
+}
+.q-settings-card header {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.q-settings-card header h2 {
+  margin: 0;
+  color: var(--star-100);
+  font-size: 15px;
+  letter-spacing: 0;
+}
+.q-settings-card header button {
+  background: transparent;
+  border: 0;
+  color: var(--star-500);
+  cursor: pointer;
+  font-size: 20px;
 }
 .q-panel .primary {
   margin-top: 14px;

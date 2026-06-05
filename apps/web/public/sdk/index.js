@@ -1196,6 +1196,7 @@ var WIDGET_CSS = (
   align-items: center;
 }
 .q-panel header h1 {
+  flex: 1;
   min-width: 0;
   margin: 0;
   font-size: 16px;
@@ -1211,6 +1212,19 @@ var WIDGET_CSS = (
   font-size: 22px;
   line-height: 1;
   padding: 0 6px;
+}
+.q-panel header button.q-settings-open {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--star-300);
+  font-size: 12px;
+  line-height: 1;
+  min-height: 30px;
+  padding: 6px 9px;
+}
+.q-panel header button.q-settings-open:hover {
+  border-color: var(--violet);
+  color: var(--star-100);
 }
 .q-panel header button:hover { color: var(--star-100); }
 .q-panel .body {
@@ -1233,20 +1247,21 @@ var WIDGET_CSS = (
   line-height: 1.45;
 }
 .q-panel .drop {
-  margin: 14px 0;
-  padding: 22px 14px;
-  border: 1px dashed var(--border);
+  margin: 2px 0 14px;
+  padding: 26px 14px;
+  border: 1.5px dashed rgba(139, 124, 246, 0.55);
   border-radius: 8px;
+  background: rgba(139, 124, 246, 0.08);
   text-align: center;
-  color: var(--star-500);
+  color: var(--star-200);
   font-size: 14px;
   overflow-wrap: anywhere;
   transition: border 160ms var(--ease), background 160ms var(--ease);
 }
 .q-panel .drop[data-over="true"] {
   border-color: var(--violet);
-  background: rgba(139, 124, 246, 0.06);
-  color: var(--star-300);
+  background: rgba(139, 124, 246, 0.16);
+  color: var(--star-100);
 }
 .q-field {
   display: block;
@@ -1390,7 +1405,8 @@ var WIDGET_CSS = (
   align-items: center;
   min-width: 0;
 }
-.q-reporter-row input.q-reporter-name {
+.q-reporter-row input.q-reporter-name,
+.q-reporter-row input.q-azure-pat-input {
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -1406,8 +1422,6 @@ var WIDGET_CSS = (
 .q-panel input.q-azure-pat-input,
 .q-panel input.q-user-story-work-item,
 .q-panel input.q-task-work-item,
-.q-panel input.q-work-item,
-.q-panel input.q-related-work-items,
 .q-panel input.q-mention-search,
 .q-panel textarea {
   width: 100%;
@@ -1427,8 +1441,6 @@ var WIDGET_CSS = (
 .q-panel input.q-azure-pat-input,
 .q-panel input.q-user-story-work-item,
 .q-panel input.q-task-work-item,
-.q-panel input.q-work-item,
-.q-panel input.q-related-work-items,
 .q-panel input.q-mention-search {
   margin: 0 0 10px;
   min-height: 40px;
@@ -1440,44 +1452,10 @@ var WIDGET_CSS = (
 .q-panel input.q-azure-pat-input:focus,
 .q-panel input.q-user-story-work-item:focus,
 .q-panel input.q-task-work-item:focus,
-.q-panel input.q-work-item:focus,
-.q-panel input.q-related-work-items:focus,
 .q-panel input.q-mention-search:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
 .q-mention-box {
   margin: 0 0 10px;
-}
-.q-mention-results {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: -4px 0 8px;
-}
-.q-mention-results p {
-  margin: 0;
-  font-size: 12px;
-}
-.q-mention-results p.error {
-  color: var(--rose);
-}
-.q-mention-result {
-  width: 100%;
-  min-height: 38px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--star-100);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 7px 9px;
-  text-align: left;
-}
-.q-mention-result span {
-  color: var(--star-500);
-  font-size: 12px;
 }
 .q-mention-selected {
   display: flex;
@@ -1492,6 +1470,51 @@ var WIDGET_CSS = (
   cursor: pointer;
   font-size: 12px;
   padding: 4px 8px;
+}
+.q-settings-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483605;
+  display: none;
+}
+.q-settings-modal[data-open="true"] {
+  display: block;
+}
+.q-settings-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+}
+.q-settings-card {
+  position: absolute;
+  top: 52px;
+  left: 18px;
+  right: 18px;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  padding: 0 14px 14px;
+}
+.q-settings-card header {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.q-settings-card header h2 {
+  margin: 0;
+  color: var(--star-100);
+  font-size: 15px;
+  letter-spacing: 0;
+}
+.q-settings-card header button {
+  background: transparent;
+  border: 0;
+  color: var(--star-500);
+  cursor: pointer;
+  font-size: 20px;
 }
 .q-panel .primary {
   margin-top: 14px;
@@ -1914,7 +1937,7 @@ var Widget = class {
   makeToggle() {
     const d = document.createElement("div");
     d.className = "q-toggle";
-    d.title = "Quad - \uC99D\uAC70 \uBCF4\uB0B4\uAE30 (Alt+Shift+Q)";
+    d.title = "Quad - QA \uC81C\uBCF4 (Alt+Shift+Q)";
     for (let i = 0; i < 4; i++) {
       const dot = document.createElement("span");
       dot.className = "dot";
@@ -1954,51 +1977,22 @@ var Widget = class {
     p.setAttribute("data-open", "false");
     const header = document.createElement("header");
     const h1 = document.createElement("h1");
-    h1.textContent = "\uC99D\uAC70 \uBCF4\uB0B4\uAE30";
+    h1.textContent = "QA \uC81C\uBCF4";
+    const settings = document.createElement("button");
+    settings.textContent = "\uC124\uC815";
+    settings.className = "q-settings-open";
+    settings.title = "\uC791\uC131\uC790 \uBC0F Azure PAT \uC124\uC815";
+    settings.addEventListener("click", () => this.setSettingsOpen(true));
     const close = document.createElement("button");
     close.textContent = "\xD7";
     close.title = "\uB2EB\uAE30 (Esc)";
     close.addEventListener("click", () => this.cb.onToggleOverlay());
     header.appendChild(h1);
+    header.appendChild(settings);
     header.appendChild(close);
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
-      <p><strong>\uC5C5\uBB34 \uD56D\uBAA9\uC5D0 \uC99D\uAC70\uB97C \uBCF4\uB0C5\uB2C8\uB2E4.</strong> Azure DevOps\uC5D0\uC11C \uB17C\uC758\uB294 \uACC4\uC18D\uD558\uB418, \uD604\uC7AC \uD654\uBA74, \uD30C\uC77C, \uCF58\uC194, \uB124\uD2B8\uC6CC\uD06C, \uD658\uACBD \uC815\uBCF4\uB97C \uD568\uAED8 \uB0A8\uAE38 \uB54C \uC0AC\uC6A9\uD558\uC138\uC694.</p>
-      <p>\uD2B9\uC815 \uD654\uBA74 \uC694\uC18C\uB97C \uC9C0\uC815\uD558\uB824\uBA74 <strong>\uBC84\uADF8 \uBAA8\uB4DC</strong>\uB97C \uCF20 \uB4A4 \uC694\uC18C\uB97C \uD074\uB9AD\uD558\uC138\uC694.</p>
-      <div class="q-reporter-setup" data-empty="true" data-editing="true">
-        <div class="q-reporter-current">
-          <span>\uC791\uC131\uC790</span>
-          <strong class="q-reporter-display"></strong>
-          <button class="q-reporter-edit" type="button">\uBCC0\uACBD</button>
-        </div>
-        <label class="q-field q-reporter-editor">
-          <span>\uC791\uC131\uC790 \uC774\uB984</span>
-          <div class="q-reporter-row">
-            <input class="q-reporter-name" type="text" autocomplete="name" placeholder="\uC608: \uC774\uD559\uC900 TPM" />
-            <button class="q-reporter-save" type="button">\uC800\uC7A5</button>
-          </div>
-          <small>\uD55C \uBC88 \uC800\uC7A5\uD558\uBA74 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uACC4\uC18D \uC0AC\uC6A9\uB429\uB2C8\uB2E4. Azure DevOps \uB313\uAE00 \uBCF8\uBB38\uC5D0 \uC81C\uBCF4\uC790\uB85C \uB0A8\uC2B5\uB2C8\uB2E4.</small>
-        </label>
-      </div>
-      ${this.options.azureDevOpsEnabled ? `
-      <div class="q-azure-pat" data-configured="false" data-editing="true">
-        <div class="q-azure-pat-current">
-          <span>Azure PAT</span>
-          <strong class="q-azure-pat-label">\uBBF8\uC124\uC815</strong>
-          <button class="q-azure-pat-edit" type="button">\uC218\uC815</button>
-        </div>
-        <label class="q-field q-azure-pat-editor">
-          <span>Azure DevOps PAT</span>
-          <div class="q-reporter-row">
-            <input class="q-azure-pat-input" type="password" autocomplete="off" placeholder="\uAC1C\uC778 Azure DevOps PAT" />
-            <button class="q-azure-pat-save" type="button">\uC800\uC7A5</button>
-          </div>
-          <small>\uD55C \uBC88 \uC800\uC7A5\uD558\uBA74 \uC11C\uBC84\uC5D0 \uC554\uD638\uD654 \uC800\uC7A5\uB429\uB2C8\uB2E4. \uC0C1\uD0DC \uBCC0\uACBD\uACFC \uB313\uAE00\uC740 \uC774 PAT \uACC4\uC815\uC73C\uB85C \uC218\uD589\uB429\uB2C8\uB2E4.</small>
-          <button class="q-azure-pat-delete" type="button">\uC800\uC7A5\uB41C PAT \uC0AD\uC81C</button>
-        </label>
-        <p class="q-azure-pat-status"></p>
-      </div>` : ""}
       <div class="drop" data-over="false">
         \uD30C\uC77C\uC744 \uC5EC\uAE30\uC5D0 \uB193\uAC70\uB098 \uD074\uB9AD\uD574\uC11C \uC120\uD0DD<br/>
         <small>macOS\uB294 \u2318\u21E75, Windows\uB294 Win+G\uB85C \uB179\uD654\uD55C \uB4A4 \uC5EC\uAE30\uC5D0 \uB193\uC73C\uC138\uC694</small>
@@ -2006,11 +2000,9 @@ var Widget = class {
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
       ${this.options.azureDevOpsEnabled ? '<input class="q-user-story-work-item" type="number" inputmode="numeric" min="1" placeholder="User Story \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
       ${this.options.azureDevOpsEnabled ? '<input class="q-task-work-item" type="number" inputmode="numeric" min="1" placeholder="Task \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
-      ${this.options.azureDevOpsEnabled ? '<input class="q-related-work-items" type="text" inputmode="numeric" placeholder="\uAD00\uB828 Work Item \uBC88\uD638, \uC27C\uD45C\uB85C \uAD6C\uBD84 (\uC120\uD0DD)" />' : ""}
       ${this.options.azureDevOpsEnabled ? `
       <div class="q-mention-box">
-        <input class="q-mention-search" type="text" placeholder="@\uBA58\uC158\uD560 \uC0AC\uC6A9\uC790 \uC774\uB984 \uB610\uB294 \uC774\uBA54\uC77C \uAC80\uC0C9" />
-        <div class="q-mention-results"></div>
+        <input class="q-mention-search" type="text" placeholder="\uD0DC\uADF8\uD560 Azure \uC774\uBA54\uC77C \uC785\uB825 \uD6C4 Enter" />
         <div class="q-mention-selected"></div>
       </div>` : ""}
       <textarea placeholder="\uBB34\uC5C7\uC774 \uBB38\uC81C\uC600\uB098\uC694?"></textarea>
@@ -2026,10 +2018,53 @@ var Widget = class {
         </div>
         <div class="list"></div>
       </section>
+      <div class="q-settings-modal" data-open="false">
+        <div class="q-settings-backdrop"></div>
+        <section class="q-settings-card">
+          <header>
+            <h2>\uC124\uC815</h2>
+            <button class="q-settings-close" type="button" title="\uC124\uC815 \uB2EB\uAE30">\xD7</button>
+          </header>
+          <div class="q-reporter-setup" data-empty="true" data-editing="true">
+            <div class="q-reporter-current">
+              <span>\uC791\uC131\uC790</span>
+              <strong class="q-reporter-display"></strong>
+              <button class="q-reporter-edit" type="button">\uBCC0\uACBD</button>
+            </div>
+            <label class="q-field q-reporter-editor">
+              <span>\uC791\uC131\uC790 \uC774\uB984</span>
+              <div class="q-reporter-row">
+                <input class="q-reporter-name" type="text" autocomplete="name" placeholder="\uC608: \uC774\uD559\uC900 TPM" />
+                <button class="q-reporter-save" type="button">\uC800\uC7A5</button>
+              </div>
+              <small>\uD55C \uBC88 \uC800\uC7A5\uD558\uBA74 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uACC4\uC18D \uC0AC\uC6A9\uB429\uB2C8\uB2E4.</small>
+            </label>
+          </div>
+          ${this.options.azureDevOpsEnabled ? `
+          <div class="q-azure-pat" data-configured="false" data-editing="true">
+            <div class="q-azure-pat-current">
+              <span>Azure PAT</span>
+              <strong class="q-azure-pat-label">\uBBF8\uC124\uC815</strong>
+              <button class="q-azure-pat-edit" type="button">\uC218\uC815</button>
+            </div>
+            <label class="q-field q-azure-pat-editor">
+              <span>Azure DevOps PAT</span>
+              <div class="q-reporter-row">
+                <input class="q-azure-pat-input" type="password" autocomplete="off" placeholder="\uAC1C\uC778 Azure DevOps PAT" />
+                <button class="q-azure-pat-save" type="button">\uC800\uC7A5</button>
+              </div>
+              <small>\uC0C1\uD0DC \uBCC0\uACBD\uACFC \uB313\uAE00\uC740 \uC774 PAT \uACC4\uC815\uC73C\uB85C \uC218\uD589\uB429\uB2C8\uB2E4.</small>
+              <button class="q-azure-pat-delete" type="button">\uC800\uC7A5\uB41C PAT \uC0AD\uC81C</button>
+            </label>
+            <p class="q-azure-pat-status"></p>
+          </div>` : ""}
+        </section>
+      </div>
     `;
     p.appendChild(header);
     p.appendChild(body);
     this.wireOverlayBody(body);
+    this.wireSettingsModal(body);
     this.syncReporterIdentity(body);
     if (this.options.azureDevOpsEnabled) {
       this.syncAzurePatSetup(body);
@@ -2038,6 +2073,19 @@ var Widget = class {
     }
     this.wireReportsList(body);
     return p;
+  }
+  wireSettingsModal(body) {
+    const modal = body.querySelector(".q-settings-modal");
+    const close = body.querySelector(".q-settings-close");
+    const backdrop = body.querySelector(".q-settings-backdrop");
+    if (!modal || !close || !backdrop) return;
+    close.addEventListener("click", () => this.setSettingsOpen(false));
+    backdrop.addEventListener("click", () => this.setSettingsOpen(false));
+  }
+  setSettingsOpen(open) {
+    const modal = this.bodyEl?.querySelector(".q-settings-modal");
+    if (!modal) return;
+    modal.dataset.open = open ? "true" : "false";
   }
   syncReporterIdentity(body) {
     const setup = body.querySelector(".q-reporter-setup");
@@ -2084,6 +2132,7 @@ var Widget = class {
     if (!setup || !reporterInput) return;
     setup.dataset.editing = "true";
     this.setOverlayOpen(true);
+    this.setSettingsOpen(true);
     reporterInput.focus();
   }
   syncAzurePatSetup(body) {
@@ -2149,78 +2198,55 @@ var Widget = class {
   wireAzureTargets(body) {
     const userStoryInput = body.querySelector("input.q-user-story-work-item");
     const taskInput = body.querySelector("input.q-task-work-item");
-    const relatedInput = body.querySelector("input.q-related-work-items");
-    if (!userStoryInput && !taskInput && !relatedInput) return;
+    if (!userStoryInput && !taskInput) return;
     const saved = readSavedAzureTargets();
     if (userStoryInput && saved.userStoryWorkItemId) userStoryInput.value = String(saved.userStoryWorkItemId);
     if (taskInput && saved.taskWorkItemId) taskInput.value = String(saved.taskWorkItemId);
-    if (relatedInput && saved.relatedWorkItemIds?.length) relatedInput.value = saved.relatedWorkItemIds.join(", ");
     const save = () => {
-      const next = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "", relatedInput?.value ?? "");
+      const next = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "");
       writeSavedAzureTargets(next);
     };
     userStoryInput?.addEventListener("change", save);
     taskInput?.addEventListener("change", save);
-    relatedInput?.addEventListener("change", save);
   }
   wireAzureMentions(body) {
     const input = body.querySelector("input.q-mention-search");
-    const results = body.querySelector(".q-mention-results");
     const selected = body.querySelector(".q-mention-selected");
-    if (!input || !results || !selected) return;
-    const mentions = [];
+    if (!input || !selected) return;
+    const emails = [];
     const renderSelected = () => {
-      selected.innerHTML = mentions.map((mention, index) => `
+      selected.innerHTML = emails.map((email, index) => `
         <button class="q-mention-chip" type="button" data-index="${index}">
-          ${escapeHtml2(mention.displayName ?? mention.uniqueName ?? mention.id)} \xD7
+          ${escapeHtml2(email)} \xD7
         </button>
       `).join("");
       selected.querySelectorAll("button.q-mention-chip").forEach((btn) => {
         btn.addEventListener("click", () => {
           const index = Number.parseInt(btn.dataset.index ?? "", 10);
-          if (Number.isFinite(index)) mentions.splice(index, 1);
+          if (Number.isFinite(index)) emails.splice(index, 1);
           renderSelected();
         });
       });
     };
-    let timer;
-    input.addEventListener("input", () => {
-      if (timer) window.clearTimeout(timer);
-      const query = input.value.trim();
-      if (query.length < 2) {
-        results.innerHTML = "";
-        return;
-      }
-      timer = window.setTimeout(async () => {
-        results.innerHTML = `<p>\uAC80\uC0C9 \uC911\u2026</p>`;
-        try {
-          const found = await this.cb.onSearchAzureDevOpsIdentities(query);
-          results.innerHTML = found.length ? found.map((identity) => `
-              <button class="q-mention-result" type="button" data-id="${escapeHtml2(identity.id)}" data-name="${escapeHtml2(identity.displayName)}" data-unique="${escapeHtml2(identity.uniqueName ?? "")}">
-                <strong>${escapeHtml2(identity.displayName)}</strong>
-                ${identity.uniqueName ? `<span>${escapeHtml2(identity.uniqueName)}</span>` : ""}
-              </button>
-            `).join("") : `<p>\uAC80\uC0C9 \uACB0\uACFC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</p>`;
-          results.querySelectorAll("button.q-mention-result").forEach((btn) => {
-            btn.addEventListener("click", () => {
-              const id = btn.dataset.id;
-              if (!id || mentions.some((mention) => mention.id === id)) return;
-              mentions.push({
-                id,
-                displayName: btn.dataset.name,
-                uniqueName: btn.dataset.unique || void 0
-              });
-              input.value = "";
-              results.innerHTML = "";
-              renderSelected();
-            });
-          });
-        } catch (err) {
-          results.innerHTML = `<p class="error">${escapeHtml2(err instanceof Error ? err.message : "\uC0AC\uC6A9\uC790 \uAC80\uC0C9 \uC2E4\uD328")}</p>`;
+    const addEmails = () => {
+      const parts = input.value.split(/[,\s;]+/).map((part) => part.trim()).filter(Boolean);
+      for (const email of parts) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
+        if (!emails.some((existing) => existing.toLowerCase() === email.toLowerCase())) {
+          emails.push(email);
         }
-      }, 250);
+      }
+      input.value = "";
+      renderSelected();
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === "," || e.key === ";") {
+        e.preventDefault();
+        addEmails();
+      }
     });
-    selected.quadMentions = mentions;
+    input.addEventListener("blur", addEmails);
+    selected.quadMentionEmails = emails;
     renderSelected();
   }
   // ---- Reports list -------------------------------------------------------
@@ -2295,7 +2321,6 @@ var Widget = class {
     const fileInput = body.querySelector("input[type=file]");
     const userStoryInput = body.querySelector("input.q-user-story-work-item");
     const taskInput = body.querySelector("input.q-task-work-item");
-    const relatedWorkItemsInput = body.querySelector("input.q-related-work-items");
     const mentionSelected = body.querySelector(".q-mention-selected");
     const ta = body.querySelector("textarea");
     const btn = body.querySelector(".primary");
@@ -2357,17 +2382,10 @@ var Widget = class {
       }
       const azureTargets = parseAzureTargets(
         userStoryInput?.value ?? "",
-        taskInput?.value ?? "",
-        relatedWorkItemsInput?.value ?? ""
+        taskInput?.value ?? ""
       );
       if ((userStoryInput?.value.trim() || taskInput?.value.trim()) && (azureTargets.azureWorkItemIds?.length ?? 0) === 0) {
         status.textContent = "User Story \uB610\uB294 Task \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
-        status.className = "q-status error";
-        return;
-      }
-      const relatedWorkItemIds = azureTargets.relatedWorkItemIds ?? [];
-      if (relatedWorkItemsInput?.value.trim() && relatedWorkItemIds.length === 0) {
-        status.textContent = "\uAD00\uB828 Work Item \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
         status.className = "q-status error";
         return;
       }
@@ -2378,7 +2396,7 @@ var Widget = class {
       try {
         await this.cb.onSubmitOverlay(body2, staged, {
           ...azureTargets,
-          azureMentions: mentionSelected?.quadMentions ?? []
+          azureMentionEmails: mentionSelected?.quadMentionEmails ?? []
         });
         ta.value = "";
         staged = [];
@@ -2450,7 +2468,7 @@ var Widget = class {
         status.textContent = "\uCF54\uBA58\uD2B8\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4";
         return;
       }
-      const azureTargets = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "", "");
+      const azureTargets = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "");
       if ((userStoryInput?.value.trim() || taskInput?.value.trim()) && (azureTargets.azureWorkItemIds?.length ?? 0) === 0) {
         status.className = "status error";
         status.textContent = "User Story \uB610\uB294 Task \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
@@ -2509,26 +2527,17 @@ var Widget = class {
 function escapeHtml2(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function parseWorkItemList(raw) {
-  return Array.from(
-    new Set(
-      raw.split(/[,\s]+/).map((part) => Number.parseInt(part.trim().replace(/^#/, ""), 10)).filter((n) => Number.isFinite(n) && n > 0).map((n) => Math.trunc(n))
-    )
-  ).slice(0, 12);
-}
 var AZURE_TARGETS_KEY = "quad.azure_targets.v1";
-function parseAzureTargets(userStoryRaw, taskRaw, relatedRaw) {
+function parseAzureTargets(userStoryRaw, taskRaw) {
   const userStoryWorkItemId = parseSingleWorkItem(userStoryRaw);
   const taskWorkItemId = parseSingleWorkItem(taskRaw);
-  const relatedWorkItemIds = parseWorkItemList(relatedRaw);
   const azureWorkItemIds = Array.from(
     new Set([userStoryWorkItemId, taskWorkItemId].filter((n) => Boolean(n)))
   );
   return {
     azureWorkItemIds,
     userStoryWorkItemId,
-    taskWorkItemId,
-    relatedWorkItemIds
+    taskWorkItemId
   };
 }
 function parseSingleWorkItem(raw) {
@@ -2545,8 +2554,7 @@ function readSavedAzureTargets() {
     return {
       userStoryWorkItemId: typeof parsed.userStoryWorkItemId === "number" ? parsed.userStoryWorkItemId : void 0,
       taskWorkItemId: typeof parsed.taskWorkItemId === "number" ? parsed.taskWorkItemId : void 0,
-      azureWorkItemIds: Array.isArray(parsed.azureWorkItemIds) ? parsed.azureWorkItemIds.filter((n) => typeof n === "number") : void 0,
-      relatedWorkItemIds: Array.isArray(parsed.relatedWorkItemIds) ? parsed.relatedWorkItemIds.filter((n) => typeof n === "number") : void 0
+      azureWorkItemIds: Array.isArray(parsed.azureWorkItemIds) ? parsed.azureWorkItemIds.filter((n) => typeof n === "number") : void 0
     };
   } catch {
     return {};
@@ -2557,8 +2565,7 @@ function writeSavedAzureTargets(targets) {
     localStorage.setItem(AZURE_TARGETS_KEY, JSON.stringify({
       userStoryWorkItemId: targets.userStoryWorkItemId,
       taskWorkItemId: targets.taskWorkItemId,
-      azureWorkItemIds: targets.azureWorkItemIds,
-      relatedWorkItemIds: targets.relatedWorkItemIds
+      azureWorkItemIds: targets.azureWorkItemIds
     }));
   } catch {
   }
@@ -2910,8 +2917,8 @@ var QuadApi = class {
       azureWorkItemIds: options.azureWorkItemIds,
       userStoryWorkItemId: options.userStoryWorkItemId,
       taskWorkItemId: options.taskWorkItemId,
-      relatedWorkItemIds: options.relatedWorkItemIds,
-      azureMentions: options.azureMentions
+      azureMentions: options.azureMentions,
+      azureMentionEmails: options.azureMentionEmails
     };
   }
   savedAzureContext() {

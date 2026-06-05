@@ -431,8 +431,8 @@ class QuadApi {
       azureWorkItemIds: options.azureWorkItemIds,
       userStoryWorkItemId: options.userStoryWorkItemId,
       taskWorkItemId: options.taskWorkItemId,
-      relatedWorkItemIds: options.relatedWorkItemIds,
       azureMentions: options.azureMentions,
+      azureMentionEmails: options.azureMentionEmails,
     };
   }
 
