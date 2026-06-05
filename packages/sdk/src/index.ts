@@ -116,19 +116,19 @@ class QuadApi {
       onComplete: async (input) => {
         await this.api!.createSession({
           title: input.title,
-          body: "(Capture session)",
+          body: "(캡처 세션)",
           meta: this.snapshotMeta(),
           reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey(),
           attachments: input.attachments,
         });
-        this.widget?.toast(`Capture saved · ${Math.round(input.durationMs / 1000)}s`);
+        this.widget?.toast(`증거 저장 완료 · ${Math.round(input.durationMs / 1000)}초`);
       },
       onPin: () => {
         // Toggle bug mode on so the next Option+Click captures the pin; the
         // pin is then attached to the bug_report independently from the capture.
         if (!this.bugMode?.isOn()) this.toggleBugMode();
-        this.widget?.toast(`${this.optKey}+Click an element to pin it`);
+        this.widget?.toast(`${this.optKey}+클릭으로 요소를 지정하세요`);
       },
     });
 
@@ -232,9 +232,9 @@ class QuadApi {
     const mode: CaptureMode = opts.mode ?? "screen+mic";
     try {
       await this.capture.start(mode);
-      this.widget?.toast(mode === "screen+mic" ? "Recording + STT started" : "Voice recording started");
+      this.widget?.toast(mode === "screen+mic" ? "화면 녹화 + 음성 기록 시작" : "음성 기록 시작");
     } catch (err) {
-      this.widget?.toast(err instanceof Error ? err.message : "Failed to start recording");
+      this.widget?.toast(err instanceof Error ? err.message : "기록을 시작하지 못했습니다");
     }
   }
 
@@ -287,7 +287,7 @@ class QuadApi {
   /** Minimal native confirm so we don't ship a custom modal just for this. */
   private async askCaptureMode(): Promise<CaptureMode | null> {
     if (typeof confirm === "function") {
-      return confirm("Record screen + voice? Cancel records voice only.")
+      return confirm("화면과 음성을 함께 녹화할까요? 취소를 누르면 음성만 녹음합니다.")
         ? "screen+mic"
         : "mic-only";
     }
@@ -300,7 +300,7 @@ class QuadApi {
     if (!this.bugMode) return;
     this.bugMode.setOn(!this.bugMode.isOn());
     this.widget?.toast(
-      this.bugMode.isOn() ? `Bug Mode ON — ${this.optKey}+Click to pin` : "Bug Mode OFF",
+      this.bugMode.isOn() ? `버그 모드 켜짐 - ${this.optKey}+클릭으로 요소 지정` : "버그 모드 꺼짐",
     );
   }
 
@@ -345,7 +345,7 @@ class QuadApi {
     files: File[],
     options: { azureWorkItemId?: number; relatedWorkItemIds?: number[] } = {},
   ): Promise<void> {
-    if (!this.api) throw new Error("Quad: not initialized");
+    if (!this.api) throw new Error("Quad가 초기화되지 않았습니다");
     const attachments: Array<{
       key: string;
       mime: string;
@@ -361,7 +361,7 @@ class QuadApi {
       const up = await this.api.uploadFile(f, kind);
       attachments.push({ ...up, kind });
     }
-    const title = body.slice(0, 80) || "(attachment report)";
+    const title = body.slice(0, 80) || "(첨부 증거)";
     const meta = this.snapshotMeta();
     if (options.azureWorkItemId) {
       meta.customContext = {

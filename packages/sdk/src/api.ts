@@ -84,7 +84,7 @@ export class Api {
       mode: "cors",
       credentials: "omit",
     });
-    if (!res.ok) throw new Error(`listMyPins ${res.status}`);
+    if (!res.ok) throw new Error(`내 제보 목록 불러오기 실패 (${res.status})`);
     return res.json() as Promise<{ pins: ServerPin[] }>;
   }
 
@@ -119,7 +119,7 @@ export class Api {
     form.append("file", blob, filename);
     const res = await fetch(sign.url, { method: "POST", body: form });
     if (!res.ok) {
-      throw new Error(`upload failed: ${res.status}`);
+      throw new Error(`파일 업로드 실패 (${res.status})`);
     }
     return { key: sign.key, mime, sizeBytes: blob.size };
   }
@@ -140,7 +140,7 @@ export class Api {
     if (!res.ok) {
       let detail = "";
       try { detail = await res.text(); } catch { /* ignore */ }
-      throw new Error(`Quad ${path} ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+      throw new Error(`Quad 요청 실패 (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
     }
     return res.json() as Promise<T>;
   }

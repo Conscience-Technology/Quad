@@ -35,7 +35,7 @@ var Api = class {
       mode: "cors",
       credentials: "omit"
     });
-    if (!res.ok) throw new Error(`listMyPins ${res.status}`);
+    if (!res.ok) throw new Error(`\uB0B4 \uC81C\uBCF4 \uBAA9\uB85D \uBD88\uB7EC\uC624\uAE30 \uC2E4\uD328 (${res.status})`);
     return res.json();
   }
   async createSession(input) {
@@ -58,7 +58,7 @@ var Api = class {
     form.append("file", blob, filename);
     const res = await fetch(sign.url, { method: "POST", body: form });
     if (!res.ok) {
-      throw new Error(`upload failed: ${res.status}`);
+      throw new Error(`\uD30C\uC77C \uC5C5\uB85C\uB4DC \uC2E4\uD328 (${res.status})`);
     }
     return { key: sign.key, mime, sizeBytes: blob.size };
   }
@@ -80,7 +80,7 @@ var Api = class {
         detail = await res.text();
       } catch {
       }
-      throw new Error(`Quad ${path} ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+      throw new Error(`Quad \uC694\uCCAD \uC2E4\uD328 (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
     }
     return res.json();
   }
@@ -502,7 +502,7 @@ var CaptureSession = class {
     try {
       if (mode === "screen+mic") {
         if (typeof navigator.mediaDevices?.getDisplayMedia !== "function") {
-          throw new Error("This browser does not support screen recording (mobile is unsupported)");
+          throw new Error("\uC774 \uBE0C\uB77C\uC6B0\uC800\uB294 \uD654\uBA74 \uB179\uD654\uB97C \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uBAA8\uBC14\uC77C\uC5D0\uC11C\uB294 \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
         }
         this.screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: { frameRate: 24 },
@@ -570,7 +570,7 @@ var CaptureSession = class {
     }
     const trailUpload = await this.cb.onUploadTrail(trailJson);
     await this.cb.onComplete({
-      title: title?.trim() || `Capture \xB7 ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
+      title: title?.trim() || `\uCEA1\uCC98 \xB7 ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
       durationMs,
       attachments,
       trailKey: trailUpload.key
@@ -607,9 +607,9 @@ var CaptureSession = class {
     bar.innerHTML = `
       <span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--rose);box-shadow:0 0 8px var(--rose);animation:q-pulse 1.4s ease-in-out infinite"></span>
       <span class="t">00:00</span>
-      <button class="stop" title="Stop" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u25A0</button>
-      <button class="mute" title="Toggle mic" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u{1F3A4}</button>
-      <button class="pin" title="Pin current element" style="min-height:28px;background:transparent;border:1px solid var(--border);border-radius:999px;color:var(--star-300);cursor:pointer;font-size:13px;padding:3px 8px">Pin</button>
+      <button class="stop" title="\uC911\uC9C0" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u25A0</button>
+      <button class="mute" title="\uB9C8\uC774\uD06C \uCF1C\uAE30/\uB044\uAE30" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u{1F3A4}</button>
+      <button class="pin" title="\uD604\uC7AC \uC694\uC18C \uC9C0\uC815" style="min-height:28px;background:transparent;border:1px solid var(--border);border-radius:999px;color:var(--star-300);cursor:pointer;font-size:13px;padding:3px 8px">\uC9C0\uC815</button>
     `;
     if (!this.shadow.querySelector("style[data-q-pulse]")) {
       const s = document.createElement("style");
@@ -969,7 +969,7 @@ var RevealLayer = class {
     tag.innerHTML = `
       <span class="dot">\u2726</span>
       <span class="body">${escapeHtml(pin.body.slice(0, 60))}</span>
-      <button class="x" title="Hide">\xD7</button>
+      <button class="x" title="\uC228\uAE30\uAE30">\xD7</button>
     `;
     const x = tag.querySelector("button.x");
     x?.addEventListener("click", (e) => {
@@ -996,17 +996,17 @@ var RevealLayer = class {
     pop.dataset.id = pin.id;
     pop.innerHTML = `
       <div class="head">
-        <span class="who">your report</span>
+        <span class="who">\uB0B4 \uC81C\uBCF4</span>
         <span class="when">${formatAgo(pin.createdAt)}</span>
       </div>
       <p class="body">${escapeHtml(pin.body)}</p>
       <div class="meta">
-        ${pin.componentPath ? `<div><span>component</span><code>${escapeHtml(pin.componentPath)}</code></div>` : ""}
-        <div><span>selector</span><code>${escapeHtml(pin.selector)}</code></div>
-        <div><span>route</span><code>${escapeHtml(pin.route)}</code></div>
+        ${pin.componentPath ? `<div><span>\uCEF4\uD3EC\uB10C\uD2B8</span><code>${escapeHtml(pin.componentPath)}</code></div>` : ""}
+        <div><span>\uC120\uD0DD\uC790</span><code>${escapeHtml(pin.selector)}</code></div>
+        <div><span>\uACBD\uB85C</span><code>${escapeHtml(pin.route)}</code></div>
       </div>
       <div class="actions">
-        <button class="hide">Hide on page</button>
+        <button class="hide">\uD398\uC774\uC9C0\uC5D0\uC11C \uC228\uAE30\uAE30</button>
       </div>
     `;
     const rect = anchor.getBoundingClientRect();
@@ -1037,12 +1037,12 @@ var RevealLayer = class {
 };
 function formatAgo(ts) {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1e3));
-  if (s < 60) return `${s}s ago`;
+  if (s < 60) return `${s}\uCD08 \uC804`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return `${m}\uBD84 \uC804`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return `${h}\uC2DC\uAC04 \uC804`;
+  return `${Math.floor(h / 24)}\uC77C \uC804`;
 }
 function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -1642,7 +1642,7 @@ var Widget = class {
   makeToggle() {
     const d = document.createElement("div");
     d.className = "q-toggle";
-    d.title = "Quad \u2014 report a bug (Alt+Shift+Q)";
+    d.title = "Quad - \uC99D\uAC70 \uBCF4\uB0B4\uAE30 (Alt+Shift+Q)";
     for (let i = 0; i < 4; i++) {
       const dot = document.createElement("span");
       dot.className = "dot";
@@ -1682,37 +1682,37 @@ var Widget = class {
     p.setAttribute("data-open", "false");
     const header = document.createElement("header");
     const h1 = document.createElement("h1");
-    h1.textContent = "Report a bug";
+    h1.textContent = "\uC99D\uAC70 \uBCF4\uB0B4\uAE30";
     const close = document.createElement("button");
     close.textContent = "\xD7";
-    close.title = "Close (Esc)";
+    close.title = "\uB2EB\uAE30 (Esc)";
     close.addEventListener("click", () => this.cb.onToggleOverlay());
     header.appendChild(h1);
     header.appendChild(close);
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
-      <p><strong>Send evidence to the work item.</strong> Use this when the discussion should stay in Azure DevOps, but the team needs the exact screen, files, console, network, and environment context.</p>
-      <p>To point at a specific element, turn on <strong>Bug Mode</strong> and click it.</p>
+      <p><strong>\uC5C5\uBB34 \uD56D\uBAA9\uC5D0 \uC99D\uAC70\uB97C \uBCF4\uB0C5\uB2C8\uB2E4.</strong> Azure DevOps\uC5D0\uC11C \uB17C\uC758\uB294 \uACC4\uC18D\uD558\uB418, \uD604\uC7AC \uD654\uBA74, \uD30C\uC77C, \uCF58\uC194, \uB124\uD2B8\uC6CC\uD06C, \uD658\uACBD \uC815\uBCF4\uB97C \uD568\uAED8 \uB0A8\uAE38 \uB54C \uC0AC\uC6A9\uD558\uC138\uC694.</p>
+      <p>\uD2B9\uC815 \uD654\uBA74 \uC694\uC18C\uB97C \uC9C0\uC815\uD558\uB824\uBA74 <strong>\uBC84\uADF8 \uBAA8\uB4DC</strong>\uB97C \uCF20 \uB4A4 \uC694\uC18C\uB97C \uD074\uB9AD\uD558\uC138\uC694.</p>
       <label class="q-field">
-        <span>Reporter</span>
-        <input class="q-reporter-name" type="text" autocomplete="name" placeholder="e.g. \uC774\uD559\uC900 TPM" />
+        <span>\uC791\uC131\uC790</span>
+        <input class="q-reporter-name" type="text" autocomplete="name" placeholder="\uC608: \uC774\uD559\uC900 TPM" />
       </label>
       <div class="drop" data-over="false">
-        Drop a file here or click to select<br/>
-        <small>Record with \u2318\u21E75 on macOS, Win+G on Windows, then drop the file here</small>
+        \uD30C\uC77C\uC744 \uC5EC\uAE30\uC5D0 \uB193\uAC70\uB098 \uD074\uB9AD\uD574\uC11C \uC120\uD0DD<br/>
+        <small>macOS\uB294 \u2318\u21E75, Windows\uB294 Win+G\uB85C \uB179\uD654\uD55C \uB4A4 \uC5EC\uAE30\uC5D0 \uB193\uC73C\uC138\uC694</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
-      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Issue / Work item # (optional)" />' : ""}
-      ${this.options.azureDevOpsEnabled ? '<input class="q-related-work-items" type="text" inputmode="numeric" placeholder="Related work items, comma-separated (optional)" />' : ""}
-      <textarea placeholder="What went wrong?"></textarea>
-      <button class="primary">Submit</button>
+      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Work Item \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
+      ${this.options.azureDevOpsEnabled ? '<input class="q-related-work-items" type="text" inputmode="numeric" placeholder="\uAD00\uB828 Work Item \uBC88\uD638, \uC27C\uD45C\uB85C \uAD6C\uBD84 (\uC120\uD0DD)" />' : ""}
+      <textarea placeholder="\uBB34\uC5C7\uC774 \uBB38\uC81C\uC600\uB098\uC694?"></textarea>
+      <button class="primary">\uBCF4\uB0B4\uAE30</button>
       <p class="q-status"></p>
       <section class="q-reports">
         <div class="header">
-          <span class="label">Your reports</span>
+          <span class="label">\uB0B4 \uC81C\uBCF4</span>
           <span class="right">
-            <button class="show-all" type="button" aria-pressed="false">Show all on this page</button>
+            <button class="show-all" type="button" aria-pressed="false">\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uBAA8\uB450 \uBCF4\uAE30</button>
             <span class="count"></span>
           </span>
         </div>
@@ -1751,18 +1751,18 @@ var Widget = class {
       countEl.textContent = String(all.length);
       const allRevealed = hereOnly.length > 0 && hereOnly.every((p) => isVisible(p.id));
       showAllBtn.setAttribute("aria-pressed", allRevealed ? "true" : "false");
-      showAllBtn.textContent = allRevealed ? "Hide all" : "Show all on this page";
+      showAllBtn.textContent = allRevealed ? "\uBAA8\uB450 \uC228\uAE30\uAE30" : "\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uBAA8\uB450 \uBCF4\uAE30";
       showAllBtn.disabled = hereOnly.length === 0;
       showAllBtn.style.opacity = hereOnly.length === 0 ? "0.4" : "1";
       if (all.length === 0) {
-        listEl.innerHTML = `<p class="empty">No reports yet. Pin an element or submit one above.</p>`;
+        listEl.innerHTML = `<p class="empty">\uC544\uC9C1 \uC81C\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uC694\uC18C\uB97C \uC9C0\uC815\uD558\uAC70\uB098 \uC704\uC5D0\uC11C \uC99D\uAC70\uB97C \uBCF4\uB0B4\uC138\uC694.</p>`;
         return;
       }
       const rowHtml = (p, sameRoute) => {
         const visible = isVisible(p.id);
         const eyeLabel = sameRoute ? visible ? "\u25CF" : "\u25CB" : "\u2197";
-        const eyeTitle = sameRoute ? visible ? "Hide on page" : "Show on page" : `On ${p.route}`;
-        const text = (p.body || "(no comment)").replace(/[<>]/g, "");
+        const eyeTitle = sameRoute ? visible ? "\uD398\uC774\uC9C0\uC5D0\uC11C \uC228\uAE30\uAE30" : "\uD398\uC774\uC9C0\uC5D0\uC11C \uBCF4\uAE30" : `${p.route}\uC5D0 \uC788\uC74C`;
+        const text = (p.body || "(\uCF54\uBA58\uD2B8 \uC5C6\uC74C)").replace(/[<>]/g, "");
         return `
           <div class="item">
             <div class="body">
@@ -1814,7 +1814,7 @@ var Widget = class {
     const status = body.querySelector(".q-status");
     let staged = [];
     const renderStaged = () => {
-      status.textContent = staged.length ? `${staged.length} attached: ${staged.map((f) => f.name).join(", ")}` : "";
+      status.textContent = staged.length ? `${staged.length}\uAC1C \uCCA8\uBD80\uB428: ${staged.map((f) => f.name).join(", ")}` : "";
     };
     const acceptFiles = (files) => {
       const arr = Array.from(files);
@@ -1857,26 +1857,26 @@ var Widget = class {
     btn.addEventListener("click", async () => {
       const body2 = ta.value.trim();
       if (!body2 && staged.length === 0) {
-        status.textContent = "A short description or an attachment is required";
+        status.textContent = "\uC124\uBA85\uC774\uB098 \uCCA8\uBD80 \uD30C\uC77C\uC774 \uD544\uC694\uD569\uB2C8\uB2E4";
         status.className = "q-status error";
         return;
       }
       const workItemRaw = workItemInput?.value.trim() ?? "";
       const azureWorkItemId = workItemRaw ? Number.parseInt(workItemRaw, 10) : void 0;
       if (workItemRaw && (!Number.isFinite(azureWorkItemId) || !azureWorkItemId || azureWorkItemId <= 0)) {
-        status.textContent = "Issue number must be a positive number";
+        status.textContent = "Work Item \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
         status.className = "q-status error";
         return;
       }
       const relatedWorkItemIds = parseWorkItemList(relatedWorkItemsInput?.value ?? "");
       if (relatedWorkItemsInput?.value.trim() && relatedWorkItemIds.length === 0) {
-        status.textContent = "Related work items must be positive numbers";
+        status.textContent = "\uAD00\uB828 Work Item \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
         status.className = "q-status error";
         return;
       }
       btn.disabled = true;
       status.className = "q-status";
-      status.textContent = "Sending\u2026";
+      status.textContent = "\uC804\uC1A1 \uC911\u2026";
       try {
         await this.cb.onSubmitOverlay(body2, staged, { azureWorkItemId, relatedWorkItemIds });
         ta.value = "";
@@ -1884,13 +1884,13 @@ var Widget = class {
         if (relatedWorkItemsInput) relatedWorkItemsInput.value = "";
         staged = [];
         renderStaged();
-        status.textContent = "Sent";
+        status.textContent = "\uC804\uC1A1 \uC644\uB8CC";
         setTimeout(() => {
           status.textContent = "";
         }, 2e3);
       } catch (err) {
         status.className = "q-status error";
-        status.textContent = err instanceof Error ? err.message : "Send failed";
+        status.textContent = err instanceof Error ? err.message : "\uC804\uC1A1 \uC2E4\uD328";
       } finally {
         btn.disabled = false;
       }
@@ -1910,10 +1910,10 @@ var Widget = class {
     form.className = "q-pin-form";
     form.innerHTML = `
       <div class="selector">${escapeHtml2(selector)}</div>
-      <textarea placeholder="What went wrong here? (Cmd/Ctrl+Enter to submit)"></textarea>
+      <textarea placeholder="\uC5EC\uAE30\uC11C \uBB34\uC5C7\uC774 \uBB38\uC81C\uC600\uB098\uC694? (Cmd/Ctrl+Enter\uB85C \uC81C\uCD9C)"></textarea>
       <div class="actions">
-        <button class="ghost" type="button">Cancel</button>
-        <button class="submit" type="button">Submit</button>
+        <button class="ghost" type="button">\uCDE8\uC18C</button>
+        <button class="submit" type="button">\uBCF4\uB0B4\uAE30</button>
       </div>
       <div class="status"></div>
     `;
@@ -1933,19 +1933,19 @@ var Widget = class {
       const body = ta.value.trim();
       if (!body) {
         status.className = "status error";
-        status.textContent = "A comment is required";
+        status.textContent = "\uCF54\uBA58\uD2B8\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4";
         return;
       }
       submitBtn.disabled = true;
       status.className = "status";
-      status.textContent = "Sending\u2026";
+      status.textContent = "\uC804\uC1A1 \uC911\u2026";
       try {
         await cb.onSubmit(body);
         this.closePinForm();
-        this.toast("Pin saved");
+        this.toast("\uD540 \uC800\uC7A5\uB428");
       } catch (err) {
         status.className = "status error";
-        status.textContent = err instanceof Error ? err.message : "Send failed";
+        status.textContent = err instanceof Error ? err.message : "\uC804\uC1A1 \uC2E4\uD328";
         submitBtn.disabled = false;
       }
     };
@@ -1997,13 +1997,13 @@ function parseWorkItemList(raw) {
 }
 function formatAgo2(ts) {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1e3));
-  if (s < 60) return `${s}s ago`;
+  if (s < 60) return `${s}\uCD08 \uC804`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return `${m}\uBD84 \uC804`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return `${h}\uC2DC\uAC04 \uC804`;
   const d = Math.floor(h / 24);
-  return `${d}d ago`;
+  return `${d}\uC77C \uC804`;
 }
 
 // src/index.ts
@@ -2080,17 +2080,17 @@ var QuadApi = class {
       onComplete: async (input) => {
         await this.api.createSession({
           title: input.title,
-          body: "(Capture session)",
+          body: "(\uCEA1\uCC98 \uC138\uC158)",
           meta: this.snapshotMeta(),
           reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey(),
           attachments: input.attachments
         });
-        this.widget?.toast(`Capture saved \xB7 ${Math.round(input.durationMs / 1e3)}s`);
+        this.widget?.toast(`\uC99D\uAC70 \uC800\uC7A5 \uC644\uB8CC \xB7 ${Math.round(input.durationMs / 1e3)}\uCD08`);
       },
       onPin: () => {
         if (!this.bugMode?.isOn()) this.toggleBugMode();
-        this.widget?.toast(`${this.optKey}+Click an element to pin it`);
+        this.widget?.toast(`${this.optKey}+\uD074\uB9AD\uC73C\uB85C \uC694\uC18C\uB97C \uC9C0\uC815\uD558\uC138\uC694`);
       }
     });
     const onKey = (e) => {
@@ -2181,9 +2181,9 @@ var QuadApi = class {
     const mode = opts.mode ?? "screen+mic";
     try {
       await this.capture.start(mode);
-      this.widget?.toast(mode === "screen+mic" ? "Recording + STT started" : "Voice recording started");
+      this.widget?.toast(mode === "screen+mic" ? "\uD654\uBA74 \uB179\uD654 + \uC74C\uC131 \uAE30\uB85D \uC2DC\uC791" : "\uC74C\uC131 \uAE30\uB85D \uC2DC\uC791");
     } catch (err) {
-      this.widget?.toast(err instanceof Error ? err.message : "Failed to start recording");
+      this.widget?.toast(err instanceof Error ? err.message : "\uAE30\uB85D\uC744 \uC2DC\uC791\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4");
     }
   }
   async stopRecord() {
@@ -2230,7 +2230,7 @@ var QuadApi = class {
   /** Minimal native confirm so we don't ship a custom modal just for this. */
   async askCaptureMode() {
     if (typeof confirm === "function") {
-      return confirm("Record screen + voice? Cancel records voice only.") ? "screen+mic" : "mic-only";
+      return confirm("\uD654\uBA74\uACFC \uC74C\uC131\uC744 \uD568\uAED8 \uB179\uD654\uD560\uAE4C\uC694? \uCDE8\uC18C\uB97C \uB204\uB974\uBA74 \uC74C\uC131\uB9CC \uB179\uC74C\uD569\uB2C8\uB2E4.") ? "screen+mic" : "mic-only";
     }
     return "screen+mic";
   }
@@ -2239,7 +2239,7 @@ var QuadApi = class {
     if (!this.bugMode) return;
     this.bugMode.setOn(!this.bugMode.isOn());
     this.widget?.toast(
-      this.bugMode.isOn() ? `Bug Mode ON \u2014 ${this.optKey}+Click to pin` : "Bug Mode OFF"
+      this.bugMode.isOn() ? `\uBC84\uADF8 \uBAA8\uB4DC \uCF1C\uC9D0 - ${this.optKey}+\uD074\uB9AD\uC73C\uB85C \uC694\uC18C \uC9C0\uC815` : "\uBC84\uADF8 \uBAA8\uB4DC \uAEBC\uC9D0"
     );
   }
   toggleOverlay() {
@@ -2274,14 +2274,14 @@ var QuadApi = class {
     });
   }
   async submitOverlay(body, files, options = {}) {
-    if (!this.api) throw new Error("Quad: not initialized");
+    if (!this.api) throw new Error("Quad\uAC00 \uCD08\uAE30\uD654\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4");
     const attachments = [];
     for (const f of files) {
       const kind = f.type.startsWith("video/") ? "video" : f.type.startsWith("audio/") ? "audio" : "screenshot";
       const up = await this.api.uploadFile(f, kind);
       attachments.push({ ...up, kind });
     }
-    const title = body.slice(0, 80) || "(attachment report)";
+    const title = body.slice(0, 80) || "(\uCCA8\uBD80 \uC99D\uAC70)";
     const meta = this.snapshotMeta();
     if (options.azureWorkItemId) {
       meta.customContext = {

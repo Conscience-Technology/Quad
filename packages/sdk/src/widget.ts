@@ -68,7 +68,7 @@ export class Widget {
   private makeToggle(): HTMLDivElement {
     const d = document.createElement("div");
     d.className = "q-toggle";
-    d.title = "Quad — report a bug (Alt+Shift+Q)";
+    d.title = "Quad - 증거 보내기 (Alt+Shift+Q)";
     for (let i = 0; i < 4; i++) {
       const dot = document.createElement("span");
       dot.className = "dot";
@@ -114,10 +114,10 @@ export class Widget {
 
     const header = document.createElement("header");
     const h1 = document.createElement("h1");
-    h1.textContent = "Report a bug";
+    h1.textContent = "증거 보내기";
     const close = document.createElement("button");
     close.textContent = "×";
-    close.title = "Close (Esc)";
+    close.title = "닫기 (Esc)";
     close.addEventListener("click", () => this.cb.onToggleOverlay());
     header.appendChild(h1);
     header.appendChild(close);
@@ -125,27 +125,27 @@ export class Widget {
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
-      <p><strong>Send evidence to the work item.</strong> Use this when the discussion should stay in Azure DevOps, but the team needs the exact screen, files, console, network, and environment context.</p>
-      <p>To point at a specific element, turn on <strong>Bug Mode</strong> and click it.</p>
+      <p><strong>업무 항목에 증거를 보냅니다.</strong> Azure DevOps에서 논의는 계속하되, 현재 화면, 파일, 콘솔, 네트워크, 환경 정보를 함께 남길 때 사용하세요.</p>
+      <p>특정 화면 요소를 지정하려면 <strong>버그 모드</strong>를 켠 뒤 요소를 클릭하세요.</p>
       <label class="q-field">
-        <span>Reporter</span>
-        <input class="q-reporter-name" type="text" autocomplete="name" placeholder="e.g. 이학준 TPM" />
+        <span>작성자</span>
+        <input class="q-reporter-name" type="text" autocomplete="name" placeholder="예: 이학준 TPM" />
       </label>
       <div class="drop" data-over="false">
-        Drop a file here or click to select<br/>
-        <small>Record with ⌘⇧5 on macOS, Win+G on Windows, then drop the file here</small>
+        파일을 여기에 놓거나 클릭해서 선택<br/>
+        <small>macOS는 ⌘⇧5, Windows는 Win+G로 녹화한 뒤 여기에 놓으세요</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
-      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Issue / Work item # (optional)" />' : ""}
-      ${this.options.azureDevOpsEnabled ? '<input class="q-related-work-items" type="text" inputmode="numeric" placeholder="Related work items, comma-separated (optional)" />' : ""}
-      <textarea placeholder="What went wrong?"></textarea>
-      <button class="primary">Submit</button>
+      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Work Item 번호 (선택)" />' : ""}
+      ${this.options.azureDevOpsEnabled ? '<input class="q-related-work-items" type="text" inputmode="numeric" placeholder="관련 Work Item 번호, 쉼표로 구분 (선택)" />' : ""}
+      <textarea placeholder="무엇이 문제였나요?"></textarea>
+      <button class="primary">보내기</button>
       <p class="q-status"></p>
       <section class="q-reports">
         <div class="header">
-          <span class="label">Your reports</span>
+          <span class="label">내 제보</span>
           <span class="right">
-            <button class="show-all" type="button" aria-pressed="false">Show all on this page</button>
+            <button class="show-all" type="button" aria-pressed="false">이 페이지에서 모두 보기</button>
             <span class="count"></span>
           </span>
         </div>
@@ -192,12 +192,12 @@ export class Widget {
       // Master toggle reflects current state of pins on this route
       const allRevealed = hereOnly.length > 0 && hereOnly.every((p) => Local.isVisible(p.id));
       showAllBtn.setAttribute("aria-pressed", allRevealed ? "true" : "false");
-      showAllBtn.textContent = allRevealed ? "Hide all" : "Show all on this page";
+      showAllBtn.textContent = allRevealed ? "모두 숨기기" : "이 페이지에서 모두 보기";
       showAllBtn.disabled = hereOnly.length === 0;
       showAllBtn.style.opacity = hereOnly.length === 0 ? "0.4" : "1";
 
       if (all.length === 0) {
-        listEl.innerHTML = `<p class="empty">No reports yet. Pin an element or submit one above.</p>`;
+        listEl.innerHTML = `<p class="empty">아직 제보가 없습니다. 요소를 지정하거나 위에서 증거를 보내세요.</p>`;
         return;
       }
 
@@ -207,9 +207,9 @@ export class Widget {
           ? visible ? "●" : "○"
           : "↗";
         const eyeTitle = sameRoute
-          ? visible ? "Hide on page" : "Show on page"
-          : `On ${p.route}`;
-        const text = (p.body || "(no comment)").replace(/[<>]/g, "");
+          ? visible ? "페이지에서 숨기기" : "페이지에서 보기"
+          : `${p.route}에 있음`;
+        const text = (p.body || "(코멘트 없음)").replace(/[<>]/g, "");
         return `
           <div class="item">
             <div class="body">
@@ -271,7 +271,7 @@ export class Widget {
     let staged: File[] = [];
     const renderStaged = () => {
       status.textContent = staged.length
-        ? `${staged.length} attached: ${staged.map((f) => f.name).join(", ")}`
+        ? `${staged.length}개 첨부됨: ${staged.map((f) => f.name).join(", ")}`
         : "";
     };
 
@@ -318,26 +318,26 @@ export class Widget {
     btn.addEventListener("click", async () => {
       const body = ta.value.trim();
       if (!body && staged.length === 0) {
-        status.textContent = "A short description or an attachment is required";
+        status.textContent = "설명이나 첨부 파일이 필요합니다";
         status.className = "q-status error";
         return;
       }
       const workItemRaw = workItemInput?.value.trim() ?? "";
       const azureWorkItemId = workItemRaw ? Number.parseInt(workItemRaw, 10) : undefined;
       if (workItemRaw && (!Number.isFinite(azureWorkItemId) || !azureWorkItemId || azureWorkItemId <= 0)) {
-        status.textContent = "Issue number must be a positive number";
+        status.textContent = "Work Item 번호는 양수여야 합니다";
         status.className = "q-status error";
         return;
       }
       const relatedWorkItemIds = parseWorkItemList(relatedWorkItemsInput?.value ?? "");
       if (relatedWorkItemsInput?.value.trim() && relatedWorkItemIds.length === 0) {
-        status.textContent = "Related work items must be positive numbers";
+        status.textContent = "관련 Work Item 번호는 양수여야 합니다";
         status.className = "q-status error";
         return;
       }
       btn.disabled = true;
       status.className = "q-status";
-      status.textContent = "Sending…";
+      status.textContent = "전송 중…";
       try {
         await this.cb.onSubmitOverlay(body, staged, { azureWorkItemId, relatedWorkItemIds });
         ta.value = "";
@@ -345,13 +345,13 @@ export class Widget {
         if (relatedWorkItemsInput) relatedWorkItemsInput.value = "";
         staged = [];
         renderStaged();
-        status.textContent = "Sent";
+        status.textContent = "전송 완료";
         setTimeout(() => {
           status.textContent = "";
         }, 2000);
       } catch (err) {
         status.className = "q-status error";
-        status.textContent = err instanceof Error ? err.message : "Send failed";
+        status.textContent = err instanceof Error ? err.message : "전송 실패";
       } finally {
         btn.disabled = false;
       }
@@ -375,10 +375,10 @@ export class Widget {
     form.className = "q-pin-form";
     form.innerHTML = `
       <div class="selector">${escapeHtml(selector)}</div>
-      <textarea placeholder="What went wrong here? (Cmd/Ctrl+Enter to submit)"></textarea>
+      <textarea placeholder="여기서 무엇이 문제였나요? (Cmd/Ctrl+Enter로 제출)"></textarea>
       <div class="actions">
-        <button class="ghost" type="button">Cancel</button>
-        <button class="submit" type="button">Submit</button>
+        <button class="ghost" type="button">취소</button>
+        <button class="submit" type="button">보내기</button>
       </div>
       <div class="status"></div>
     `;
@@ -401,19 +401,19 @@ export class Widget {
       const body = ta.value.trim();
       if (!body) {
         status.className = "status error";
-        status.textContent = "A comment is required";
+        status.textContent = "코멘트가 필요합니다";
         return;
       }
       submitBtn.disabled = true;
       status.className = "status";
-      status.textContent = "Sending…";
+      status.textContent = "전송 중…";
       try {
         await cb.onSubmit(body);
         this.closePinForm();
-        this.toast("Pin saved");
+        this.toast("핀 저장됨");
       } catch (err) {
         status.className = "status error";
-        status.textContent = err instanceof Error ? err.message : "Send failed";
+        status.textContent = err instanceof Error ? err.message : "전송 실패";
         submitBtn.disabled = false;
       }
     };
@@ -480,11 +480,11 @@ function parseWorkItemList(raw: string): number[] {
 
 function formatAgo(ts: number): string {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1000));
-  if (s < 60) return `${s}s ago`;
+  if (s < 60) return `${s}초 전`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return `${m}분 전`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return `${h}시간 전`;
   const d = Math.floor(h / 24);
-  return `${d}d ago`;
+  return `${d}일 전`;
 }
