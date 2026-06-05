@@ -43,6 +43,51 @@ var Api = class {
   async createSession(input) {
     return this.postJson("/api/ingest/session", input);
   }
+  async getAzureDevOpsPatStatus(reporterAnonKey) {
+    const qs = new URLSearchParams({ reporter_anon: reporterAnonKey });
+    const res = await fetch(this.url(`/api/ingest/integrations/azure-devops?${qs.toString()}`), {
+      method: "GET",
+      headers: {
+        "x-quad-key": this.cfg.apiKey,
+        "x-quad-sdk-version": this.cfg.version
+      },
+      mode: "cors",
+      credentials: "omit"
+    });
+    if (!res.ok) throw new Error(`Azure DevOps PAT \uC0C1\uD0DC \uD655\uC778 \uC2E4\uD328 (${res.status})`);
+    return res.json();
+  }
+  async saveAzureDevOpsPat(reporterAnonKey, pat) {
+    return this.postJson("/api/ingest/integrations/azure-devops", {
+      reporterAnonKey,
+      pat
+    });
+  }
+  async deleteAzureDevOpsPat(reporterAnonKey) {
+    const res = await fetch(this.url("/api/ingest/integrations/azure-devops"), {
+      method: "DELETE",
+      headers: this.headers(),
+      body: JSON.stringify({ reporterAnonKey }),
+      credentials: "omit",
+      mode: "cors"
+    });
+    if (!res.ok) throw new Error(`Azure DevOps PAT \uC0AD\uC81C \uC2E4\uD328 (${res.status})`);
+    return res.json();
+  }
+  async searchAzureDevOpsIdentities(reporterAnonKey, query) {
+    const qs = new URLSearchParams({ reporter_anon: reporterAnonKey, q: query });
+    const res = await fetch(this.url(`/api/ingest/azure-devops/identities?${qs.toString()}`), {
+      method: "GET",
+      headers: {
+        "x-quad-key": this.cfg.apiKey,
+        "x-quad-sdk-version": this.cfg.version
+      },
+      mode: "cors",
+      credentials: "omit"
+    });
+    if (!res.ok) throw new Error(`Azure DevOps \uC0AC\uC6A9\uC790 \uAC80\uC0C9 \uC2E4\uD328 (${res.status})`);
+    return res.json();
+  }
   async presignUpload(input) {
     return this.postJson("/api/ingest/presign", input);
   }
@@ -1223,6 +1268,77 @@ var WIDGET_CSS = (
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.02);
 }
+.q-azure-pat {
+  margin: 14px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.q-azure-pat-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.q-azure-pat-current span {
+  flex: 0 0 auto;
+  color: var(--star-500);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.q-azure-pat-current strong {
+  flex: 1;
+  min-width: 0;
+  color: var(--star-100);
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-azure-pat-current button,
+.q-azure-pat-delete {
+  flex: 0 0 auto;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--star-300);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+}
+.q-azure-pat-current button:hover,
+.q-azure-pat-delete:hover {
+  border-color: var(--violet);
+  color: var(--star-100);
+}
+.q-azure-pat-delete {
+  margin-top: 8px;
+  width: 100%;
+}
+.q-azure-pat-editor {
+  display: none;
+  margin: 0;
+  padding: 12px;
+}
+.q-azure-pat-status {
+  margin: 0;
+  padding: 0 12px 10px;
+  color: var(--star-500);
+  font-size: 12px;
+}
+.q-azure-pat-status.error { color: var(--rose); }
+.q-azure-pat[data-configured="false"] .q-azure-pat-current,
+.q-azure-pat[data-editing="true"] .q-azure-pat-current {
+  display: none;
+}
+.q-azure-pat[data-editing="true"] .q-azure-pat-editor {
+  display: block;
+}
 .q-reporter-current {
   display: flex;
   align-items: center;
@@ -1289,8 +1405,12 @@ var WIDGET_CSS = (
   display: block;
 }
 .q-panel input.q-reporter-name,
+.q-panel input.q-azure-pat-input,
+.q-panel input.q-user-story-work-item,
+.q-panel input.q-task-work-item,
 .q-panel input.q-work-item,
 .q-panel input.q-related-work-items,
+.q-panel input.q-mention-search,
 .q-panel textarea {
   width: 100%;
   background: var(--surface);
@@ -1306,8 +1426,12 @@ var WIDGET_CSS = (
   outline: none;
 }
 .q-panel input.q-reporter-name,
+.q-panel input.q-azure-pat-input,
+.q-panel input.q-user-story-work-item,
+.q-panel input.q-task-work-item,
 .q-panel input.q-work-item,
-.q-panel input.q-related-work-items {
+.q-panel input.q-related-work-items,
+.q-panel input.q-mention-search {
   margin: 0 0 10px;
   min-height: 40px;
 }
@@ -1315,9 +1439,62 @@ var WIDGET_CSS = (
   margin: 0;
 }
 .q-panel input.q-reporter-name:focus,
+.q-panel input.q-azure-pat-input:focus,
+.q-panel input.q-user-story-work-item:focus,
+.q-panel input.q-task-work-item:focus,
 .q-panel input.q-work-item:focus,
 .q-panel input.q-related-work-items:focus,
+.q-panel input.q-mention-search:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
+.q-mention-box {
+  margin: 0 0 10px;
+}
+.q-mention-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: -4px 0 8px;
+}
+.q-mention-results p {
+  margin: 0;
+  font-size: 12px;
+}
+.q-mention-results p.error {
+  color: var(--rose);
+}
+.q-mention-result {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--star-100);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 7px 9px;
+  text-align: left;
+}
+.q-mention-result span {
+  color: var(--star-500);
+  font-size: 12px;
+}
+.q-mention-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.q-mention-chip {
+  border: 1px solid rgba(139, 124, 246, 0.45);
+  border-radius: 999px;
+  background: rgba(139, 124, 246, 0.12);
+  color: var(--star-100);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
 .q-panel .primary {
   margin-top: 14px;
   width: 100%;
@@ -1375,6 +1552,27 @@ var WIDGET_CSS = (
   resize: vertical;
   min-height: 60px;
   outline: none;
+}
+.q-pin-azure {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 8px;
+}
+.q-pin-azure input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--star-100);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  padding: 8px;
+}
+.q-pin-azure input:focus {
+  border-color: var(--violet);
 }
 .q-pin-form textarea:focus { border-color: var(--violet); }
 .q-pin-form .actions {
@@ -1785,13 +1983,38 @@ var Widget = class {
           <small>\uD55C \uBC88 \uC800\uC7A5\uD558\uBA74 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uACC4\uC18D \uC0AC\uC6A9\uB429\uB2C8\uB2E4. Azure DevOps \uB313\uAE00 \uBCF8\uBB38\uC5D0 \uC81C\uBCF4\uC790\uB85C \uB0A8\uC2B5\uB2C8\uB2E4.</small>
         </label>
       </div>
+      ${this.options.azureDevOpsEnabled ? `
+      <div class="q-azure-pat" data-configured="false" data-editing="true">
+        <div class="q-azure-pat-current">
+          <span>Azure PAT</span>
+          <strong class="q-azure-pat-label">\uBBF8\uC124\uC815</strong>
+          <button class="q-azure-pat-edit" type="button">\uC218\uC815</button>
+        </div>
+        <label class="q-field q-azure-pat-editor">
+          <span>Azure DevOps PAT</span>
+          <div class="q-reporter-row">
+            <input class="q-azure-pat-input" type="password" autocomplete="off" placeholder="\uAC1C\uC778 Azure DevOps PAT" />
+            <button class="q-azure-pat-save" type="button">\uC800\uC7A5</button>
+          </div>
+          <small>\uD55C \uBC88 \uC800\uC7A5\uD558\uBA74 \uC11C\uBC84\uC5D0 \uC554\uD638\uD654 \uC800\uC7A5\uB429\uB2C8\uB2E4. \uC0C1\uD0DC \uBCC0\uACBD\uACFC \uB313\uAE00\uC740 \uC774 PAT \uACC4\uC815\uC73C\uB85C \uC218\uD589\uB429\uB2C8\uB2E4.</small>
+          <button class="q-azure-pat-delete" type="button">\uC800\uC7A5\uB41C PAT \uC0AD\uC81C</button>
+        </label>
+        <p class="q-azure-pat-status"></p>
+      </div>` : ""}
       <div class="drop" data-over="false">
         \uD30C\uC77C\uC744 \uC5EC\uAE30\uC5D0 \uB193\uAC70\uB098 \uD074\uB9AD\uD574\uC11C \uC120\uD0DD<br/>
         <small>macOS\uB294 \u2318\u21E75, Windows\uB294 Win+G\uB85C \uB179\uD654\uD55C \uB4A4 \uC5EC\uAE30\uC5D0 \uB193\uC73C\uC138\uC694</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
-      ${this.options.azureDevOpsEnabled ? '<input class="q-work-item" type="number" inputmode="numeric" min="1" placeholder="Work Item \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
+      ${this.options.azureDevOpsEnabled ? '<input class="q-user-story-work-item" type="number" inputmode="numeric" min="1" placeholder="User Story \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
+      ${this.options.azureDevOpsEnabled ? '<input class="q-task-work-item" type="number" inputmode="numeric" min="1" placeholder="Task \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
       ${this.options.azureDevOpsEnabled ? '<input class="q-related-work-items" type="text" inputmode="numeric" placeholder="\uAD00\uB828 Work Item \uBC88\uD638, \uC27C\uD45C\uB85C \uAD6C\uBD84 (\uC120\uD0DD)" />' : ""}
+      ${this.options.azureDevOpsEnabled ? `
+      <div class="q-mention-box">
+        <input class="q-mention-search" type="text" placeholder="@\uBA58\uC158\uD560 \uC0AC\uC6A9\uC790 \uC774\uB984 \uB610\uB294 \uC774\uBA54\uC77C \uAC80\uC0C9" />
+        <div class="q-mention-results"></div>
+        <div class="q-mention-selected"></div>
+      </div>` : ""}
       <textarea placeholder="\uBB34\uC5C7\uC774 \uBB38\uC81C\uC600\uB098\uC694?"></textarea>
       <button class="primary">\uBCF4\uB0B4\uAE30</button>
       <p class="q-status"></p>
@@ -1810,6 +2033,11 @@ var Widget = class {
     p.appendChild(body);
     this.wireOverlayBody(body);
     this.syncReporterIdentity(body);
+    if (this.options.azureDevOpsEnabled) {
+      this.syncAzurePatSetup(body);
+      this.wireAzureTargets(body);
+      this.wireAzureMentions(body);
+    }
     this.wireReportsList(body);
     return p;
   }
@@ -1846,7 +2074,8 @@ var Widget = class {
         save();
       }
     });
-    reporterInput.addEventListener("blur", () => {
+    reporterInput.addEventListener("blur", (e) => {
+      if (e.relatedTarget === saveBtn) return;
       if (setup.dataset.empty === "true" && reporterInput.value.trim()) save();
     });
     render();
@@ -1858,6 +2087,143 @@ var Widget = class {
     setup.dataset.editing = "true";
     this.setOverlayOpen(true);
     reporterInput.focus();
+  }
+  syncAzurePatSetup(body) {
+    const setup = body.querySelector(".q-azure-pat");
+    const label = body.querySelector(".q-azure-pat-label");
+    const editBtn = body.querySelector(".q-azure-pat-edit");
+    const saveBtn = body.querySelector(".q-azure-pat-save");
+    const deleteBtn = body.querySelector(".q-azure-pat-delete");
+    const input = body.querySelector(".q-azure-pat-input");
+    const status = body.querySelector(".q-azure-pat-status");
+    if (!setup || !label || !editBtn || !saveBtn || !deleteBtn || !input || !status) return;
+    const render = (configured, prefix, editing) => {
+      setup.dataset.configured = configured ? "true" : "false";
+      setup.dataset.editing = editing ?? !configured ? "true" : "false";
+      label.textContent = configured ? `\uC800\uC7A5\uB428 ${prefix ?? ""}`.trim() : "\uBBF8\uC124\uC815";
+      input.value = "";
+    };
+    void this.cb.getAzureDevOpsPatStatus().then((res) => render(res.configured, res.prefix)).catch(() => {
+      status.className = "q-azure-pat-status error";
+      status.textContent = "Azure PAT \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4";
+    });
+    editBtn.addEventListener("click", () => {
+      render(setup.dataset.configured === "true", label.textContent, true);
+      input.focus();
+    });
+    saveBtn.addEventListener("click", async () => {
+      const pat = input.value.trim();
+      if (!pat) {
+        status.className = "q-azure-pat-status error";
+        status.textContent = "PAT\uB97C \uC785\uB825\uD574 \uC8FC\uC138\uC694";
+        return;
+      }
+      saveBtn.disabled = true;
+      status.className = "q-azure-pat-status";
+      status.textContent = "\uAC80\uC99D \uBC0F \uC800\uC7A5 \uC911\u2026";
+      try {
+        const res = await this.cb.onSaveAzureDevOpsPat(pat);
+        render(res.configured, res.prefix, false);
+        status.textContent = "Azure PAT\uAC00 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4";
+      } catch (err) {
+        status.className = "q-azure-pat-status error";
+        status.textContent = err instanceof Error ? err.message : "Azure PAT \uC800\uC7A5 \uC2E4\uD328";
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+    deleteBtn.addEventListener("click", async () => {
+      deleteBtn.disabled = true;
+      status.className = "q-azure-pat-status";
+      status.textContent = "\uC0AD\uC81C \uC911\u2026";
+      try {
+        await this.cb.onDeleteAzureDevOpsPat();
+        render(false, null, true);
+        status.textContent = "\uC800\uC7A5\uB41C PAT\uB97C \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4";
+      } catch (err) {
+        status.className = "q-azure-pat-status error";
+        status.textContent = err instanceof Error ? err.message : "Azure PAT \uC0AD\uC81C \uC2E4\uD328";
+      } finally {
+        deleteBtn.disabled = false;
+      }
+    });
+  }
+  wireAzureTargets(body) {
+    const userStoryInput = body.querySelector("input.q-user-story-work-item");
+    const taskInput = body.querySelector("input.q-task-work-item");
+    const relatedInput = body.querySelector("input.q-related-work-items");
+    if (!userStoryInput && !taskInput && !relatedInput) return;
+    const saved = readSavedAzureTargets();
+    if (userStoryInput && saved.userStoryWorkItemId) userStoryInput.value = String(saved.userStoryWorkItemId);
+    if (taskInput && saved.taskWorkItemId) taskInput.value = String(saved.taskWorkItemId);
+    if (relatedInput && saved.relatedWorkItemIds?.length) relatedInput.value = saved.relatedWorkItemIds.join(", ");
+    const save = () => {
+      const next = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "", relatedInput?.value ?? "");
+      writeSavedAzureTargets(next);
+    };
+    userStoryInput?.addEventListener("change", save);
+    taskInput?.addEventListener("change", save);
+    relatedInput?.addEventListener("change", save);
+  }
+  wireAzureMentions(body) {
+    const input = body.querySelector("input.q-mention-search");
+    const results = body.querySelector(".q-mention-results");
+    const selected = body.querySelector(".q-mention-selected");
+    if (!input || !results || !selected) return;
+    const mentions = [];
+    const renderSelected = () => {
+      selected.innerHTML = mentions.map((mention, index) => `
+        <button class="q-mention-chip" type="button" data-index="${index}">
+          ${escapeHtml2(mention.displayName ?? mention.uniqueName ?? mention.id)} \xD7
+        </button>
+      `).join("");
+      selected.querySelectorAll("button.q-mention-chip").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const index = Number.parseInt(btn.dataset.index ?? "", 10);
+          if (Number.isFinite(index)) mentions.splice(index, 1);
+          renderSelected();
+        });
+      });
+    };
+    let timer;
+    input.addEventListener("input", () => {
+      if (timer) window.clearTimeout(timer);
+      const query = input.value.trim();
+      if (query.length < 2) {
+        results.innerHTML = "";
+        return;
+      }
+      timer = window.setTimeout(async () => {
+        results.innerHTML = `<p>\uAC80\uC0C9 \uC911\u2026</p>`;
+        try {
+          const found = await this.cb.onSearchAzureDevOpsIdentities(query);
+          results.innerHTML = found.length ? found.map((identity) => `
+              <button class="q-mention-result" type="button" data-id="${escapeHtml2(identity.id)}" data-name="${escapeHtml2(identity.displayName)}" data-unique="${escapeHtml2(identity.uniqueName ?? "")}">
+                <strong>${escapeHtml2(identity.displayName)}</strong>
+                ${identity.uniqueName ? `<span>${escapeHtml2(identity.uniqueName)}</span>` : ""}
+              </button>
+            `).join("") : `<p>\uAC80\uC0C9 \uACB0\uACFC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</p>`;
+          results.querySelectorAll("button.q-mention-result").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const id = btn.dataset.id;
+              if (!id || mentions.some((mention) => mention.id === id)) return;
+              mentions.push({
+                id,
+                displayName: btn.dataset.name,
+                uniqueName: btn.dataset.unique || void 0
+              });
+              input.value = "";
+              results.innerHTML = "";
+              renderSelected();
+            });
+          });
+        } catch (err) {
+          results.innerHTML = `<p class="error">${escapeHtml2(err instanceof Error ? err.message : "\uC0AC\uC6A9\uC790 \uAC80\uC0C9 \uC2E4\uD328")}</p>`;
+        }
+      }, 250);
+    });
+    selected.quadMentions = mentions;
+    renderSelected();
   }
   // ---- Reports list -------------------------------------------------------
   wireReportsList(body) {
@@ -1929,8 +2295,10 @@ var Widget = class {
   wireOverlayBody(body) {
     const drop = body.querySelector(".drop");
     const fileInput = body.querySelector("input[type=file]");
-    const workItemInput = body.querySelector("input.q-work-item");
+    const userStoryInput = body.querySelector("input.q-user-story-work-item");
+    const taskInput = body.querySelector("input.q-task-work-item");
     const relatedWorkItemsInput = body.querySelector("input.q-related-work-items");
+    const mentionSelected = body.querySelector(".q-mention-selected");
     const ta = body.querySelector("textarea");
     const btn = body.querySelector(".primary");
     const status = body.querySelector(".q-status");
@@ -1989,27 +2357,32 @@ var Widget = class {
         status.className = "q-status error";
         return;
       }
-      const workItemRaw = workItemInput?.value.trim() ?? "";
-      const azureWorkItemId = workItemRaw ? Number.parseInt(workItemRaw, 10) : void 0;
-      if (workItemRaw && (!Number.isFinite(azureWorkItemId) || !azureWorkItemId || azureWorkItemId <= 0)) {
-        status.textContent = "Work Item \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
+      const azureTargets = parseAzureTargets(
+        userStoryInput?.value ?? "",
+        taskInput?.value ?? "",
+        relatedWorkItemsInput?.value ?? ""
+      );
+      if ((userStoryInput?.value.trim() || taskInput?.value.trim()) && (azureTargets.azureWorkItemIds?.length ?? 0) === 0) {
+        status.textContent = "User Story \uB610\uB294 Task \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
         status.className = "q-status error";
         return;
       }
-      const relatedWorkItemIds = parseWorkItemList(relatedWorkItemsInput?.value ?? "");
+      const relatedWorkItemIds = azureTargets.relatedWorkItemIds ?? [];
       if (relatedWorkItemsInput?.value.trim() && relatedWorkItemIds.length === 0) {
         status.textContent = "\uAD00\uB828 Work Item \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
         status.className = "q-status error";
         return;
       }
+      writeSavedAzureTargets(azureTargets);
       btn.disabled = true;
       status.className = "q-status";
       status.textContent = "\uC804\uC1A1 \uC911\u2026";
       try {
-        await this.cb.onSubmitOverlay(body2, staged, { azureWorkItemId, relatedWorkItemIds });
+        await this.cb.onSubmitOverlay(body2, staged, {
+          ...azureTargets,
+          azureMentions: mentionSelected?.quadMentions ?? []
+        });
         ta.value = "";
-        if (workItemInput) workItemInput.value = "";
-        if (relatedWorkItemsInput) relatedWorkItemsInput.value = "";
         staged = [];
         renderStaged();
         status.textContent = "\uC804\uC1A1 \uC644\uB8CC";
@@ -2036,8 +2409,15 @@ var Widget = class {
     this.closePinForm();
     const form = document.createElement("div");
     form.className = "q-pin-form";
+    const savedTargets = readSavedAzureTargets();
     form.innerHTML = `
       <div class="selector">${escapeHtml2(selector)}</div>
+      ${this.options.azureDevOpsEnabled ? `
+        <div class="q-pin-azure">
+          <input class="q-pin-user-story" type="number" inputmode="numeric" min="1" placeholder="User Story \uBC88\uD638 (\uC120\uD0DD)" value="${savedTargets.userStoryWorkItemId ?? ""}" />
+          <input class="q-pin-task" type="number" inputmode="numeric" min="1" placeholder="Task \uBC88\uD638 (\uC120\uD0DD)" value="${savedTargets.taskWorkItemId ?? ""}" />
+        </div>
+      ` : ""}
       <textarea placeholder="\uC5EC\uAE30\uC11C \uBB34\uC5C7\uC774 \uBB38\uC81C\uC600\uB098\uC694? (Cmd/Ctrl+Enter\uB85C \uC81C\uCD9C)"></textarea>
       <div class="actions">
         <button class="ghost" type="button">\uCDE8\uC18C</button>
@@ -2056,6 +2436,8 @@ var Widget = class {
     const submitBtn = form.querySelector(".submit");
     const cancelBtn = form.querySelector(".ghost");
     const status = form.querySelector(".status");
+    const userStoryInput = form.querySelector("input.q-pin-user-story");
+    const taskInput = form.querySelector("input.q-pin-task");
     ta.focus();
     const doSubmit = async () => {
       const body = ta.value.trim();
@@ -2070,11 +2452,18 @@ var Widget = class {
         status.textContent = "\uCF54\uBA58\uD2B8\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4";
         return;
       }
+      const azureTargets = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "", "");
+      if ((userStoryInput?.value.trim() || taskInput?.value.trim()) && (azureTargets.azureWorkItemIds?.length ?? 0) === 0) {
+        status.className = "status error";
+        status.textContent = "User Story \uB610\uB294 Task \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
+        return;
+      }
+      writeSavedAzureTargets({ ...readSavedAzureTargets(), ...azureTargets });
       submitBtn.disabled = true;
       status.className = "status";
       status.textContent = "\uC804\uC1A1 \uC911\u2026";
       try {
-        await cb.onSubmit(body);
+        await cb.onSubmit(body, azureTargets);
         this.closePinForm();
         this.toast("\uD540 \uC800\uC7A5\uB428");
       } catch (err) {
@@ -2129,6 +2518,53 @@ function parseWorkItemList(raw) {
     )
   ).slice(0, 12);
 }
+var AZURE_TARGETS_KEY = "quad.azure_targets.v1";
+function parseAzureTargets(userStoryRaw, taskRaw, relatedRaw) {
+  const userStoryWorkItemId = parseSingleWorkItem(userStoryRaw);
+  const taskWorkItemId = parseSingleWorkItem(taskRaw);
+  const relatedWorkItemIds = parseWorkItemList(relatedRaw);
+  const azureWorkItemIds = Array.from(
+    new Set([userStoryWorkItemId, taskWorkItemId].filter((n) => Boolean(n)))
+  );
+  return {
+    azureWorkItemIds,
+    userStoryWorkItemId,
+    taskWorkItemId,
+    relatedWorkItemIds
+  };
+}
+function parseSingleWorkItem(raw) {
+  const trimmed = raw.trim().replace(/^#/, "");
+  if (!trimmed) return void 0;
+  const n = Number.parseInt(trimmed, 10);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : void 0;
+}
+function readSavedAzureTargets() {
+  try {
+    const raw = localStorage.getItem(AZURE_TARGETS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return {
+      userStoryWorkItemId: typeof parsed.userStoryWorkItemId === "number" ? parsed.userStoryWorkItemId : void 0,
+      taskWorkItemId: typeof parsed.taskWorkItemId === "number" ? parsed.taskWorkItemId : void 0,
+      azureWorkItemIds: Array.isArray(parsed.azureWorkItemIds) ? parsed.azureWorkItemIds.filter((n) => typeof n === "number") : void 0,
+      relatedWorkItemIds: Array.isArray(parsed.relatedWorkItemIds) ? parsed.relatedWorkItemIds.filter((n) => typeof n === "number") : void 0
+    };
+  } catch {
+    return {};
+  }
+}
+function writeSavedAzureTargets(targets) {
+  try {
+    localStorage.setItem(AZURE_TARGETS_KEY, JSON.stringify({
+      userStoryWorkItemId: targets.userStoryWorkItemId,
+      taskWorkItemId: targets.taskWorkItemId,
+      azureWorkItemIds: targets.azureWorkItemIds,
+      relatedWorkItemIds: targets.relatedWorkItemIds
+    }));
+  } catch {
+  }
+}
 function formatAgo2(ts) {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1e3));
   if (s < 60) return `${s}\uCD08 \uC804`;
@@ -2144,6 +2580,7 @@ function formatAgo2(ts) {
 var VERSION = "0.0.0";
 var ANON_COOKIE = "quad_anon";
 var REPORTER_NAME_KEY = "quad.reporter_name.v1";
+var AZURE_TARGETS_KEY2 = "quad.azure_targets.v1";
 var QuadApi = class {
   opts = {
     apiKey: "",
@@ -2190,6 +2627,10 @@ var QuadApi = class {
         onToggleOverlay: () => this.toggleOverlay(),
         getReporterName: () => this.reporterName(),
         onReporterNameChange: (name) => this.setReporterName(name),
+        getAzureDevOpsPatStatus: () => this.getAzureDevOpsPatStatus(),
+        onSaveAzureDevOpsPat: (pat) => this.saveAzureDevOpsPat(pat),
+        onDeleteAzureDevOpsPat: () => this.deleteAzureDevOpsPat(),
+        onSearchAzureDevOpsIdentities: (query) => this.searchAzureDevOpsIdentities(query),
         onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options)
       },
       {
@@ -2215,7 +2656,7 @@ var QuadApi = class {
         await this.api.createSession({
           title: input.title,
           body: "(\uCEA1\uCC98 \uC138\uC158)",
-          meta: this.snapshotMeta(),
+          meta: this.snapshotMeta(this.savedAzureContext()),
           reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey(),
           attachments: input.attachments
@@ -2383,12 +2824,12 @@ var QuadApi = class {
   openPinForm(el, x, y) {
     if (!this.widget) return;
     this.widget.openPinForm(x, y, selectorFor(el), {
-      onSubmit: async (body) => {
+      onSubmit: async (body, options) => {
         if (!this.api) return;
         const pin = buildPin(el, body);
         const result = await this.api.createPin({
           pin,
-          meta: this.snapshotMeta(),
+          meta: this.snapshotMeta(this.azureContext(options)),
           reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey()
         });
@@ -2416,19 +2857,7 @@ var QuadApi = class {
       attachments.push({ ...up, kind });
     }
     const title = body.slice(0, 80) || "(\uCCA8\uBD80 \uC99D\uAC70)";
-    const meta = this.snapshotMeta();
-    if (options.azureWorkItemId) {
-      meta.customContext = {
-        ...meta.customContext,
-        azureWorkItemId: options.azureWorkItemId
-      };
-    }
-    if (options.relatedWorkItemIds?.length) {
-      meta.customContext = {
-        ...meta.customContext,
-        relatedWorkItemIds: options.relatedWorkItemIds
-      };
-    }
+    const meta = this.snapshotMeta(this.azureContext(options));
     await this.api.createSession({
       title,
       body,
@@ -2461,7 +2890,42 @@ var QuadApi = class {
     } catch {
     }
   }
-  snapshotMeta() {
+  async getAzureDevOpsPatStatus() {
+    if (!this.api) return { configured: false };
+    return this.api.getAzureDevOpsPatStatus(this.ensureAnonKey());
+  }
+  async saveAzureDevOpsPat(pat) {
+    if (!this.api) throw new Error("Quad\uAC00 \uCD08\uAE30\uD654\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4");
+    return this.api.saveAzureDevOpsPat(this.ensureAnonKey(), pat);
+  }
+  async deleteAzureDevOpsPat() {
+    if (!this.api) return;
+    await this.api.deleteAzureDevOpsPat(this.ensureAnonKey());
+  }
+  async searchAzureDevOpsIdentities(query) {
+    if (!this.api) return [];
+    const res = await this.api.searchAzureDevOpsIdentities(this.ensureAnonKey(), query);
+    return res.identities;
+  }
+  azureContext(options = {}) {
+    return {
+      azureWorkItemIds: options.azureWorkItemIds,
+      userStoryWorkItemId: options.userStoryWorkItemId,
+      taskWorkItemId: options.taskWorkItemId,
+      relatedWorkItemIds: options.relatedWorkItemIds,
+      azureMentions: options.azureMentions
+    };
+  }
+  savedAzureContext() {
+    try {
+      const raw = localStorage.getItem(AZURE_TARGETS_KEY2);
+      if (!raw) return {};
+      return this.azureContext(JSON.parse(raw));
+    } catch {
+      return {};
+    }
+  }
+  snapshotMeta(extraContext = {}) {
     return {
       userAgent: navigator.userAgent,
       viewport: { w: window.innerWidth, h: window.innerHeight },
@@ -2474,7 +2938,8 @@ var QuadApi = class {
       customContext: {
         pageUrl: location.href,
         path: location.pathname,
-        ...this.context
+        ...this.context,
+        ...extraContext
       }
     };
   }

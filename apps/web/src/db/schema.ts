@@ -365,6 +365,39 @@ export const userIntegrations = pgTable(
   }),
 );
 
+export const sdkReporterIntegrations = pgTable(
+  "sdk_reporter_integrations",
+  {
+    id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    organization: text("organization").notNull(),
+    reporterAnonKey: text("reporter_anon_key").notNull(),
+    secretEncrypted: text("secret_encrypted").notNull(),
+    secretPrefix: text("secret_prefix"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    reporterProviderOrgUq: uniqueIndex("sdk_reporter_integrations_reporter_provider_org_uq").on(
+      t.projectId,
+      t.provider,
+      t.organization,
+      t.reporterAnonKey,
+    ),
+    projectProviderIdx: index("sdk_reporter_integrations_project_provider_idx").on(
+      t.projectId,
+      t.provider,
+    ),
+  }),
+);
+
 // ---- Bug reports + occurrences --------------------------------------------
 
 export type TargetBBox = { x: number; y: number; w: number; h: number };
@@ -693,6 +726,7 @@ export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type UserIntegration = typeof userIntegrations.$inferSelect;
+export type SdkReporterIntegration = typeof sdkReporterIntegrations.$inferSelect;
 export type BugReport = typeof bugReports.$inferSelect;
 export type BugOccurrence = typeof bugOccurrences.$inferSelect;
 export type Comment = typeof comments.$inferSelect;

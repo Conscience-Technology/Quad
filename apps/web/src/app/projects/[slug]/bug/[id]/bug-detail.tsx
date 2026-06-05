@@ -258,17 +258,29 @@ export function BugDetail({
 }
 
 function readAzureWorkItemId(meta: unknown): number | null {
-  if (!meta || typeof meta !== "object") return null;
+  return readAzureWorkItemIds(meta)[0] ?? null;
+}
+
+function readAzureWorkItemIds(meta: unknown): number[] {
+  if (!meta || typeof meta !== "object") return [];
   const customContext = (meta as { customContext?: unknown }).customContext;
-  if (!customContext || typeof customContext !== "object") return null;
-  const value = (customContext as { azureWorkItemId?: unknown }).azureWorkItemId;
-  const n =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number.parseInt(value, 10)
-        : NaN;
-  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+  if (!customContext || typeof customContext !== "object") return [];
+  const ctx = customContext as {
+    azureWorkItemId?: unknown;
+    azureWorkItemIds?: unknown;
+    userStoryWorkItemId?: unknown;
+    taskWorkItemId?: unknown;
+  };
+  const raw = [ctx.azureWorkItemId, ctx.azureWorkItemIds, ctx.userStoryWorkItemId, ctx.taskWorkItemId]
+    .flatMap((value) => Array.isArray(value) ? value : value == null ? [] : [value]);
+  return Array.from(
+    new Set(
+      raw
+        .map((item) => (typeof item === "number" ? item : Number.parseInt(String(item).replace(/^#/, ""), 10)))
+        .filter((n) => Number.isFinite(n) && n > 0)
+        .map((n) => Math.trunc(n)),
+    ),
+  );
 }
 
 function readAzureDevOpsSync(meta: unknown): { synced?: boolean; state?: string; error?: string } | null {

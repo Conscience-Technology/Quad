@@ -6,6 +6,7 @@
  * report with optional attachments via presigned upload).
  */
 import type { PinPayload, ReportMeta } from "./types";
+import type { AzureDevOpsIdentity } from "./types";
 
 export type ApiConfig = {
   apiKey: string;
@@ -90,6 +91,61 @@ export class Api {
 
   async createSession(input: IngestSessionInput): Promise<{ id: string }> {
     return this.postJson("/api/ingest/session", input);
+  }
+
+  async getAzureDevOpsPatStatus(reporterAnonKey: string): Promise<{ configured: boolean; prefix?: string | null }> {
+    const qs = new URLSearchParams({ reporter_anon: reporterAnonKey });
+    const res = await fetch(this.url(`/api/ingest/integrations/azure-devops?${qs.toString()}`), {
+      method: "GET",
+      headers: {
+        "x-quad-key": this.cfg.apiKey,
+        "x-quad-sdk-version": this.cfg.version,
+      },
+      mode: "cors",
+      credentials: "omit",
+    });
+    if (!res.ok) throw new Error(`Azure DevOps PAT 상태 확인 실패 (${res.status})`);
+    return res.json() as Promise<{ configured: boolean; prefix?: string | null }>;
+  }
+
+  async saveAzureDevOpsPat(
+    reporterAnonKey: string,
+    pat: string,
+  ): Promise<{ configured: boolean; prefix?: string | null }> {
+    return this.postJson("/api/ingest/integrations/azure-devops", {
+      reporterAnonKey,
+      pat,
+    });
+  }
+
+  async deleteAzureDevOpsPat(reporterAnonKey: string): Promise<{ configured: boolean }> {
+    const res = await fetch(this.url("/api/ingest/integrations/azure-devops"), {
+      method: "DELETE",
+      headers: this.headers(),
+      body: JSON.stringify({ reporterAnonKey }),
+      credentials: "omit",
+      mode: "cors",
+    });
+    if (!res.ok) throw new Error(`Azure DevOps PAT 삭제 실패 (${res.status})`);
+    return res.json() as Promise<{ configured: boolean }>;
+  }
+
+  async searchAzureDevOpsIdentities(
+    reporterAnonKey: string,
+    query: string,
+  ): Promise<{ identities: AzureDevOpsIdentity[] }> {
+    const qs = new URLSearchParams({ reporter_anon: reporterAnonKey, q: query });
+    const res = await fetch(this.url(`/api/ingest/azure-devops/identities?${qs.toString()}`), {
+      method: "GET",
+      headers: {
+        "x-quad-key": this.cfg.apiKey,
+        "x-quad-sdk-version": this.cfg.version,
+      },
+      mode: "cors",
+      credentials: "omit",
+    });
+    if (!res.ok) throw new Error(`Azure DevOps 사용자 검색 실패 (${res.status})`);
+    return res.json() as Promise<{ identities: AzureDevOpsIdentity[] }>;
   }
 
   async presignUpload(input: {

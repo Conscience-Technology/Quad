@@ -173,6 +173,77 @@ export const WIDGET_CSS = /* css */ `
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.02);
 }
+.q-azure-pat {
+  margin: 14px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.q-azure-pat-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.q-azure-pat-current span {
+  flex: 0 0 auto;
+  color: var(--star-500);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.q-azure-pat-current strong {
+  flex: 1;
+  min-width: 0;
+  color: var(--star-100);
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-azure-pat-current button,
+.q-azure-pat-delete {
+  flex: 0 0 auto;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--star-300);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+}
+.q-azure-pat-current button:hover,
+.q-azure-pat-delete:hover {
+  border-color: var(--violet);
+  color: var(--star-100);
+}
+.q-azure-pat-delete {
+  margin-top: 8px;
+  width: 100%;
+}
+.q-azure-pat-editor {
+  display: none;
+  margin: 0;
+  padding: 12px;
+}
+.q-azure-pat-status {
+  margin: 0;
+  padding: 0 12px 10px;
+  color: var(--star-500);
+  font-size: 12px;
+}
+.q-azure-pat-status.error { color: var(--rose); }
+.q-azure-pat[data-configured="false"] .q-azure-pat-current,
+.q-azure-pat[data-editing="true"] .q-azure-pat-current {
+  display: none;
+}
+.q-azure-pat[data-editing="true"] .q-azure-pat-editor {
+  display: block;
+}
 .q-reporter-current {
   display: flex;
   align-items: center;
@@ -239,8 +310,12 @@ export const WIDGET_CSS = /* css */ `
   display: block;
 }
 .q-panel input.q-reporter-name,
+.q-panel input.q-azure-pat-input,
+.q-panel input.q-user-story-work-item,
+.q-panel input.q-task-work-item,
 .q-panel input.q-work-item,
 .q-panel input.q-related-work-items,
+.q-panel input.q-mention-search,
 .q-panel textarea {
   width: 100%;
   background: var(--surface);
@@ -256,8 +331,12 @@ export const WIDGET_CSS = /* css */ `
   outline: none;
 }
 .q-panel input.q-reporter-name,
+.q-panel input.q-azure-pat-input,
+.q-panel input.q-user-story-work-item,
+.q-panel input.q-task-work-item,
 .q-panel input.q-work-item,
-.q-panel input.q-related-work-items {
+.q-panel input.q-related-work-items,
+.q-panel input.q-mention-search {
   margin: 0 0 10px;
   min-height: 40px;
 }
@@ -265,9 +344,62 @@ export const WIDGET_CSS = /* css */ `
   margin: 0;
 }
 .q-panel input.q-reporter-name:focus,
+.q-panel input.q-azure-pat-input:focus,
+.q-panel input.q-user-story-work-item:focus,
+.q-panel input.q-task-work-item:focus,
 .q-panel input.q-work-item:focus,
 .q-panel input.q-related-work-items:focus,
+.q-panel input.q-mention-search:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
+.q-mention-box {
+  margin: 0 0 10px;
+}
+.q-mention-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: -4px 0 8px;
+}
+.q-mention-results p {
+  margin: 0;
+  font-size: 12px;
+}
+.q-mention-results p.error {
+  color: var(--rose);
+}
+.q-mention-result {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--star-100);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 7px 9px;
+  text-align: left;
+}
+.q-mention-result span {
+  color: var(--star-500);
+  font-size: 12px;
+}
+.q-mention-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.q-mention-chip {
+  border: 1px solid rgba(139, 124, 246, 0.45);
+  border-radius: 999px;
+  background: rgba(139, 124, 246, 0.12);
+  color: var(--star-100);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
 .q-panel .primary {
   margin-top: 14px;
   width: 100%;
@@ -325,6 +457,27 @@ export const WIDGET_CSS = /* css */ `
   resize: vertical;
   min-height: 60px;
   outline: none;
+}
+.q-pin-azure {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 8px;
+}
+.q-pin-azure input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--star-100);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  padding: 8px;
+}
+.q-pin-azure input:focus {
+  border-color: var(--violet);
 }
 .q-pin-form textarea:focus { border-color: var(--violet); }
 .q-pin-form .actions {

@@ -279,7 +279,7 @@ function renderMarkdown(args: {
   const reporter = bug.reporterIdentify
     ? bug.reporterIdentify.email ?? bug.reporterIdentify.id ?? "anon"
     : bug.reporterAnonKey ?? "anon";
-  const requestedAzureWorkItemId = readAzureWorkItemId(meta);
+  const requestedAzureWorkItemIds = readAzureWorkItemIds(meta);
   out.push(
     `## Origin`,
     `- Reporter: ${reporter}`,
@@ -288,7 +288,7 @@ function renderMarkdown(args: {
     `- Route: ${bug.targetRoute ?? ""}`,
     `- URL: ${bug.pageUrl ?? ""}`,
     `- Commit at report time: ${(meta as unknown as Record<string, string>).gitCommitSha ?? "(unknown)"}`,
-    ...(requestedAzureWorkItemId ? [`- Azure Work Item: #${requestedAzureWorkItemId}`] : []),
+    ...(requestedAzureWorkItemIds.length ? [`- Azure Work Items: ${requestedAzureWorkItemIds.map((id) => `#${id}`).join(", ")}`] : []),
     occurrences.length > 0 ? `- Occurrences: ${occurrences.length + 1} (1 primary + ${occurrences.length} more)` : `- Occurrences: 1`,
     "",
   );
@@ -434,14 +434,24 @@ function truncateMid(s: string, max: number): string {
 }
 
 function readAzureWorkItemId(meta: BugMeta): number | null {
+  return readAzureWorkItemIds(meta)[0] ?? null;
+}
+
+function readAzureWorkItemIds(meta: BugMeta): number[] {
   const customContext = meta.customContext;
-  if (!customContext || typeof customContext !== "object") return null;
-  const value = customContext.azureWorkItemId;
-  const n =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number.parseInt(value, 10)
-        : NaN;
-  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+  if (!customContext || typeof customContext !== "object") return [];
+  const raw = [
+    customContext.azureWorkItemId,
+    customContext.azureWorkItemIds,
+    customContext.userStoryWorkItemId,
+    customContext.taskWorkItemId,
+  ].flatMap((value) => Array.isArray(value) ? value : value == null ? [] : [value]);
+  return Array.from(
+    new Set(
+      raw
+        .map((item) => (typeof item === "number" ? item : Number.parseInt(String(item).replace(/^#/, ""), 10)))
+        .filter((n) => Number.isFinite(n) && n > 0)
+        .map((n) => Math.trunc(n)),
+    ),
+  );
 }

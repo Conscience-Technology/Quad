@@ -48,6 +48,12 @@ declare class QuadApi {
     private reporter;
     private reporterName;
     private setReporterName;
+    private getAzureDevOpsPatStatus;
+    private saveAzureDevOpsPat;
+    private deleteAzureDevOpsPat;
+    private searchAzureDevOpsIdentities;
+    private azureContext;
+    private savedAzureContext;
     private snapshotMeta;
     /** Stable anon identifier per-browser, stored as a host-app cookie. */
     private ensureAnonKey;

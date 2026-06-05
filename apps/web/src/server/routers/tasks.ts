@@ -325,8 +325,9 @@ export const tasksRouter = router({
         .where(and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.projectId, input.projectId)))
         .limit(1);
       if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+      const nextStatus = input.status === "done" ? "published" : input.status;
 
-      const patch: Record<string, unknown> = { status: input.status, updatedAt: new Date() };
+      const patch: Record<string, unknown> = { status: nextStatus, updatedAt: new Date() };
       if (input.prUrl) patch.prUrl = input.prUrl;
 
       await ctx.db.update(schema.tasks).set(patch).where(eq(schema.tasks.id, task.id));
@@ -346,13 +347,13 @@ export const tasksRouter = router({
         const mappedState = await updateAzureWorkItemState(
           azureDevOpsConfig,
           task.azureWorkItemId,
-          input.status,
+          nextStatus,
           azurePat,
         );
         if (mappedState) {
           if (!task.azureWorkItemId) throw new Error("Azure Work Item is not linked");
           const lines = [
-            `Quad task status changed to \`${input.status}\` → Azure DevOps state \`${mappedState}\`.`,
+            `Quad task status changed to \`${nextStatus}\` → Azure DevOps state \`${mappedState}\`.`,
             input.prUrl ? `PR: ${input.prUrl}` : "",
             input.note ? `Note: ${input.note}` : "",
           ].filter(Boolean);
@@ -392,13 +393,13 @@ export const tasksRouter = router({
       }
       await ctx.db.insert(schema.taskEvents).values({
         taskId: task.id,
-        kind: input.status === "reviewed" ? "pr_attached" : "status_changed",
+        kind: nextStatus === "reviewed" ? "pr_attached" : "status_changed",
         actorUserId: ctx.user.id,
-        payload: { status: input.status, prUrl: input.prUrl, note: input.note, azureDevOps },
+        payload: { status: nextStatus, requestedStatus: input.status, prUrl: input.prUrl, note: input.note, azureDevOps },
       });
 
       // When a task is marked done, mark the underlying bug as resolved.
-      if (input.status === "done") {
+      if (nextStatus === "published") {
         await ctx.db
           .update(schema.bugReports)
           .set({ status: "resolved", updatedAt: new Date() })

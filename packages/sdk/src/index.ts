@@ -11,7 +11,7 @@ import { installNetworkTap } from "./network-tap";
 import { buildPin } from "./pin";
 import { RevealLayer } from "./reveal";
 import { matchesKey, parse } from "./shortcuts";
-import { Widget } from "./widget";
+import { Widget, type AzureSubmitOptions } from "./widget";
 import {
   Ring,
   isBrowser,
@@ -30,6 +30,7 @@ export type { QuadOptions } from "./types";
 const VERSION = "0.0.0";
 const ANON_COOKIE = "quad_anon";
 const REPORTER_NAME_KEY = "quad.reporter_name.v1";
+const AZURE_TARGETS_KEY = "quad.azure_targets.v1";
 
 class QuadApi {
   private opts: Required<Pick<QuadOptions, "apiKey" | "endpoint">> &
@@ -88,6 +89,10 @@ class QuadApi {
         onToggleOverlay: () => this.toggleOverlay(),
         getReporterName: () => this.reporterName(),
         onReporterNameChange: (name) => this.setReporterName(name),
+        getAzureDevOpsPatStatus: () => this.getAzureDevOpsPatStatus(),
+        onSaveAzureDevOpsPat: (pat) => this.saveAzureDevOpsPat(pat),
+        onDeleteAzureDevOpsPat: () => this.deleteAzureDevOpsPat(),
+        onSearchAzureDevOpsIdentities: (query) => this.searchAzureDevOpsIdentities(query),
         onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options),
       },
       {
@@ -117,7 +122,7 @@ class QuadApi {
         await this.api!.createSession({
           title: input.title,
           body: "(캡처 세션)",
-          meta: this.snapshotMeta(),
+          meta: this.snapshotMeta(this.savedAzureContext()),
           reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey(),
           attachments: input.attachments,
@@ -312,12 +317,12 @@ class QuadApi {
   private openPinForm(el: Element, x: number, y: number): void {
     if (!this.widget) return;
     this.widget.openPinForm(x, y, selectorFor(el), {
-      onSubmit: async (body) => {
+      onSubmit: async (body, options) => {
         if (!this.api) return;
         const pin = buildPin(el, body);
         const result = await this.api.createPin({
           pin,
-          meta: this.snapshotMeta(),
+          meta: this.snapshotMeta(this.azureContext(options)),
           reporter: this.reporter(),
           reporterAnonKey: this.ensureAnonKey(),
         });
@@ -343,7 +348,7 @@ class QuadApi {
   private async submitOverlay(
     body: string,
     files: File[],
-    options: { azureWorkItemId?: number; relatedWorkItemIds?: number[] } = {},
+    options: AzureSubmitOptions = {},
   ): Promise<void> {
     if (!this.api) throw new Error("Quad가 초기화되지 않았습니다");
     const attachments: Array<{
@@ -362,19 +367,7 @@ class QuadApi {
       attachments.push({ ...up, kind });
     }
     const title = body.slice(0, 80) || "(첨부 증거)";
-    const meta = this.snapshotMeta();
-    if (options.azureWorkItemId) {
-      meta.customContext = {
-        ...meta.customContext,
-        azureWorkItemId: options.azureWorkItemId,
-      };
-    }
-    if (options.relatedWorkItemIds?.length) {
-      meta.customContext = {
-        ...meta.customContext,
-        relatedWorkItemIds: options.relatedWorkItemIds,
-      };
-    }
+    const meta = this.snapshotMeta(this.azureContext(options));
     await this.api.createSession({
       title,
       body,
@@ -412,7 +405,48 @@ class QuadApi {
     }
   }
 
-  private snapshotMeta(): ReportMeta {
+  private async getAzureDevOpsPatStatus(): Promise<{ configured: boolean; prefix?: string | null }> {
+    if (!this.api) return { configured: false };
+    return this.api.getAzureDevOpsPatStatus(this.ensureAnonKey());
+  }
+
+  private async saveAzureDevOpsPat(pat: string): Promise<{ configured: boolean; prefix?: string | null }> {
+    if (!this.api) throw new Error("Quad가 초기화되지 않았습니다");
+    return this.api.saveAzureDevOpsPat(this.ensureAnonKey(), pat);
+  }
+
+  private async deleteAzureDevOpsPat(): Promise<void> {
+    if (!this.api) return;
+    await this.api.deleteAzureDevOpsPat(this.ensureAnonKey());
+  }
+
+  private async searchAzureDevOpsIdentities(query: string) {
+    if (!this.api) return [];
+    const res = await this.api.searchAzureDevOpsIdentities(this.ensureAnonKey(), query);
+    return res.identities;
+  }
+
+  private azureContext(options: AzureSubmitOptions = {}): Record<string, unknown> {
+    return {
+      azureWorkItemIds: options.azureWorkItemIds,
+      userStoryWorkItemId: options.userStoryWorkItemId,
+      taskWorkItemId: options.taskWorkItemId,
+      relatedWorkItemIds: options.relatedWorkItemIds,
+      azureMentions: options.azureMentions,
+    };
+  }
+
+  private savedAzureContext(): Record<string, unknown> {
+    try {
+      const raw = localStorage.getItem(AZURE_TARGETS_KEY);
+      if (!raw) return {};
+      return this.azureContext(JSON.parse(raw) as AzureSubmitOptions);
+    } catch {
+      return {};
+    }
+  }
+
+  private snapshotMeta(extraContext: Record<string, unknown> = {}): ReportMeta {
     return {
       userAgent: navigator.userAgent,
       viewport: { w: window.innerWidth, h: window.innerHeight },
@@ -426,6 +460,7 @@ class QuadApi {
         pageUrl: location.href,
         path: location.pathname,
         ...this.context,
+        ...extraContext,
       },
     };
   }

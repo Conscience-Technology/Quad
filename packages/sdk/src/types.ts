@@ -41,6 +41,19 @@ export type ConsoleEntry = {
   message: string;
 };
 
+export type AzureDevOpsIdentity = {
+  id: string;
+  displayName: string;
+  uniqueName?: string;
+  imageUrl?: string;
+};
+
+export type AzureDevOpsMention = {
+  id: string;
+  displayName?: string;
+  uniqueName?: string;
+};
+
 export type NetworkEntry = {
   tMs: number;
   method: string;

@@ -57,6 +57,13 @@
       "when": 1780041000000,
       "tag": "0007_general_task_statuses",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780042000000,
+      "tag": "0008_sdk_reporter_integrations",
+      "breakpoints": true
     }
   ]
 }

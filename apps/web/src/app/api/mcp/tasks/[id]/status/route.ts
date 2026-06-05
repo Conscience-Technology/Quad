@@ -27,6 +27,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!r.ok) return NextResponse.json({ error: r.err.error }, { status: r.err.status });
   const { id } = await ctx.params;
   const body = Body.parse(await req.json());
+  const nextStatus = body.status === "done" ? "published" : body.status;
 
   const [task] = await db.select().from(schema.tasks).where(eq(schema.tasks.id, id)).limit(1);
   if (!task) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -34,7 +35,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const patch: Record<string, unknown> = { status: body.status, updatedAt: new Date() };
+  const patch: Record<string, unknown> = { status: nextStatus, updatedAt: new Date() };
   if (body.prUrl) patch.prUrl = body.prUrl;
   await db.update(schema.tasks).set(patch).where(eq(schema.tasks.id, task.id));
 
@@ -72,12 +73,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const mappedState = await provider.updateIssueForTaskStatus({
         config,
         issueId: linkedIssue.externalId,
-        status: body.status,
+        status: nextStatus,
         credentials: credential,
       });
       if (!mappedState) throw new Error(`${provider.name} status mapping is not configured`);
       const lines = [
-        `Quad task status changed to \`${body.status}\` → ${provider.name} state \`${mappedState}\`.`,
+        `Quad task status changed to \`${nextStatus}\` → ${provider.name} state \`${mappedState}\`.`,
         body.prUrl ? `PR: ${body.prUrl}` : "",
         body.note ? `Note: ${body.note}` : "",
       ].filter(Boolean);
@@ -135,12 +136,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
   await db.insert(schema.taskEvents).values({
     taskId: task.id,
-    kind: body.status === "reviewed" ? "pr_attached" : "status_changed",
+    kind: nextStatus === "reviewed" ? "pr_attached" : "status_changed",
     actorUserId: r.auth.user.id,
     actorApiKeyId: r.auth.apiKey.id,
-    payload: { status: body.status, prUrl: body.prUrl, note: body.note, azureDevOps, externalIssue },
+    payload: { status: nextStatus, requestedStatus: body.status, prUrl: body.prUrl, note: body.note, azureDevOps, externalIssue },
   });
-  if (body.status === "done") {
+  if (nextStatus === "published") {
     await db
       .update(schema.bugReports)
       .set({ status: "resolved", updatedAt: new Date() })

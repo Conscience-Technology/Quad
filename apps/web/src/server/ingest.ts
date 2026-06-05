@@ -11,13 +11,29 @@ import { presignDownload } from "~/lib/storage";
 import {
   addAzureWorkItemComment,
   azureWorkItemUrl,
+  formatAzureMention,
   isAzureDevOpsConfigured,
   setAzureWorkItemState,
 } from "~/lib/azure-devops";
 import { getAzureDevOpsConfig } from "~/server/integrations/store";
+import { getSdkReporterAzureDevOpsSecret } from "~/server/sdk-reporter-integrations";
 
 type ConsoleEntry = NonNullable<BugMeta["consoleLogs"]>[number];
 type NetworkEntry = NonNullable<BugMeta["networkErrors"]>[number];
+type AzureMention = {
+  id: string;
+  displayName?: string;
+  uniqueName?: string;
+};
+type EvidenceSyncInput = {
+  projectId: string;
+  title: string;
+  body: string;
+  meta: IngestMeta;
+  reporter?: IngestReporter;
+  reporterAnonKey?: string;
+  attachments?: CreateSessionInput["attachments"];
+};
 
 export type IngestMeta = {
   userAgent?: string;
@@ -134,6 +150,18 @@ export async function createPin(input: CreatePinInput): Promise<IngestResult> {
       .update(schema.bugReports)
       .set({ updatedAt: new Date() })
       .where(eq(schema.bugReports.id, existing.id));
+    await syncAzureDevOpsFromReport(
+      {
+        projectId: input.projectId,
+        title: computedTitle,
+        body: input.pin.body,
+        meta: input.meta,
+        reporter: input.reporter,
+        reporterAnonKey: input.reporterAnonKey,
+        attachments: [],
+      },
+      existing,
+    );
     return { id: existing.id, fingerprint, occurrenceId: occ?.id };
   }
 
@@ -173,6 +201,18 @@ export async function createPin(input: CreatePinInput): Promise<IngestResult> {
     })
     .returning();
   if (!bug) throw new Error("bug_report insert failed");
+  await syncAzureDevOpsFromReport(
+    {
+      projectId: input.projectId,
+      title: computedTitle,
+      body: input.pin.body,
+      meta: input.meta,
+      reporter: input.reporter,
+      reporterAnonKey: input.reporterAnonKey,
+      attachments: [],
+    },
+    bug,
+  );
   return { id: bug.id, fingerprint };
 }
 
@@ -271,11 +311,11 @@ function safePathFromUrl(ctx: Record<string, unknown> | undefined): string | nul
 }
 
 async function syncAzureDevOpsFromReport(
-  input: CreateSessionInput,
+  input: EvidenceSyncInput,
   bug: typeof schema.bugReports.$inferSelect,
 ): Promise<void> {
-  const workItemId = readAzureWorkItemId(bug.meta);
-  if (!workItemId) return;
+  const workItemIds = readAzureWorkItemIds(input.meta.customContext);
+  if (workItemIds.length === 0) return;
 
   const attemptedAt = new Date().toISOString();
   try {
@@ -288,44 +328,72 @@ async function syncAzureDevOpsFromReport(
     if (!project) {
       await markBugAzureDevOpsSync(bug, {
         attemptedAt,
-        workItemId,
+        workItemId: workItemIds[0],
+        workItemIds,
         synced: false,
         error: "Project not found",
       });
       return;
     }
     const config = await getAzureDevOpsConfig(project);
+    const sdkPat = await getSdkReporterAzureDevOpsSecret({
+      projectId: project.id,
+      organization: config?.organization,
+      reporterAnonKey: input.reporterAnonKey,
+    });
 
-    if (!isAzureDevOpsConfigured(config)) {
+    if (!sdkPat) {
       await markBugAzureDevOpsSync(bug, {
         attemptedAt,
-        workItemId,
+        workItemIds,
         synced: false,
-        error: "Azure DevOps sync is disabled, incomplete, or AZURE_DEVOPS_PAT is missing",
+        error: "SDK reporter Azure DevOps PAT is missing",
+      });
+      return;
+    }
+
+    if (!isAzureDevOpsConfigured(config, sdkPat)) {
+      await markBugAzureDevOpsSync(bug, {
+        attemptedAt,
+        workItemIds,
+        synced: false,
+        error: "Azure DevOps sync is disabled or incomplete",
       });
       return;
     }
 
     const state = config?.reportState?.trim() || "Reopened";
-    const syncedState = await setAzureWorkItemState(config, workItemId, state);
-    await addAzureWorkItemComment(
-      config,
-      workItemId,
-      await renderAzureReportComment(input, bug, project),
-    );
+    const results: Array<{ workItemId: number; state: string | null; url: string | undefined }> = [];
+    for (const workItemId of workItemIds) {
+      const syncedState = await setAzureWorkItemState(config, workItemId, state, sdkPat);
+      await addAzureWorkItemComment(
+        config,
+        workItemId,
+        await renderAzureReportComment(input, bug, project, workItemIds),
+        sdkPat,
+      );
+      results.push({
+        workItemId,
+        state: syncedState,
+        url: config ? azureWorkItemUrl(config, workItemId) : undefined,
+      });
+    }
 
     await markBugAzureDevOpsSync(bug, {
       attemptedAt,
-      workItemId,
+      workItemId: workItemIds[0],
+      workItemIds,
       synced: true,
-      state: syncedState,
+      state,
+      results,
       commentSynced: true,
-      url: config ? azureWorkItemUrl(config, workItemId) : undefined,
+      url: results[0]?.url,
     });
   } catch (err) {
     await markBugAzureDevOpsSync(bug, {
       attemptedAt,
-      workItemId,
+      workItemId: workItemIds[0],
+      workItemIds,
       synced: false,
       error: err instanceof Error ? err.message : "Azure DevOps report sync failed",
     });
@@ -352,18 +420,22 @@ async function markBugAzureDevOpsSync(
 }
 
 async function renderAzureReportComment(
-  input: CreateSessionInput,
+  input: EvidenceSyncInput,
   bug: typeof schema.bugReports.$inferSelect,
   project: typeof schema.projects.$inferSelect,
+  syncedWorkItemIds: number[],
 ): Promise<string> {
   const pageUrl = readString(input.meta.customContext?.pageUrl);
   const relatedWorkItemIds = readRelatedWorkItemIds(input.meta.customContext);
+  const mentions = readAzureMentions(input.meta.customContext);
   const reporter = input.reporter?.name ?? input.reporter?.email ?? input.reporter?.id ?? input.reporterAnonKey ?? "anonymous";
   const attachments = input.attachments?.length ?? 0;
   const evidenceUrl = `${env().API_URL.replace(/\/$/, "")}/projects/${project.slug}/bug/${bug.id}`;
   const attachmentLines = await renderAttachmentLinks(input.attachments ?? []);
   const body = input.body.trim() || "(no description)";
+  const mentionLine = mentions.map((mention) => formatAzureMention(mention.id)).join(" ");
   return [
+    mentionLine,
     `Quad evidence submitted`,
     ``,
     `**Title:** ${bug.title}`,
@@ -373,6 +445,7 @@ async function renderAzureReportComment(
     `**Attachments:** ${attachments}`,
     attachmentLines.length ? attachmentLines.join("\n") : "",
     attachments ? `_Direct download links expire in 7 days. The Quad report link remains the stable evidence record._` : "",
+    syncedWorkItemIds.length ? `**Synced Work Items:** ${syncedWorkItemIds.map((id) => `#${id}`).join(", ")}` : "",
     relatedWorkItemIds.length ? `**Related Work Items:** ${relatedWorkItemIds.map((id) => `#${id}`).join(", ")}` : "",
     ``,
     `**Description**`,
@@ -394,17 +467,22 @@ async function renderAttachmentLinks(
   );
 }
 
-function readAzureWorkItemId(meta: BugMeta): number | null {
-  const customContext = meta.customContext;
-  if (!customContext || typeof customContext !== "object") return null;
-  const value = customContext.azureWorkItemId;
-  const n =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number.parseInt(value, 10)
-        : NaN;
-  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+function readAzureWorkItemIds(customContext: Record<string, unknown> | undefined): number[] {
+  if (!customContext || typeof customContext !== "object") return [];
+  const raw = [
+    customContext.azureWorkItemId,
+    customContext.azureWorkItemIds,
+    customContext.userStoryWorkItemId,
+    customContext.taskWorkItemId,
+  ].flatMap((value) => Array.isArray(value) ? value : value == null ? [] : [value]);
+  return Array.from(
+    new Set(
+      raw
+        .map((item) => (typeof item === "number" ? item : Number.parseInt(String(item).replace(/^#/, ""), 10)))
+        .filter((n) => Number.isFinite(n) && n > 0)
+        .map((n) => Math.trunc(n)),
+    ),
+  ).slice(0, 8);
 }
 
 function readString(value: unknown): string | null {
@@ -434,6 +512,23 @@ function readRelatedWorkItemIds(customContext: Record<string, unknown> | undefin
         .map((n) => Math.trunc(n)),
     ),
   ).slice(0, 12);
+}
+
+function readAzureMentions(customContext: Record<string, unknown> | undefined): AzureMention[] {
+  const value = customContext?.azureMentions;
+  if (!Array.isArray(value)) return [];
+  const mentions: AzureMention[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const id = (item as { id?: unknown }).id;
+    if (typeof id !== "string" || !id.trim()) continue;
+    mentions.push({
+      id: id.trim(),
+      displayName: readString((item as { displayName?: unknown }).displayName) ?? undefined,
+      uniqueName: readString((item as { uniqueName?: unknown }).uniqueName) ?? undefined,
+    });
+  }
+  return mentions.slice(0, 10);
 }
 
 function sanitizeMeta(m: IngestMeta) {
