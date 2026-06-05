@@ -1424,7 +1424,6 @@ var WIDGET_CSS = (
 .q-panel input.q-azure-pat-input,
 .q-panel input.q-user-story-work-item,
 .q-panel input.q-task-work-item,
-.q-panel input.q-mention-search,
 .q-panel textarea {
   width: 100%;
   background: var(--surface);
@@ -1442,8 +1441,7 @@ var WIDGET_CSS = (
 .q-panel input.q-reporter-name,
 .q-panel input.q-azure-pat-input,
 .q-panel input.q-user-story-work-item,
-.q-panel input.q-task-work-item,
-.q-panel input.q-mention-search {
+.q-panel input.q-task-work-item {
   margin: 0 0 10px;
   min-height: 40px;
 }
@@ -1454,24 +1452,81 @@ var WIDGET_CSS = (
 .q-panel input.q-azure-pat-input:focus,
 .q-panel input.q-user-story-work-item:focus,
 .q-panel input.q-task-work-item:focus,
-.q-panel input.q-mention-search:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
-.q-mention-box {
-  margin: 0 0 10px;
+.q-comment-wrap {
+  position: relative;
 }
-.q-mention-selected {
+.q-mention-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 2147483606;
+  display: none;
+  max-height: 256px;
+  overflow-y: auto;
+  background: var(--elevated);
+  border: 1px solid rgba(139, 124, 246, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+}
+.q-mention-menu[data-open="true"] {
+  display: block;
+}
+.q-mention-option {
+  width: 100%;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.q-mention-chip {
-  border: 1px solid rgba(139, 124, 246, 0.45);
-  border-radius: 999px;
-  background: rgba(139, 124, 246, 0.12);
-  color: var(--star-100);
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--star-200);
   cursor: pointer;
+  padding: 8px;
+  text-align: left;
+}
+.q-mention-option:hover,
+.q-mention-option[aria-selected="true"] {
+  background: rgba(139, 124, 246, 0.18);
+  color: var(--star-100);
+}
+.q-mention-avatar {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 124, 246, 0.28);
+  color: var(--star-100);
+  font-size: 11px;
+  font-weight: 700;
+}
+.q-mention-main {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.q-mention-main strong,
+.q-mention-email,
+.q-mention-subtitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-mention-main strong {
+  color: var(--star-100);
+  font-size: 13px;
+  font-weight: 650;
+}
+.q-mention-email,
+.q-mention-subtitle {
+  color: var(--star-500);
   font-size: 12px;
-  padding: 4px 8px;
 }
 .q-settings-modal {
   position: fixed;
@@ -2002,12 +2057,10 @@ var Widget = class {
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
       ${this.options.azureDevOpsEnabled ? '<input class="q-user-story-work-item" type="number" inputmode="numeric" min="1" placeholder="User Story \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
       ${this.options.azureDevOpsEnabled ? '<input class="q-task-work-item" type="number" inputmode="numeric" min="1" placeholder="Task \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
-      ${this.options.azureDevOpsEnabled ? `
-      <div class="q-mention-box">
-        <input class="q-mention-search" type="text" placeholder="\uD0DC\uADF8\uD560 Azure \uC774\uBA54\uC77C \uC785\uB825 \uD6C4 Enter" />
-        <div class="q-mention-selected"></div>
-      </div>` : ""}
-      <textarea placeholder="\uBB34\uC5C7\uC774 \uBB38\uC81C\uC600\uB098\uC694?"></textarea>
+      <div class="q-comment-wrap">
+        <textarea class="q-comment-body" placeholder="\uBB34\uC5C7\uC774 \uBB38\uC81C\uC600\uB098\uC694?${this.options.azureDevOpsEnabled ? " @\uB85C \uB2F4\uB2F9\uC790\uB97C \uD0DC\uADF8\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4" : ""}"></textarea>
+        ${this.options.azureDevOpsEnabled ? '<div class="q-mention-menu" data-open="false"></div>' : ""}
+      </div>
       <button class="primary">\uBCF4\uB0B4\uAE30</button>
       <p class="q-status"></p>
       <section class="q-reports">
@@ -2071,7 +2124,7 @@ var Widget = class {
     if (this.options.azureDevOpsEnabled) {
       this.syncAzurePatSetup(body);
       this.wireAzureTargets(body);
-      this.wireAzureMentions(body);
+      this.wireCommentMentions(body);
     }
     this.wireReportsList(body);
     return p;
@@ -2211,45 +2264,96 @@ var Widget = class {
     userStoryInput?.addEventListener("change", save);
     taskInput?.addEventListener("change", save);
   }
-  wireAzureMentions(body) {
-    const input = body.querySelector("input.q-mention-search");
-    const selected = body.querySelector(".q-mention-selected");
-    if (!input || !selected) return;
-    const emails = [];
-    const renderSelected = () => {
-      selected.innerHTML = emails.map((email, index) => `
-        <button class="q-mention-chip" type="button" data-index="${index}">
-          ${escapeHtml2(email)} \xD7
+  wireCommentMentions(body) {
+    const textarea = body.querySelector("textarea.q-comment-body");
+    const menu = body.querySelector(".q-mention-menu");
+    if (!textarea || !menu) return;
+    const users = normalizeMentionUsers(this.options.mentionUsers ?? []);
+    const selectedEmails = [];
+    let activeIndex = 0;
+    let activeMatch = null;
+    textarea.quadMentionEmails = selectedEmails;
+    const close = () => {
+      menu.dataset.open = "false";
+      menu.innerHTML = "";
+      activeMatch = null;
+      activeIndex = 0;
+    };
+    const choose = (user) => {
+      const match = activeMatch ?? findMentionMatch(textarea);
+      if (!match) return;
+      const label = user.displayName?.trim() || user.email;
+      const before = textarea.value.slice(0, match.start);
+      const after = textarea.value.slice(match.end);
+      const insert = `${match.prefix}@${label} `;
+      textarea.value = `${before}${insert}${after}`;
+      const nextCursor = before.length + insert.length;
+      textarea.setSelectionRange(nextCursor, nextCursor);
+      if (!selectedEmails.some((email) => email.toLowerCase() === user.email.toLowerCase())) {
+        selectedEmails.push(user.email);
+      }
+      close();
+      textarea.focus();
+    };
+    const render = () => {
+      const match = findMentionMatch(textarea);
+      if (!match || users.length === 0) {
+        close();
+        return;
+      }
+      const q = match.query.toLowerCase();
+      const candidates = users.filter((user) => mentionSearchText(user).includes(q)).slice(0, 7);
+      if (candidates.length === 0) {
+        close();
+        return;
+      }
+      activeMatch = match;
+      activeIndex = Math.min(activeIndex, candidates.length - 1);
+      menu.dataset.open = "true";
+      menu.innerHTML = candidates.map((user, index) => `
+        <button class="q-mention-option" type="button" data-index="${index}" aria-selected="${index === activeIndex ? "true" : "false"}">
+          <span class="q-mention-avatar">${escapeHtml2(mentionInitials(user))}</span>
+          <span class="q-mention-main">
+            <strong>${escapeHtml2(user.displayName?.trim() || user.email)}</strong>
+            <span class="q-mention-email">${escapeHtml2(user.email)}</span>
+            ${user.subtitle ? `<span class="q-mention-subtitle">${escapeHtml2(user.subtitle)}</span>` : ""}
+          </span>
         </button>
       `).join("");
-      selected.querySelectorAll("button.q-mention-chip").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const index = Number.parseInt(btn.dataset.index ?? "", 10);
-          if (Number.isFinite(index)) emails.splice(index, 1);
-          renderSelected();
+      menu.querySelectorAll(".q-mention-option").forEach((button) => {
+        button.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const index = Number.parseInt(button.dataset.index ?? "", 10);
+          const user = candidates[index];
+          if (user) choose(user);
         });
       });
     };
-    const addEmails = () => {
-      const parts = input.value.split(/[,\s;]+/).map((part) => part.trim()).filter(Boolean);
-      for (const email of parts) {
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
-        if (!emails.some((existing) => existing.toLowerCase() === email.toLowerCase())) {
-          emails.push(email);
-        }
-      }
-      input.value = "";
-      renderSelected();
-    };
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === "," || e.key === ";") {
+    textarea.addEventListener("input", () => {
+      if (!textarea.value.includes("@")) selectedEmails.splice(0, selectedEmails.length);
+      activeIndex = 0;
+      render();
+    });
+    textarea.addEventListener("click", render);
+    textarea.addEventListener("blur", () => {
+      window.setTimeout(close, 120);
+    });
+    textarea.addEventListener("keydown", (e) => {
+      if (menu.dataset.open !== "true") return;
+      const options = Array.from(menu.querySelectorAll(".q-mention-option"));
+      if (options.length === 0) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
-        addEmails();
+        activeIndex = e.key === "ArrowDown" ? (activeIndex + 1) % options.length : (activeIndex - 1 + options.length) % options.length;
+        render();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        options[activeIndex]?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        close();
       }
     });
-    input.addEventListener("blur", addEmails);
-    selected.quadMentionEmails = emails;
-    renderSelected();
   }
   // ---- Reports list -------------------------------------------------------
   wireReportsList(body) {
@@ -2323,8 +2427,7 @@ var Widget = class {
     const fileInput = body.querySelector("input[type=file]");
     const userStoryInput = body.querySelector("input.q-user-story-work-item");
     const taskInput = body.querySelector("input.q-task-work-item");
-    const mentionSelected = body.querySelector(".q-mention-selected");
-    const ta = body.querySelector("textarea");
+    const ta = body.querySelector("textarea.q-comment-body");
     const btn = body.querySelector(".primary");
     const status = body.querySelector(".q-status");
     let staged = [];
@@ -2398,9 +2501,10 @@ var Widget = class {
       try {
         await this.cb.onSubmitOverlay(body2, staged, {
           ...azureTargets,
-          azureMentionEmails: mentionSelected?.quadMentionEmails ?? []
+          azureMentionEmails: ta.quadMentionEmails ?? []
         });
         ta.value = "";
+        ta.quadMentionEmails?.splice(0, ta.quadMentionEmails.length);
         staged = [];
         renderStaged();
         status.textContent = "\uC804\uC1A1 \uC644\uB8CC";
@@ -2529,6 +2633,53 @@ var Widget = class {
 function escapeHtml2(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+function findMentionMatch(textarea) {
+  const cursor = textarea.selectionStart ?? textarea.value.length;
+  const beforeCursor = textarea.value.slice(0, cursor);
+  const match = /(^|[\s([{])@([^\s@]*)$/.exec(beforeCursor);
+  if (!match) return null;
+  const prefix = match[1] ?? "";
+  const query = match[2] ?? "";
+  return {
+    start: beforeCursor.length - match[0].length,
+    end: cursor,
+    prefix,
+    query
+  };
+}
+function normalizeMentionUsers(users) {
+  const seen = /* @__PURE__ */ new Set();
+  const normalized = [];
+  for (const user of users) {
+    const email = user.email?.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
+    const key = email.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalized.push({
+      email,
+      displayName: user.displayName?.trim() || void 0,
+      subtitle: user.subtitle?.trim() || void 0,
+      initials: user.initials?.trim() || void 0
+    });
+  }
+  return normalized;
+}
+function mentionSearchText(user) {
+  return [
+    user.displayName,
+    user.email,
+    user.subtitle,
+    user.initials
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+function mentionInitials(user) {
+  if (user.initials?.trim()) return user.initials.trim().slice(0, 2).toUpperCase();
+  const source = user.displayName?.trim() || user.email.split("@")[0] || "?";
+  const parts = source.split(/[\s._-]+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
+  return source.slice(0, 2).toUpperCase();
+}
 var AZURE_TARGETS_KEY = "quad.azure_targets.v1";
 function parseAzureTargets(userStoryRaw, taskRaw) {
   const userStoryWorkItemId = parseSingleWorkItem(userStoryRaw);
@@ -2637,11 +2788,11 @@ var QuadApi = class {
         getAzureDevOpsPatStatus: () => this.getAzureDevOpsPatStatus(),
         onSaveAzureDevOpsPat: (pat) => this.saveAzureDevOpsPat(pat),
         onDeleteAzureDevOpsPat: () => this.deleteAzureDevOpsPat(),
-        onSearchAzureDevOpsIdentities: (query) => this.searchAzureDevOpsIdentities(query),
         onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options)
       },
       {
-        azureDevOpsEnabled: opts.azureDevOps?.enabled === true
+        azureDevOpsEnabled: opts.azureDevOps?.enabled === true,
+        mentionUsers: opts.azureDevOps?.mentionUsers ?? []
       }
     );
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {

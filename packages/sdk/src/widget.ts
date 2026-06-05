@@ -4,7 +4,7 @@
  */
 import * as Local from "./local-pins";
 import { WIDGET_CSS } from "./styles";
-import type { AzureDevOpsIdentity, AzureDevOpsMention } from "./types";
+import type { AzureDevOpsMention, AzureDevOpsMentionUser } from "./types";
 
 export type AzureSubmitOptions = {
   azureWorkItemIds?: number[];
@@ -21,7 +21,6 @@ export type WidgetCallbacks = {
   getAzureDevOpsPatStatus: () => Promise<{ configured: boolean; prefix?: string | null }>;
   onSaveAzureDevOpsPat: (pat: string) => Promise<{ configured: boolean; prefix?: string | null }>;
   onDeleteAzureDevOpsPat: () => Promise<void>;
-  onSearchAzureDevOpsIdentities: (query: string) => Promise<AzureDevOpsIdentity[]>;
   onSubmitOverlay: (
     body: string,
     files: File[],
@@ -31,6 +30,7 @@ export type WidgetCallbacks = {
 
 export type WidgetOptions = {
   azureDevOpsEnabled?: boolean;
+  mentionUsers?: AzureDevOpsMentionUser[];
 };
 
 export type PinFormCallbacks = {
@@ -151,12 +151,10 @@ export class Widget {
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
       ${this.options.azureDevOpsEnabled ? '<input class="q-user-story-work-item" type="number" inputmode="numeric" min="1" placeholder="User Story 번호 (선택)" />' : ""}
       ${this.options.azureDevOpsEnabled ? '<input class="q-task-work-item" type="number" inputmode="numeric" min="1" placeholder="Task 번호 (선택)" />' : ""}
-      ${this.options.azureDevOpsEnabled ? `
-      <div class="q-mention-box">
-        <input class="q-mention-search" type="text" placeholder="태그할 Azure 이메일 입력 후 Enter" />
-        <div class="q-mention-selected"></div>
-      </div>` : ""}
-      <textarea placeholder="무엇이 문제였나요?"></textarea>
+      <div class="q-comment-wrap">
+        <textarea class="q-comment-body" placeholder="무엇이 문제였나요?${this.options.azureDevOpsEnabled ? " @로 담당자를 태그할 수 있습니다" : ""}"></textarea>
+        ${this.options.azureDevOpsEnabled ? '<div class="q-mention-menu" data-open="false"></div>' : ""}
+      </div>
       <button class="primary">보내기</button>
       <p class="q-status"></p>
       <section class="q-reports">
@@ -221,7 +219,7 @@ export class Widget {
     if (this.options.azureDevOpsEnabled) {
       this.syncAzurePatSetup(body);
       this.wireAzureTargets(body);
-      this.wireAzureMentions(body);
+      this.wireCommentMentions(body);
     }
     this.wireReportsList(body);
     return p;
@@ -376,48 +374,108 @@ export class Widget {
     taskInput?.addEventListener("change", save);
   }
 
-  private wireAzureMentions(body: HTMLDivElement): void {
-    const input = body.querySelector<HTMLInputElement>("input.q-mention-search");
-    const selected = body.querySelector<HTMLDivElement>(".q-mention-selected");
-    if (!input || !selected) return;
-    const emails: string[] = [];
-    const renderSelected = () => {
-      selected.innerHTML = emails.map((email, index) => `
-        <button class="q-mention-chip" type="button" data-index="${index}">
-          ${escapeHtml(email)} ×
+  private wireCommentMentions(body: HTMLDivElement): void {
+    const textarea = body.querySelector<HTMLTextAreaElement>("textarea.q-comment-body") as
+      | (HTMLTextAreaElement & { quadMentionEmails?: string[] })
+      | null;
+    const menu = body.querySelector<HTMLDivElement>(".q-mention-menu");
+    if (!textarea || !menu) return;
+
+    const users = normalizeMentionUsers(this.options.mentionUsers ?? []);
+    const selectedEmails: string[] = [];
+    let activeIndex = 0;
+    let activeMatch: MentionMatch | null = null;
+
+    textarea.quadMentionEmails = selectedEmails;
+
+    const close = () => {
+      menu.dataset.open = "false";
+      menu.innerHTML = "";
+      activeMatch = null;
+      activeIndex = 0;
+    };
+
+    const choose = (user: AzureDevOpsMentionUser) => {
+      const match = activeMatch ?? findMentionMatch(textarea);
+      if (!match) return;
+      const label = user.displayName?.trim() || user.email;
+      const before = textarea.value.slice(0, match.start);
+      const after = textarea.value.slice(match.end);
+      const insert = `${match.prefix}@${label} `;
+      textarea.value = `${before}${insert}${after}`;
+      const nextCursor = before.length + insert.length;
+      textarea.setSelectionRange(nextCursor, nextCursor);
+      if (!selectedEmails.some((email) => email.toLowerCase() === user.email.toLowerCase())) {
+        selectedEmails.push(user.email);
+      }
+      close();
+      textarea.focus();
+    };
+
+    const render = () => {
+      const match = findMentionMatch(textarea);
+      if (!match || users.length === 0) {
+        close();
+        return;
+      }
+      const q = match.query.toLowerCase();
+      const candidates = users
+        .filter((user) => mentionSearchText(user).includes(q))
+        .slice(0, 7);
+      if (candidates.length === 0) {
+        close();
+        return;
+      }
+      activeMatch = match;
+      activeIndex = Math.min(activeIndex, candidates.length - 1);
+      menu.dataset.open = "true";
+      menu.innerHTML = candidates.map((user, index) => `
+        <button class="q-mention-option" type="button" data-index="${index}" aria-selected="${index === activeIndex ? "true" : "false"}">
+          <span class="q-mention-avatar">${escapeHtml(mentionInitials(user))}</span>
+          <span class="q-mention-main">
+            <strong>${escapeHtml(user.displayName?.trim() || user.email)}</strong>
+            <span class="q-mention-email">${escapeHtml(user.email)}</span>
+            ${user.subtitle ? `<span class="q-mention-subtitle">${escapeHtml(user.subtitle)}</span>` : ""}
+          </span>
         </button>
       `).join("");
-      selected.querySelectorAll<HTMLButtonElement>("button.q-mention-chip").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const index = Number.parseInt(btn.dataset.index ?? "", 10);
-          if (Number.isFinite(index)) emails.splice(index, 1);
-          renderSelected();
+      menu.querySelectorAll<HTMLButtonElement>(".q-mention-option").forEach((button) => {
+        button.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const index = Number.parseInt(button.dataset.index ?? "", 10);
+          const user = candidates[index];
+          if (user) choose(user);
         });
       });
     };
-    const addEmails = () => {
-      const parts = input.value
-        .split(/[,\s;]+/)
-        .map((part) => part.trim())
-        .filter(Boolean);
-      for (const email of parts) {
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
-        if (!emails.some((existing) => existing.toLowerCase() === email.toLowerCase())) {
-          emails.push(email);
-        }
-      }
-      input.value = "";
-      renderSelected();
-    };
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === "," || e.key === ";") {
+
+    textarea.addEventListener("input", () => {
+      if (!textarea.value.includes("@")) selectedEmails.splice(0, selectedEmails.length);
+      activeIndex = 0;
+      render();
+    });
+    textarea.addEventListener("click", render);
+    textarea.addEventListener("blur", () => {
+      window.setTimeout(close, 120);
+    });
+    textarea.addEventListener("keydown", (e) => {
+      if (menu.dataset.open !== "true") return;
+      const options = Array.from(menu.querySelectorAll<HTMLButtonElement>(".q-mention-option"));
+      if (options.length === 0) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
-        addEmails();
+        activeIndex = e.key === "ArrowDown"
+          ? (activeIndex + 1) % options.length
+          : (activeIndex - 1 + options.length) % options.length;
+        render();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        options[activeIndex]?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        close();
       }
     });
-    input.addEventListener("blur", addEmails);
-    (selected as HTMLDivElement & { quadMentionEmails?: string[] }).quadMentionEmails = emails;
-    renderSelected();
   }
 
   // ---- Reports list -------------------------------------------------------
@@ -511,10 +569,8 @@ export class Widget {
     const fileInput = body.querySelector<HTMLInputElement>("input[type=file]")!;
     const userStoryInput = body.querySelector<HTMLInputElement>("input.q-user-story-work-item");
     const taskInput = body.querySelector<HTMLInputElement>("input.q-task-work-item");
-    const mentionSelected = body.querySelector<HTMLDivElement>(".q-mention-selected") as
-      | (HTMLDivElement & { quadMentionEmails?: string[] })
-      | null;
-    const ta = body.querySelector<HTMLTextAreaElement>("textarea")!;
+    const ta = body.querySelector<HTMLTextAreaElement>("textarea.q-comment-body") as
+      HTMLTextAreaElement & { quadMentionEmails?: string[] };
     const btn = body.querySelector<HTMLButtonElement>(".primary")!;
     const status = body.querySelector<HTMLParagraphElement>(".q-status")!;
 
@@ -594,9 +650,10 @@ export class Widget {
       try {
         await this.cb.onSubmitOverlay(body, staged, {
           ...azureTargets,
-          azureMentionEmails: mentionSelected?.quadMentionEmails ?? [],
+          azureMentionEmails: ta.quadMentionEmails ?? [],
         });
         ta.value = "";
+        ta.quadMentionEmails?.splice(0, ta.quadMentionEmails.length);
         staged = [];
         renderStaged();
         status.textContent = "전송 완료";
@@ -740,6 +797,64 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+type MentionMatch = {
+  start: number;
+  end: number;
+  prefix: string;
+  query: string;
+};
+
+function findMentionMatch(textarea: HTMLTextAreaElement): MentionMatch | null {
+  const cursor = textarea.selectionStart ?? textarea.value.length;
+  const beforeCursor = textarea.value.slice(0, cursor);
+  const match = /(^|[\s([{])@([^\s@]*)$/.exec(beforeCursor);
+  if (!match) return null;
+  const prefix = match[1] ?? "";
+  const query = match[2] ?? "";
+  return {
+    start: beforeCursor.length - match[0].length,
+    end: cursor,
+    prefix,
+    query,
+  };
+}
+
+function normalizeMentionUsers(users: AzureDevOpsMentionUser[]): AzureDevOpsMentionUser[] {
+  const seen = new Set<string>();
+  const normalized: AzureDevOpsMentionUser[] = [];
+  for (const user of users) {
+    const email = user.email?.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
+    const key = email.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalized.push({
+      email,
+      displayName: user.displayName?.trim() || undefined,
+      subtitle: user.subtitle?.trim() || undefined,
+      initials: user.initials?.trim() || undefined,
+    });
+  }
+  return normalized;
+}
+
+function mentionSearchText(user: AzureDevOpsMentionUser): string {
+  return [
+    user.displayName,
+    user.email,
+    user.subtitle,
+    user.initials,
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function mentionInitials(user: AzureDevOpsMentionUser): string {
+  if (user.initials?.trim()) return user.initials.trim().slice(0, 2).toUpperCase();
+  const source = user.displayName?.trim() || user.email.split("@")[0] || "?";
+  const parts = source.split(/[\s._-]+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
+  return source.slice(0, 2).toUpperCase();
 }
 
 function parseWorkItemList(raw: string): number[] {

@@ -329,7 +329,6 @@ export const WIDGET_CSS = /* css */ `
 .q-panel input.q-azure-pat-input,
 .q-panel input.q-user-story-work-item,
 .q-panel input.q-task-work-item,
-.q-panel input.q-mention-search,
 .q-panel textarea {
   width: 100%;
   background: var(--surface);
@@ -347,8 +346,7 @@ export const WIDGET_CSS = /* css */ `
 .q-panel input.q-reporter-name,
 .q-panel input.q-azure-pat-input,
 .q-panel input.q-user-story-work-item,
-.q-panel input.q-task-work-item,
-.q-panel input.q-mention-search {
+.q-panel input.q-task-work-item {
   margin: 0 0 10px;
   min-height: 40px;
 }
@@ -359,24 +357,81 @@ export const WIDGET_CSS = /* css */ `
 .q-panel input.q-azure-pat-input:focus,
 .q-panel input.q-user-story-work-item:focus,
 .q-panel input.q-task-work-item:focus,
-.q-panel input.q-mention-search:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
-.q-mention-box {
-  margin: 0 0 10px;
+.q-comment-wrap {
+  position: relative;
 }
-.q-mention-selected {
+.q-mention-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 2147483606;
+  display: none;
+  max-height: 256px;
+  overflow-y: auto;
+  background: var(--elevated);
+  border: 1px solid rgba(139, 124, 246, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+}
+.q-mention-menu[data-open="true"] {
+  display: block;
+}
+.q-mention-option {
+  width: 100%;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.q-mention-chip {
-  border: 1px solid rgba(139, 124, 246, 0.45);
-  border-radius: 999px;
-  background: rgba(139, 124, 246, 0.12);
-  color: var(--star-100);
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--star-200);
   cursor: pointer;
+  padding: 8px;
+  text-align: left;
+}
+.q-mention-option:hover,
+.q-mention-option[aria-selected="true"] {
+  background: rgba(139, 124, 246, 0.18);
+  color: var(--star-100);
+}
+.q-mention-avatar {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 124, 246, 0.28);
+  color: var(--star-100);
+  font-size: 11px;
+  font-weight: 700;
+}
+.q-mention-main {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.q-mention-main strong,
+.q-mention-email,
+.q-mention-subtitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-mention-main strong {
+  color: var(--star-100);
+  font-size: 13px;
+  font-weight: 650;
+}
+.q-mention-email,
+.q-mention-subtitle {
+  color: var(--star-500);
   font-size: 12px;
-  padding: 4px 8px;
 }
 .q-settings-modal {
   position: fixed;

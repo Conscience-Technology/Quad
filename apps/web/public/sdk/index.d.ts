@@ -1,4 +1,4 @@
-import { Q as QuadOptions } from './types-B5Y0OhNY.js';
+import { Q as QuadOptions } from './types-0Tew8_NE.js';
 
 type CaptureMode = "screen+mic" | "mic-only";
 

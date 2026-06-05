@@ -92,11 +92,11 @@ class QuadApi {
         getAzureDevOpsPatStatus: () => this.getAzureDevOpsPatStatus(),
         onSaveAzureDevOpsPat: (pat) => this.saveAzureDevOpsPat(pat),
         onDeleteAzureDevOpsPat: () => this.deleteAzureDevOpsPat(),
-        onSearchAzureDevOpsIdentities: (query) => this.searchAzureDevOpsIdentities(query),
         onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options),
       },
       {
         azureDevOpsEnabled: opts.azureDevOps?.enabled === true,
+        mentionUsers: opts.azureDevOps?.mentionUsers ?? [],
       },
     );
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {

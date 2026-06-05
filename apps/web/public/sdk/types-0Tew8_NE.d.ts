@@ -29,6 +29,13 @@ type QuadOptions = {
     };
     azureDevOps?: {
         enabled?: boolean;
+        /**
+         * Optional static mention directory for SDK comment autocomplete.
+         * The SDK filters this list locally when a reporter types "@".
+         * On submit, Quad resolves selected emails against Azure DevOps and
+         * writes real Azure mentions into the work item comment.
+         */
+        mentionUsers?: AzureDevOpsMentionUser[];
     };
     mask?: string[];
     commitSha?: string;
@@ -42,6 +49,12 @@ type QuadOptions = {
      *                   current route can render — others sit dormant).
      */
     showPins?: "off" | "self-on-route" | "self-all";
+};
+type AzureDevOpsMentionUser = {
+    email: string;
+    displayName?: string;
+    subtitle?: string;
+    initials?: string;
 };
 
 export type { QuadOptions as Q };
