@@ -92,7 +92,6 @@ export type CreateSessionInput = {
     sizeBytes: number;
     kind: "video" | "audio" | "screenshot";
   }>;
-  target?: CreatePinInput["pin"];
 };
 
 export type IngestResult = {
@@ -221,47 +220,23 @@ export async function createPin(input: CreatePinInput): Promise<IngestResult> {
 export async function createSession(input: CreateSessionInput): Promise<IngestResult> {
   // Sessions are user-authored and don't auto-dedup; each submission is its
   // own bug_report (fingerprint still computed for downstream search).
-  const route = normalizeRoute(input.target?.route ?? safePathFromUrl(input.meta.customContext) ?? "/");
+  const route = normalizeRoute(safePathFromUrl(input.meta.customContext) ?? "/");
   const fingerprint = computeFingerprint({
     projectId: input.projectId,
     route,
-    selector: input.target?.selector ?? input.title.slice(0, 80),
+    selector: input.title.slice(0, 80),
   });
 
   const reporterMeta = sanitizeMeta(input.meta);
-  if (input.target?.label) {
-    reporterMeta.customContext = {
-      ...(reporterMeta.customContext ?? {}),
-      quadLabel: input.target.label,
-    };
-  }
   const [bug] = await db
     .insert(schema.bugReports)
     .values({
       projectId: input.projectId,
       fingerprint,
-      kind: input.attachments?.some((a) => a.kind === "video")
-        ? "capture"
-        : input.target
-          ? "pin"
-          : "session",
+      kind: input.attachments?.some((a) => a.kind === "video") ? "capture" : "session",
       status: "new",
       title: input.title,
       body: input.body,
-      targetSelector: input.target?.selector ?? null,
-      targetDomPath: input.target?.domPath ?? null,
-      targetComponentPath: input.target?.componentPath ?? null,
-      targetSourceLocation: input.target?.sourceLocation
-        ? {
-            file: input.target.sourceLocation.file ?? "",
-            line: input.target.sourceLocation.line,
-            column: input.target.sourceLocation.column,
-            function: input.target.sourceLocation.function,
-          }
-        : null,
-      targetBbox: input.target?.bbox ?? null,
-      targetRoute: input.target ? route : null,
-      pageUrl: input.target?.pageUrl ?? readString(input.meta.customContext?.pageUrl),
       meta: reporterMeta,
       reporterUserId: null,
       reporterAnonKey: input.reporterAnonKey ?? null,

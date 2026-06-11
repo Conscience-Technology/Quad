@@ -4,7 +4,7 @@
  */
 import * as Local from "./local-pins";
 import { WIDGET_CSS } from "./styles";
-import type { AzureDevOpsMention, AzureDevOpsMentionUser, PinPayload } from "./types";
+import type { AzureDevOpsMention, AzureDevOpsMentionUser } from "./types";
 
 export type AzureSubmitOptions = {
   azureWorkItemIds?: number[];
@@ -12,13 +12,10 @@ export type AzureSubmitOptions = {
   taskWorkItemId?: number;
   azureMentions?: AzureDevOpsMention[];
   azureMentionEmails?: string[];
-  target?: PinPayload;
 };
 
 export type WidgetCallbacks = {
   onToggleOverlay: () => void;
-  onRequestPointerTarget: () => Promise<PinPayload>;
-  onClearPointerTarget: () => void;
   getReporterName: () => string | undefined;
   onReporterNameChange: (name: string) => void;
   getAzureDevOpsPatStatus: () => Promise<{ configured: boolean; prefix?: string | null }>;
@@ -152,13 +149,6 @@ export class Widget {
         <small>macOS는 ⌘⇧5, Windows는 Win+G로 녹화한 뒤 여기에 놓으세요</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
-      <div class="q-pointer-card" data-selected="false" data-picking="false">
-        <button class="q-pointer-button" type="button">문제 위치 지정</button>
-        <div class="q-pointer-summary">
-          <span class="q-pointer-label">선택된 위치 없음</span>
-          <button class="q-pointer-clear" type="button">해제</button>
-        </div>
-      </div>
       ${this.options.azureDevOpsEnabled ? '<input class="q-user-story-work-item" type="number" inputmode="numeric" min="1" placeholder="User Story 번호 (선택)" />' : ""}
       ${this.options.azureDevOpsEnabled ? '<input class="q-task-work-item" type="number" inputmode="numeric" min="1" placeholder="Task 번호 (선택)" />' : ""}
       <div class="q-comment-wrap">
@@ -224,7 +214,6 @@ export class Widget {
     p.appendChild(body);
 
     this.wireOverlayBody(body);
-    this.wirePointerTarget(body);
     this.wireSettingsModal(body);
     this.syncReporterIdentity(body);
     if (this.options.azureDevOpsEnabled) {
@@ -370,49 +359,6 @@ export class Widget {
     });
   }
 
-  private wirePointerTarget(body: HTMLDivElement): void {
-    const card = body.querySelector<HTMLDivElement>(".q-pointer-card");
-    const button = body.querySelector<HTMLButtonElement>(".q-pointer-button");
-    const label = body.querySelector<HTMLSpanElement>(".q-pointer-label");
-    const clear = body.querySelector<HTMLButtonElement>(".q-pointer-clear");
-    if (!card || !button || !label || !clear) return;
-
-    let target: PinPayload | undefined;
-    const targetBox = card as HTMLDivElement & { quadPointerTarget?: PinPayload };
-
-    const render = () => {
-      card.dataset.selected = target ? "true" : "false";
-      targetBox.quadPointerTarget = target;
-      label.textContent = target
-        ? target.label || target.componentPath || target.selector
-        : "선택된 위치 없음";
-      button.textContent = target ? "문제 위치 다시 지정" : "문제 위치 지정";
-    };
-
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      card.dataset.picking = "true";
-      label.textContent = "문제 위치로 지정할 화면 요소를 클릭하세요";
-      try {
-        target = await this.cb.onRequestPointerTarget();
-      } catch {
-        target = undefined;
-      } finally {
-        card.dataset.picking = "false";
-        button.disabled = false;
-        render();
-      }
-    });
-
-    clear.addEventListener("click", () => {
-      target = undefined;
-      this.cb.onClearPointerTarget();
-      render();
-    });
-
-    render();
-  }
-
   private wireAzureTargets(body: HTMLDivElement): void {
     const userStoryInput = body.querySelector<HTMLInputElement>("input.q-user-story-work-item");
     const taskInput = body.querySelector<HTMLInputElement>("input.q-task-work-item");
@@ -468,14 +414,8 @@ export class Widget {
 
     const render = () => {
       const match = findMentionMatch(textarea);
-      if (!match) {
+      if (!match || users.length === 0) {
         close();
-        return;
-      }
-      if (users.length === 0) {
-        activeMatch = match;
-        menu.dataset.open = "true";
-        menu.innerHTML = `<div class="q-mention-empty">멘션 목록이 설정되지 않았습니다</div>`;
         return;
       }
       const q = match.query.toLowerCase();
@@ -483,9 +423,7 @@ export class Widget {
         .filter((user) => mentionSearchText(user).includes(q))
         .slice(0, 7);
       if (candidates.length === 0) {
-        activeMatch = match;
-        menu.dataset.open = "true";
-        menu.innerHTML = `<div class="q-mention-empty">검색 결과 없음</div>`;
+        close();
         return;
       }
       activeMatch = match;
@@ -629,9 +567,6 @@ export class Widget {
   private wireOverlayBody(body: HTMLDivElement): void {
     const drop = body.querySelector<HTMLDivElement>(".drop")!;
     const fileInput = body.querySelector<HTMLInputElement>("input[type=file]")!;
-    const pointerCard = body.querySelector<HTMLDivElement>(".q-pointer-card") as
-      | (HTMLDivElement & { quadPointerTarget?: PinPayload })
-      | null;
     const userStoryInput = body.querySelector<HTMLInputElement>("input.q-user-story-work-item");
     const taskInput = body.querySelector<HTMLInputElement>("input.q-task-work-item");
     const ta = body.querySelector<HTMLTextAreaElement>("textarea.q-comment-body") as
@@ -716,21 +651,9 @@ export class Widget {
         await this.cb.onSubmitOverlay(body, staged, {
           ...azureTargets,
           azureMentionEmails: ta.quadMentionEmails ?? [],
-          target: pointerCard?.quadPointerTarget
-            ? { ...pointerCard.quadPointerTarget, body }
-            : undefined,
         });
         ta.value = "";
         ta.quadMentionEmails?.splice(0, ta.quadMentionEmails.length);
-        if (pointerCard) {
-          pointerCard.quadPointerTarget = undefined;
-          pointerCard.dataset.selected = "false";
-          const label = pointerCard.querySelector<HTMLSpanElement>(".q-pointer-label");
-          const pickButton = pointerCard.querySelector<HTMLButtonElement>(".q-pointer-button");
-          if (label) label.textContent = "선택된 위치 없음";
-          if (pickButton) pickButton.textContent = "문제 위치 지정";
-        }
-        this.cb.onClearPointerTarget();
         staged = [];
         renderStaged();
         status.textContent = "전송 완료";

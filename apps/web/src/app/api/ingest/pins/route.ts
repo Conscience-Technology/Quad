@@ -11,7 +11,7 @@
  *   At least one is required. We never return pins authored by anyone else.
  */
 import { NextResponse } from "next/server";
-import { and, desc, eq, gt, isNotNull } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "~/db";
 import { authSdkRequest, withCors } from "~/lib/sdk-auth";
@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 
   const conds = [
     eq(schema.bugReports.projectId, project.id),
-    isNotNull(schema.bugReports.targetSelector),
+    eq(schema.bugReports.kind, "pin" as const),
   ];
   if (params.reporterAnon) {
     conds.push(eq(schema.bugReports.reporterAnonKey, params.reporterAnon));
