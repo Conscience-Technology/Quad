@@ -52,14 +52,22 @@ export function BoardPanel({
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-xl tracking-tight">Board</h1>
-        <div className="flex items-center gap-2 text-2xs text-star-500">
-          <Kbd>h</Kbd>
-          <Kbd>j</Kbd>
-          <Kbd>k</Kbd>
-          <Kbd>l</Kbd>
-          <span>Go</span>
-          <Kbd>⏎</Kbd>
-          <span>Open</span>
+        <div className="flex items-center gap-3">
+          <a
+            href={`/api/projects/${projectSlug}/feedback-export`}
+            className="inline-flex items-center justify-center rounded-md border border-space-border px-3 py-1.5 text-[13px] font-medium text-star-300 transition hover:border-space-border-strong hover:bg-space-hover hover:text-star-100"
+          >
+            Excel 내보내기
+          </a>
+          <div className="flex items-center gap-2 text-2xs text-star-500">
+            <Kbd>h</Kbd>
+            <Kbd>j</Kbd>
+            <Kbd>k</Kbd>
+            <Kbd>l</Kbd>
+            <span>Go</span>
+            <Kbd>⏎</Kbd>
+            <span>Open</span>
+          </div>
         </div>
       </header>
 
