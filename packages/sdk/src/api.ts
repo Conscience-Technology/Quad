@@ -5,7 +5,7 @@
  * API in Phase 1f. For now: `pin` (synchronous JSON) and `session` (free-form
  * report with optional attachments via presigned upload).
  */
-import type { PinPayload, ReportMeta } from "./types";
+import type { FeedbackPayload, PinPayload, ReportMeta } from "./types";
 
 export type ApiConfig = {
   apiKey: string;
@@ -18,6 +18,7 @@ export type IngestPinInput = {
   meta: ReportMeta;
   reporter?: { id?: string; email?: string; name?: string };
   reporterAnonKey?: string;
+  feedback?: FeedbackPayload;
 };
 
 export type ServerPin = {
@@ -38,6 +39,7 @@ export type IngestSessionInput = {
   meta: ReportMeta;
   reporter?: { id?: string; email?: string; name?: string };
   reporterAnonKey?: string;
+  feedback?: FeedbackPayload;
   attachments?: Array<{ key: string; mime: string; sizeBytes: number; kind: "video" | "audio" | "screenshot" }>;
 };
 

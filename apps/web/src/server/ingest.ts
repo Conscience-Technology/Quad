@@ -34,6 +34,18 @@ export type IngestReporter = {
   name?: string;
 } | undefined;
 
+export type IngestFeedback = {
+  type?: string;
+  feature?: string;
+  userStory?: string;
+  location?: string;
+  currentSpec?: string;
+  intendedSpec?: string;
+  reporter?: string;
+  comment?: string;
+  reportedAt?: string;
+} | undefined;
+
 export type CreatePinInput = {
   projectId: string;
   pin: {
@@ -50,6 +62,7 @@ export type CreatePinInput = {
   meta: IngestMeta;
   reporter?: IngestReporter;
   reporterAnonKey?: string;
+  feedback?: IngestFeedback;
 };
 
 export type CreateSessionInput = {
@@ -59,6 +72,7 @@ export type CreateSessionInput = {
   meta: IngestMeta;
   reporter?: IngestReporter;
   reporterAnonKey?: string;
+  feedback?: IngestFeedback;
   attachments?: Array<{
     key: string;
     mime: string;
@@ -97,6 +111,7 @@ export async function createPin(input: CreatePinInput): Promise<IngestResult> {
 
   const existing = await findExisting(input.projectId, fingerprint);
   const reporterMeta = sanitizeMeta(input.meta);
+  const feedback = buildPinFeedback(input);
 
   if (existing) {
     const [occ] = await db
@@ -110,7 +125,13 @@ export async function createPin(input: CreatePinInput): Promise<IngestResult> {
       .returning();
     await db
       .update(schema.bugReports)
-      .set({ updatedAt: new Date() })
+      .set({
+        feedbackComment: appendFeedbackComment(
+          existing.feedbackComment,
+          feedback.comment ?? "동일 위치에서 다시 제보되었습니다.",
+        ),
+        updatedAt: new Date(),
+      })
       .where(eq(schema.bugReports.id, existing.id));
     return { id: existing.id, fingerprint, occurrenceId: occ?.id };
   }
@@ -138,6 +159,15 @@ export async function createPin(input: CreatePinInput): Promise<IngestResult> {
       targetBbox: input.pin.bbox,
       targetRoute: route,
       pageUrl: input.pin.pageUrl,
+      feedbackType: feedback.type,
+      feedbackFeature: feedback.feature,
+      feedbackUserStory: feedback.userStory,
+      feedbackLocation: feedback.location,
+      feedbackCurrentSpec: feedback.currentSpec,
+      feedbackIntendedSpec: feedback.intendedSpec,
+      feedbackReportedAt: feedback.reportedAt,
+      feedbackReporter: feedback.reporter,
+      feedbackComment: feedback.comment,
       meta: reporterMeta,
       reporterUserId: null,
       reporterAnonKey: input.reporterAnonKey ?? null,
@@ -163,6 +193,7 @@ export async function createSession(input: CreateSessionInput): Promise<IngestRe
     route,
     selector: input.title.slice(0, 80),
   });
+  const feedback = buildSessionFeedback(input);
 
   const [bug] = await db
     .insert(schema.bugReports)
@@ -173,6 +204,15 @@ export async function createSession(input: CreateSessionInput): Promise<IngestRe
       status: "new",
       title: input.title,
       body: input.body,
+      feedbackType: feedback.type,
+      feedbackFeature: feedback.feature,
+      feedbackUserStory: feedback.userStory,
+      feedbackLocation: feedback.location,
+      feedbackCurrentSpec: feedback.currentSpec,
+      feedbackIntendedSpec: feedback.intendedSpec,
+      feedbackReportedAt: feedback.reportedAt,
+      feedbackReporter: feedback.reporter,
+      feedbackComment: feedback.comment,
       meta: sanitizeMeta(input.meta),
       reporterUserId: null,
       reporterAnonKey: input.reporterAnonKey ?? null,
@@ -272,6 +312,107 @@ function sanitizeMeta(m: IngestMeta) {
   };
 }
 
+type StoredFeedback = {
+  type: string;
+  feature: string | null;
+  userStory: string | null;
+  location: string | null;
+  currentSpec: string;
+  intendedSpec: string | null;
+  reportedAt: Date;
+  reporter: string | null;
+  comment: string | null;
+};
+
+function buildPinFeedback(input: CreatePinInput): StoredFeedback {
+  const route = normalizeRoute(input.pin.route);
+  const reportedAt = parseFeedbackDate(input.feedback?.reportedAt) ?? new Date();
+  return {
+    type: clean(input.feedback?.type) ?? "UI 위치 제보",
+    feature: clean(input.feedback?.feature),
+    userStory: clean(input.feedback?.userStory),
+    location: clean(input.feedback?.location) ?? formatLocation({
+      route,
+      selector: input.pin.selector,
+      componentPath: input.pin.componentPath,
+      pageUrl: input.pin.pageUrl,
+    }),
+    currentSpec: clean(input.feedback?.currentSpec) ?? input.pin.body,
+    intendedSpec: clean(input.feedback?.intendedSpec),
+    reportedAt,
+    reporter: clean(input.feedback?.reporter) ?? formatReporter(input.reporter, input.reporterAnonKey),
+    comment: clean(input.feedback?.comment) ?? buildContextComment(input.meta),
+  };
+}
+
+function buildSessionFeedback(input: CreateSessionInput): StoredFeedback {
+  const pageUrl = typeof input.meta.customContext?.pageUrl === "string"
+    ? input.meta.customContext.pageUrl
+    : null;
+  const route = safePathFromUrl(input.meta.customContext) ?? null;
+  const reportedAt = parseFeedbackDate(input.feedback?.reportedAt) ?? new Date();
+  return {
+    type: clean(input.feedback?.type) ?? (input.attachments?.some((a) => a.kind === "video") ? "녹화 제보" : "일반 제보"),
+    feature: clean(input.feedback?.feature),
+    userStory: clean(input.feedback?.userStory),
+    location: clean(input.feedback?.location) ?? formatLocation({ route, pageUrl }),
+    currentSpec: clean(input.feedback?.currentSpec) ?? [input.title, input.body].filter(Boolean).join("\n\n"),
+    intendedSpec: clean(input.feedback?.intendedSpec),
+    reportedAt,
+    reporter: clean(input.feedback?.reporter) ?? formatReporter(input.reporter, input.reporterAnonKey),
+    comment: clean(input.feedback?.comment) ?? buildAttachmentComment(input.attachments),
+  };
+}
+
+function clean(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.slice(0, 8_000) : null;
+}
+
+function parseFeedbackDate(value: string | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatReporter(reporter: IngestReporter, anonKey: string | undefined): string | null {
+  return clean(reporter?.name) ?? clean(reporter?.email) ?? clean(reporter?.id) ?? clean(anonKey);
+}
+
+function formatLocation(input: {
+  route?: string | null;
+  selector?: string | null;
+  componentPath?: string | null;
+  pageUrl?: string | null;
+}): string | null {
+  const lines = [
+    input.route ? `Route: ${input.route}` : null,
+    input.selector ? `Selector: ${input.selector}` : null,
+    input.componentPath ? `Component: ${input.componentPath}` : null,
+    input.pageUrl ? `URL: ${input.pageUrl}` : null,
+  ].filter(Boolean);
+  return lines.length ? lines.join("\n") : null;
+}
+
+function buildContextComment(meta: IngestMeta): string | null {
+  const lines = [
+    meta.consoleLogs?.length ? `Console logs: ${meta.consoleLogs.length}` : null,
+    meta.networkErrors?.length ? `Network errors: ${meta.networkErrors.length}` : null,
+  ].filter(Boolean);
+  return lines.length ? lines.join("\n") : null;
+}
+
+function buildAttachmentComment(attachments: CreateSessionInput["attachments"]): string | null {
+  if (!attachments?.length) return null;
+  return `첨부: ${attachments.map((a) => `${a.kind}(${a.mime})`).join(", ")}`;
+}
+
+function appendFeedbackComment(current: string | null, next: string | null): string | null {
+  if (!next) return current;
+  if (!current) return next;
+  return `${current}\n${next}`;
+}
+
 function stripCredentialsFromUrl(u: string): string {
   try {
     const url = new URL(u, "http://_");
@@ -282,4 +423,3 @@ function stripCredentialsFromUrl(u: string): string {
     return u;
   }
 }
-

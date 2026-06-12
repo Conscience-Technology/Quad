@@ -3,7 +3,7 @@
  * status transitions, comments. Confirm hands off to the brief generator.
  */
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { schema } from "~/db";
 import { buildTaskBrief } from "~/lib/brief";
@@ -13,6 +13,16 @@ import { router } from "../trpc";
 
 const StatusFilter = z.enum(["new", "triaging", "confirmed", "resolved", "wont_do", "all"]).default("new");
 const NextStatus = z.enum(["new", "triaging", "confirmed", "resolved", "wont_do"]);
+const FeedbackInput = z.object({
+  type: z.string().max(200).optional(),
+  feature: z.string().max(200).optional(),
+  userStory: z.string().max(200).optional(),
+  location: z.string().max(4000).optional(),
+  currentSpec: z.string().max(8000).optional(),
+  intendedSpec: z.string().max(8000).optional(),
+  reporter: z.string().max(200).optional(),
+  comment: z.string().max(8000).optional(),
+});
 
 export const bugsRouter = router({
   list: projectMemberProcedure
@@ -209,6 +219,69 @@ export const bugsRouter = router({
           body: input.body,
         })
         .returning();
+      await ctx.db
+        .update(schema.bugReports)
+        .set({
+          feedbackComment: sqlAppendLine(schema.bugReports.feedbackComment, input.body),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(schema.bugReports.id, input.bugId),
+            eq(schema.bugReports.projectId, input.projectId),
+          ),
+        );
       return comment;
     }),
+
+  updateFeedback: projectMemberProcedure
+    .input(
+      z.object({
+        projectId: z.string().uuid(),
+        bugId: z.string().uuid(),
+        feedback: FeedbackInput,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const clean = (value: string | undefined) => {
+        const trimmed = value?.trim();
+        return trimmed ? trimmed : null;
+      };
+      const [updated] = await ctx.db
+        .update(schema.bugReports)
+        .set({
+          feedbackType: clean(input.feedback.type),
+          feedbackFeature: clean(input.feedback.feature),
+          feedbackUserStory: clean(input.feedback.userStory),
+          feedbackLocation: clean(input.feedback.location),
+          feedbackCurrentSpec: clean(input.feedback.currentSpec),
+          feedbackIntendedSpec: clean(input.feedback.intendedSpec),
+          feedbackReporter: clean(input.feedback.reporter),
+          feedbackComment: clean(input.feedback.comment),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(schema.bugReports.id, input.bugId),
+            eq(schema.bugReports.projectId, input.projectId),
+          ),
+        )
+        .returning();
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      await ctx.db.insert(schema.auditLog).values({
+        whoKind: "user",
+        whoId: ctx.user.id,
+        action: "bug.feedback.update",
+        target: input.bugId,
+        meta: {},
+      });
+      return updated;
+    }),
 });
+
+function sqlAppendLine(column: typeof schema.bugReports.feedbackComment, next: string) {
+  return sql<string | null>`case
+    when ${column} is null or ${column} = '' then ${next}
+    else ${column} || ${"\n"} || ${next}
+  end`;
+}

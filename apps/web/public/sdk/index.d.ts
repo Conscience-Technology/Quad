@@ -9,6 +9,7 @@ declare class QuadApi {
     private bugMode?;
     private capture?;
     private reveal?;
+    private optKey;
     private user?;
     private context;
     private consoleRing;
@@ -44,6 +45,7 @@ declare class QuadApi {
     private toggleOverlay;
     private openPinForm;
     private submitOverlay;
+    private reporterLabel;
     private snapshotMeta;
     /** Stable anon identifier per-browser, stored as a host-app cookie. */
     private ensureAnonKey;

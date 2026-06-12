@@ -112,6 +112,12 @@ class QuadApi {
           meta: this.snapshotMeta(),
           reporter: this.user,
           reporterAnonKey: this.ensureAnonKey(),
+          feedback: {
+            type: "녹화 제보",
+            currentSpec: input.title,
+            reporter: this.reporterLabel(),
+            reportedAt: new Date().toISOString(),
+          },
           attachments: input.attachments,
         });
         this.widget?.toast(`Capture saved · ${Math.round(input.durationMs / 1000)}s`);
@@ -198,6 +204,12 @@ class QuadApi {
         meta: this.snapshotMeta(),
         reporter: this.user,
         reporterAnonKey: this.ensureAnonKey(),
+        feedback: {
+          type: "일반 제보",
+          currentSpec: [input.title, input.body].filter(Boolean).join("\n\n"),
+          reporter: this.reporterLabel(),
+          reportedAt: new Date().toISOString(),
+        },
       });
     } catch (err) {
       // Fail silent — never break the host app.
@@ -302,6 +314,18 @@ class QuadApi {
           meta: this.snapshotMeta(),
           reporter: this.user,
           reporterAnonKey: this.ensureAnonKey(),
+          feedback: {
+            type: "UI 위치 제보",
+            location: [
+              `Route: ${pin.route}`,
+              `Selector: ${pin.selector}`,
+              pin.componentPath ? `Component: ${pin.componentPath}` : "",
+              `URL: ${pin.pageUrl}`,
+            ].filter(Boolean).join("\n"),
+            currentSpec: pin.body,
+            reporter: this.reporterLabel(),
+            reportedAt: new Date().toISOString(),
+          },
         });
         // Cache locally so the reporter can find / reveal it later, but
         // don't show it on the page until they toggle it from the panel.
@@ -346,8 +370,18 @@ class QuadApi {
       meta: this.snapshotMeta(),
       reporter: this.user,
       reporterAnonKey: this.ensureAnonKey(),
+      feedback: {
+        type: attachments.some((a) => a.kind === "video") ? "녹화 제보" : "일반 제보",
+        currentSpec: body || title,
+        reporter: this.reporterLabel(),
+        reportedAt: new Date().toISOString(),
+      },
       attachments,
     });
+  }
+
+  private reporterLabel(): string | undefined {
+    return this.user?.name || this.user?.email || this.user?.id;
   }
 
   private snapshotMeta(): ReportMeta {

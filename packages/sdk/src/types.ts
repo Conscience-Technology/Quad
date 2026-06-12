@@ -66,6 +66,18 @@ export type PinPayload = {
   body: string;
 };
 
+export type FeedbackPayload = {
+  type?: string;
+  feature?: string;
+  userStory?: string;
+  location?: string;
+  currentSpec?: string;
+  intendedSpec?: string;
+  reporter?: string;
+  comment?: string;
+  reportedAt?: string;
+};
+
 export type ReportMeta = {
   userAgent: string;
   viewport: { w: number; h: number };

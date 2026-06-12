@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Code, Field, Input, Surface } from "~/components/ui";
+import type { BugReport } from "~/db/schema";
 import { trpc } from "~/lib/trpc/react";
 import { VideoPlayer } from "./video-player";
 
@@ -73,6 +74,13 @@ export function BugDetail({
             <p className="text-sm text-[var(--color-star-300)] whitespace-pre-wrap">{bug.body}</p>
           </Surface>
         )}
+
+        <FeedbackFields
+          key={`${bug.id}:${bug.updatedAt}`}
+          projectId={projectId}
+          bug={bug}
+          fallbackLocation={formatLocationFallback(bug)}
+        />
 
         {bug.targetSelector && (
           <Surface className="space-y-2">
@@ -196,4 +204,130 @@ export function BugDetail({
       </aside>
     </div>
   );
+}
+
+function FeedbackFields({
+  projectId,
+  bug,
+  fallbackLocation,
+}: {
+  projectId: string;
+  bug: BugReport;
+  fallbackLocation: string;
+}) {
+  const utils = trpc.useUtils();
+  const update = trpc.bugs.updateFeedback.useMutation({
+    onSettled: () => utils.bugs.byId.invalidate({ projectId, bugId: bug.id }),
+  });
+  const [type, setType] = useState(bug.feedbackType ?? "");
+  const [feature, setFeature] = useState(bug.feedbackFeature ?? "");
+  const [userStory, setUserStory] = useState(bug.feedbackUserStory ?? "");
+  const [location, setLocation] = useState(bug.feedbackLocation ?? fallbackLocation);
+  const [currentSpec, setCurrentSpec] = useState(
+    bug.feedbackCurrentSpec ?? [bug.title, bug.body].filter(Boolean).join("\n\n"),
+  );
+  const [intendedSpec, setIntendedSpec] = useState(bug.feedbackIntendedSpec ?? "");
+  const [reporter, setReporter] = useState(
+    bug.feedbackReporter ??
+      bug.reporterIdentify?.name ??
+      bug.reporterIdentify?.email ??
+      bug.reporterIdentify?.id ??
+      bug.reporterAnonKey ??
+      "",
+  );
+  const [comment, setComment] = useState(bug.feedbackComment ?? "");
+
+  return (
+    <Surface className="space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">
+            Excel feedback row
+          </p>
+          <p className="mt-1 text-xs text-[var(--color-star-500)]">
+            These fields are stored with the report and used directly by Excel export.
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          disabled={update.isPending}
+          onClick={() =>
+            update.mutate({
+              projectId,
+              bugId: bug.id,
+              feedback: {
+                type,
+                feature,
+                userStory,
+                location,
+                currentSpec,
+                intendedSpec,
+                reporter,
+                comment,
+              },
+            })
+          }
+        >
+          {update.isPending ? "Saving…" : "Save"}
+        </Button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Type">
+          <Input value={type} onChange={(e) => setType(e.currentTarget.value)} placeholder="요구사항 변경" />
+        </Field>
+        <Field label="Reporter">
+          <Input value={reporter} onChange={(e) => setReporter(e.currentTarget.value)} placeholder="보고자" />
+        </Field>
+        <Field label="Feature">
+          <Input value={feature} onChange={(e) => setFeature(e.currentTarget.value)} placeholder="Feature 번호" />
+        </Field>
+        <Field label="User Story">
+          <Input value={userStory} onChange={(e) => setUserStory(e.currentTarget.value)} placeholder="User Story 번호" />
+        </Field>
+      </div>
+      <Field label="Location">
+        <textarea
+          className="min-h-20 w-full resize-y rounded-md border border-space-border bg-space-void p-3 text-sm text-star-100 outline-none transition focus:border-nebula-violet"
+          value={location}
+          onChange={(e) => setLocation(e.currentTarget.value)}
+        />
+      </Field>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="현재 사양">
+          <textarea
+            className="min-h-36 w-full resize-y rounded-md border border-space-border bg-space-void p-3 text-sm text-star-100 outline-none transition focus:border-nebula-violet"
+            value={currentSpec}
+            onChange={(e) => setCurrentSpec(e.currentTarget.value)}
+          />
+        </Field>
+        <Field label="의도 사양">
+          <textarea
+            className="min-h-36 w-full resize-y rounded-md border border-space-border bg-space-void p-3 text-sm text-star-100 outline-none transition focus:border-nebula-violet"
+            value={intendedSpec}
+            onChange={(e) => setIntendedSpec(e.currentTarget.value)}
+            placeholder="QA/기획팀이 정리한 기대 동작"
+          />
+        </Field>
+      </div>
+      <Field label="코멘트">
+        <textarea
+          className="min-h-28 w-full resize-y rounded-md border border-space-border bg-space-void p-3 text-sm text-star-100 outline-none transition focus:border-nebula-violet"
+          value={comment}
+          onChange={(e) => setComment(e.currentTarget.value)}
+        />
+      </Field>
+      {update.error && (
+        <p className="text-xs text-[var(--color-nebula-rose)]">{update.error.message}</p>
+      )}
+    </Surface>
+  );
+}
+
+function formatLocationFallback(bug: BugReport): string {
+  return [
+    bug.targetRoute ? `Route: ${bug.targetRoute}` : null,
+    bug.targetSelector ? `Selector: ${bug.targetSelector}` : null,
+    bug.targetComponentPath ? `Component: ${bug.targetComponentPath}` : null,
+    bug.pageUrl ? `URL: ${bug.pageUrl}` : null,
+  ].filter(Boolean).join("\n");
 }

@@ -21,6 +21,18 @@ const SourceLocation = z.object({
   function: z.string().optional(),
 });
 
+const Feedback = z.object({
+  type: z.string().max(200).optional(),
+  feature: z.string().max(200).optional(),
+  userStory: z.string().max(200).optional(),
+  location: z.string().max(4000).optional(),
+  currentSpec: z.string().max(8000).optional(),
+  intendedSpec: z.string().max(8000).optional(),
+  reporter: z.string().max(200).optional(),
+  comment: z.string().max(8000).optional(),
+  reportedAt: z.string().optional(),
+});
+
 const Body = z.object({
   pin: z.object({
     selector: z.string(),
@@ -42,6 +54,7 @@ const Body = z.object({
     })
     .optional(),
   reporterAnonKey: z.string().optional(),
+  feedback: Feedback.optional(),
 });
 
 export async function OPTIONS(req: Request) {
@@ -86,6 +99,7 @@ export async function POST(req: Request) {
       meta: payload.meta,
       reporter: payload.reporter,
       reporterAnonKey: payload.reporterAnonKey,
+      feedback: payload.feedback,
     });
     // fire-and-forget preprocessing (pin bugs have no video, but Whisper /
     // timeline merge still produces a sane bundle for the maintainer + agent)

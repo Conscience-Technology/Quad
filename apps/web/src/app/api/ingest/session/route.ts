@@ -14,6 +14,18 @@ const Attachment = z.object({
   kind: z.enum(["video", "audio", "screenshot"]),
 });
 
+const Feedback = z.object({
+  type: z.string().max(200).optional(),
+  feature: z.string().max(200).optional(),
+  userStory: z.string().max(200).optional(),
+  location: z.string().max(4000).optional(),
+  currentSpec: z.string().max(8000).optional(),
+  intendedSpec: z.string().max(8000).optional(),
+  reporter: z.string().max(200).optional(),
+  comment: z.string().max(8000).optional(),
+  reportedAt: z.string().optional(),
+});
+
 const Body = z.object({
   title: z.string().max(200),
   body: z.string().max(8000),
@@ -26,6 +38,7 @@ const Body = z.object({
     })
     .optional(),
   reporterAnonKey: z.string().optional(),
+  feedback: Feedback.optional(),
   attachments: z.array(Attachment).max(20).optional(),
 });
 
@@ -66,6 +79,7 @@ export async function POST(req: Request) {
       meta: payload.meta,
       reporter: payload.reporter,
       reporterAnonKey: payload.reporterAnonKey,
+      feedback: payload.feedback,
       attachments: payload.attachments,
     });
     setImmediate(() => { void processBugReport(result.id); });

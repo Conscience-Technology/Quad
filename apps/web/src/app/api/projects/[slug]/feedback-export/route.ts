@@ -94,8 +94,8 @@ export async function GET(
   sheet.columns = [
     { key: "no", width: 7 },
     { key: "type", width: 16 },
-    { key: "reportId", width: 18 },
-    { key: "location", width: 36 },
+    { key: "feature", width: 18 },
+    { key: "userStory", width: 18 },
     { key: "current", width: 48 },
     { key: "intent", width: 48 },
     { key: "date", width: 14 },
@@ -106,7 +106,7 @@ export async function GET(
   sheet.getRow(1).values = [
     "No.",
     "Type",
-    "QUAD Info.",
+    "DevOps Info.",
     "",
     "현재 사양",
     "의도 사양",
@@ -114,7 +114,7 @@ export async function GET(
     "보고자",
     "코멘트",
   ];
-  sheet.getRow(2).values = ["", "", "Report ID", "Location", "", "", "", "", ""];
+  sheet.getRow(2).values = ["", "", "Feature", "User Story", "", "", "", "", ""];
   sheet.mergeCells("C1:D1");
 
   for (const rowNo of [1, 2]) {
@@ -133,13 +133,13 @@ export async function GET(
     const reportAttachments = attachmentsByReport.get(report.id) ?? [];
     const row = sheet.addRow({
       no: index + 1,
-      type: TYPE_LABEL[report.kind] ?? report.kind,
-      reportId: shortId(report.id),
-      location: formatLocation(report),
-      current: formatCurrent(report),
-      intent: "",
-      date: formatDate(report.createdAt),
-      reporter: formatReporter(report.reporterIdentify, report.reporterAnonKey),
+      type: report.feedbackType ?? TYPE_LABEL[report.kind] ?? report.kind,
+      feature: report.feedbackFeature ?? "",
+      userStory: report.feedbackUserStory ?? "",
+      current: report.feedbackCurrentSpec ?? formatCurrent(report),
+      intent: report.feedbackIntendedSpec ?? "",
+      date: formatDate(report.feedbackReportedAt ?? report.createdAt),
+      reporter: report.feedbackReporter ?? formatReporter(report.reporterIdentify, report.reporterAnonKey),
       comment: formatComment(report, reportComments, reportAttachments, occurrenceCount.get(report.id) ?? 0),
     });
     row.height = estimateRowHeight(row.getCell(5).value, row.getCell(9).value);
@@ -232,7 +232,10 @@ function formatComment(
   occurrences: number,
 ): string {
   const lines = [
+    `QUAD Report: ${shortId(report.id)}`,
+    (report.feedbackLocation ?? formatLocation(report)) ? `위치:\n${report.feedbackLocation ?? formatLocation(report)}` : null,
     `상태: ${STATUS_LABEL[report.status] ?? report.status}`,
+    report.feedbackComment ? report.feedbackComment : null,
     occurrences > 0 ? `재현/발생 횟수: ${occurrences + 1}` : null,
     attachments.length > 0
       ? `첨부: ${attachments.map((a) => `${a.kind}(${a.mime})`).join(", ")}`
