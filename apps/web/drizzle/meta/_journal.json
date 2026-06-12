@@ -29,41 +29,6 @@
       "when": 1779788341367,
       "tag": "0003_moaning_spacker_dave",
       "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1780010000000,
-      "tag": "0004_azure_devops_links",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1780010100000,
-      "tag": "0005_user_azure_devops_tokens",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1780038000000,
-      "tag": "0006_generic_integrations_and_leases",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1780041000000,
-      "tag": "0007_general_task_statuses",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1780042000000,
-      "tag": "0008_sdk_reporter_integrations",
-      "breakpoints": true
     }
   ]
 }

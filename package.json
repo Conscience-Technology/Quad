@@ -15,7 +15,6 @@
     "start": "pnpm --filter @quad/web start",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "test:providers": "pnpm --filter @quad/web test:providers",
     "db:generate": "pnpm --filter @quad/web db:generate",
     "db:migrate": "pnpm --filter @quad/web db:migrate",
     "db:studio": "pnpm --filter @quad/web db:studio"

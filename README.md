@@ -6,11 +6,11 @@
 
 <img src=".github/assets/hero.svg" alt="Reporter pins an element, captures a session, maintainer confirms, Claude Code opens a PR" width="100%" />
 
-**The evidence layer that ships reporter context into your issue tracker and AI coding agent.**
+**The bug reporter that ships its reporter's context straight to your AI coding agent.**
 
 Reporter video, audio, DOM and network — on one ms-aligned timeline — flow
-into Azure DevOps comments, MCP / CLI, and Claude Code. Zero context loss
-between *what the user saw*, *what the team discusses*, and *what the agent fixes*.
+through MCP / CLI into Claude Code. Zero context loss between *what the
+user saw* and *what the agent fixes*.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-8b7cf6.svg)](./LICENSE)
 [![Self-hosted](https://img.shields.io/badge/self--hosted-first-67e8f9.svg)](#-run-anywhere-60-seconds)
@@ -18,7 +18,7 @@ between *what the user saw*, *what the team discusses*, and *what the agent fixe
 [![CI](https://github.com/Conscience-Technology/Quad/actions/workflows/ci.yml/badge.svg)](https://github.com/Conscience-Technology/Quad/actions/workflows/ci.yml)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-fb7185.svg)](./CONTRIBUTING.md)
 
-[Quickstart](#-run-anywhere-60-seconds) · [How it works](#-how-it-works) · [Evidence Layer](./docs/evidence-layer.md) · [Deploy](#-deploy) · [Contributing](./CONTRIBUTING.md)
+[Quickstart](#-run-anywhere-60-seconds) · [How it works](#-how-it-works) · [Deploy](#-deploy) · [Contributing](./CONTRIBUTING.md)
 
 </div>
 
@@ -78,9 +78,8 @@ super admin. Create your first project and copy the SDK key.
 │   • Source-map resolution                                            │
 │   • timeline.json merge                                              │
 │                                                                       │
-│  Optional Azure DevOps sync → comment + state update on Work Item    │
-│  Maintainer can still review on the board → Confirm → Task brief     │
-│  is frozen: markdown + frames + timeline + source                    │
+│  Maintainer reviews on the board (j/k/1-4/Enter) → Confirm        │
+│  → Task brief is frozen: markdown + frames + timeline + source       │
 └──────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
@@ -209,12 +208,9 @@ Then, in Claude Code:
 
 > *"pick the next quad task and fix it"*
 
-Start with `quad_doctor` when setting up a new instance or debugging a key.
-
-**14 MCP tools wired**: `quad_doctor` · `quad_list_tasks` · `quad_pick_task` ·
+**10 MCP tools wired**: `quad_list_tasks` · `quad_pick_task` ·
 `quad_get_task` · `quad_update_task` · `quad_post_comment` ·
-`quad_search_tasks` · `quad_list_integrations` · `quad_test_integration` ·
-`quad_link_issue` · `quad_get_frames` · `quad_get_transcript` ·
+`quad_search_tasks` · `quad_get_frames` · `quad_get_transcript` ·
 `quad_get_timeline` · `quad_get_source`.
 
 ---
@@ -262,13 +258,6 @@ silent in the SDK, PII discipline, single-instance) and the PR checklist.
 
 Help especially welcome on: Helm chart · Browser Extension · source-map
 runtime resolution · translations · component themes.
-
-External tracker sync is provider-based. Start with
-[docs/integrations/overview.md](./docs/integrations/overview.md) and
-[docs/integrations/creating-provider.md](./docs/integrations/creating-provider.md)
-when adding Jira, GitHub Issues, Linear, or another workflow system.
-The current provider/MCP QA work is summarized in
-[docs/changes/integration-provider-mcp-qa.md](./docs/changes/integration-provider-mcp-qa.md).
 
 ## Security
 

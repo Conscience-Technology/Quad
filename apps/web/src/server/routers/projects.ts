@@ -6,8 +6,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { schema } from "~/db";
 import { uniqueProjectSlug } from "~/lib/slug";
-import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
-import { saveProjectIntegrationConfig } from "~/server/integrations/store";
 import {
   projectAdminProcedure,
   projectOwnerProcedure,
@@ -24,26 +22,6 @@ const RepoSchema = z
   })
   .nullable();
 
-const AzureDevOpsSchema = z
-  .object({
-    enabled: z.boolean().default(false),
-    organization: z.string().trim().max(120).optional(),
-    project: z.string().trim().max(160).optional(),
-    reportState: z.string().trim().max(80).optional(),
-    stateMap: z
-      .object({
-        to_do: z.string().trim().max(80).optional(),
-        in_progress: z.string().trim().max(80).optional(),
-        reviewed: z.string().trim().max(80).optional(),
-        resolved: z.string().trim().max(80).optional(),
-        published: z.string().trim().max(80).optional(),
-        done: z.string().trim().max(80).optional(),
-        canceled: z.string().trim().max(80).optional(),
-      })
-      .optional(),
-  })
-  .nullable();
-
 export const projectsRouter = router({
   /** Projects the current user is an active member of (super admin sees all). */
   list: authedProcedure.query(async ({ ctx }) => {
@@ -57,10 +35,9 @@ export const projectsRouter = router({
           id: schema.projects.id,
           slug: schema.projects.slug,
           name: schema.projects.name,
-            allowedOrigins: schema.projects.allowedOrigins,
-            repo: schema.projects.repo,
-            azureDevOps: schema.projects.azureDevOps,
-            createdAt: schema.projects.createdAt,
+          allowedOrigins: schema.projects.allowedOrigins,
+          repo: schema.projects.repo,
+          createdAt: schema.projects.createdAt,
           role: sql<"owner" | "admin" | "member">`'owner'`,
           memberCount,
           bugCount,
@@ -75,7 +52,6 @@ export const projectsRouter = router({
         name: schema.projects.name,
         allowedOrigins: schema.projects.allowedOrigins,
         repo: schema.projects.repo,
-        azureDevOps: schema.projects.azureDevOps,
         createdAt: schema.projects.createdAt,
         role: schema.projectMembers.role,
         memberCount,
@@ -129,7 +105,6 @@ export const projectsRouter = router({
         name: z.string().min(1).max(80),
         allowedOrigins: z.array(z.string().url()).default([]),
         repo: RepoSchema.optional(),
-        azureDevOps: AzureDevOpsSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -141,7 +116,6 @@ export const projectsRouter = router({
           name: input.name,
           allowedOrigins: input.allowedOrigins,
           repo: input.repo ?? null,
-          azureDevOps: input.azureDevOps ?? null,
           createdByUserId: ctx.user.id,
         })
         .returning();
@@ -163,10 +137,6 @@ export const projectsRouter = router({
         meta: { slug, name: input.name },
       });
 
-      if (input.azureDevOps !== undefined) {
-        await saveProjectIntegrationConfig(project.id, AZURE_DEVOPS_PROVIDER_ID, input.azureDevOps);
-      }
-
       return project;
     }),
 
@@ -177,7 +147,6 @@ export const projectsRouter = router({
         name: z.string().min(1).max(80).optional(),
         allowedOrigins: z.array(z.string().url()).optional(),
         repo: RepoSchema.optional(),
-        azureDevOps: AzureDevOpsSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -186,7 +155,6 @@ export const projectsRouter = router({
       if (input.allowedOrigins !== undefined)
         patch.allowedOrigins = input.allowedOrigins;
       if (input.repo !== undefined) patch.repo = input.repo;
-      if (input.azureDevOps !== undefined) patch.azureDevOps = input.azureDevOps;
 
       const [updated] = await ctx.db
         .update(schema.projects)
@@ -201,10 +169,6 @@ export const projectsRouter = router({
         target: input.projectId,
         meta: input,
       });
-
-      if (input.azureDevOps !== undefined) {
-        await saveProjectIntegrationConfig(input.projectId, AZURE_DEVOPS_PROVIDER_ID, input.azureDevOps);
-      }
 
       return updated;
     }),

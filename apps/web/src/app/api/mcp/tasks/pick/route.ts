@@ -1,9 +1,9 @@
 /**
- * POST /api/mcp/tasks/pick — claim the next To Do task (or a specified one),
- * transitioning to_do -> in_progress atomically.
+ * POST /api/mcp/tasks/pick — claim the next queued task (or a specified one),
+ * transitioning queued -> picked atomically.
  */
 import { NextResponse } from "next/server";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "~/db";
 import { authMcpRequest, projectAllowed } from "~/lib/mcp-auth";
@@ -14,10 +14,7 @@ export const dynamic = "force-dynamic";
 const Body = z.object({
   projectId: z.string().uuid().optional(),
   taskId: z.string().uuid().optional(),
-  leaseMs: z.number().int().min(60_000).max(86_400_000).optional(),
 });
-
-const DEFAULT_LEASE_MS = 30 * 60 * 1000;
 
 export async function POST(req: Request) {
   const r = await authMcpRequest(req);
@@ -36,27 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "forbidden project" }, { status: 403 });
   }
 
-  const now = new Date();
-  await db
-    .update(schema.tasks)
-    .set({
-      status: "to_do",
-      claimedByUserId: null,
-      claimedByApiKeyId: null,
-      claimedAt: null,
-      leaseExpiresAt: null,
-      updatedAt: now,
-    })
-    .where(
-      and(
-        inArray(schema.tasks.projectId, projects),
-        eq(schema.tasks.status, "in_progress"),
-        sql`${schema.tasks.leaseExpiresAt} is not null`,
-        sql`${schema.tasks.leaseExpiresAt} < ${now}`,
-      ),
-    );
-
-  // Find the candidate task (specified or next To Do in the allowed projects).
+  // Find the candidate task (specified or next queued in the allowed projects).
   let candidate: typeof schema.tasks.$inferSelect | undefined;
   if (body.taskId) {
     const rows = await db
@@ -66,7 +43,7 @@ export async function POST(req: Request) {
         and(
           eq(schema.tasks.id, body.taskId),
           inArray(schema.tasks.projectId, projects),
-          eq(schema.tasks.status, "to_do"),
+          eq(schema.tasks.status, "queued"),
         ),
       )
       .limit(1);
@@ -78,7 +55,7 @@ export async function POST(req: Request) {
       .where(
         and(
           inArray(schema.tasks.projectId, projects),
-          eq(schema.tasks.status, "to_do"),
+          eq(schema.tasks.status, "queued"),
         ),
       )
       .limit(1);
@@ -88,19 +65,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ task: null });
   }
 
-  // Best-effort atomic claim: status='in_progress' WHERE id=... AND status='to_do'.
-  const leaseExpiresAt = new Date(now.getTime() + (body.leaseMs ?? DEFAULT_LEASE_MS));
+  // Best-effort atomic claim: status='picked' WHERE id=... AND status='queued'.
   const [claimed] = await db
     .update(schema.tasks)
     .set({
-      status: "in_progress",
+      status: "picked",
       claimedByUserId: r.auth.user.id,
       claimedByApiKeyId: r.auth.apiKey.id,
-      claimedAt: now,
-      leaseExpiresAt,
-      updatedAt: now,
+      updatedAt: new Date(),
     })
-    .where(and(eq(schema.tasks.id, candidate.id), eq(schema.tasks.status, "to_do")))
+    .where(and(eq(schema.tasks.id, candidate.id), eq(schema.tasks.status, "queued")))
     .returning();
   if (!claimed) {
     return NextResponse.json({ task: null, error: "race" });
@@ -111,7 +85,6 @@ export async function POST(req: Request) {
     kind: "picked",
     actorUserId: r.auth.user.id,
     actorApiKeyId: r.auth.apiKey.id,
-    payload: { leaseExpiresAt: leaseExpiresAt.toISOString() },
   });
 
   return NextResponse.json({
@@ -121,8 +94,6 @@ export async function POST(req: Request) {
       title: claimed.title,
       status: claimed.status,
       bugReportId: claimed.bugReportId,
-      claimedAt: claimed.claimedAt,
-      leaseExpiresAt: claimed.leaseExpiresAt,
     },
   });
 }

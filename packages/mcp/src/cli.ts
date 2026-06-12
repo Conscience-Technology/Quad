@@ -26,7 +26,6 @@ import { VERSION } from "./index.js";
 
 const ENDPOINT = (process.env.QUAD_ENDPOINT ?? "").replace(/\/$/, "");
 const KEY = process.env.QUAD_API_KEY ?? "";
-const TASK_STATUSES = ["to_do", "in_progress", "reviewed", "resolved", "published", "done", "canceled"] as const;
 
 if (!ENDPOINT || !KEY) {
   console.error("QUAD_ENDPOINT and QUAD_API_KEY are required");
@@ -51,12 +50,6 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const TOOLS = [
   {
-    name: "quad_doctor",
-    description:
-      "Diagnose Quad MCP connectivity, API key scope, available projects, To Do tasks, and configured issue integrations. Run this first when Quad tools behave unexpectedly.",
-    inputSchema: { type: "object", properties: {} },
-  },
-  {
     name: "quad_list_tasks",
     description: "List tasks for one or all accessible projects. Filter by status.",
     inputSchema: {
@@ -65,7 +58,7 @@ const TOOLS = [
         project_id: { type: "string" },
         status: {
           type: "string",
-          enum: TASK_STATUSES,
+          enum: ["queued", "picked", "in_progress", "pr_open", "done", "wont_do"],
         },
         query: { type: "string" },
         limit: { type: "number" },
@@ -75,25 +68,12 @@ const TOOLS = [
   {
     name: "quad_pick_task",
     description:
-      "Claim the next To Do task (or the specified one). Transitions to_do -> in_progress and starts a lease.",
+      "Claim the next queued task (or the specified one). Transitions queued -> picked.",
     inputSchema: {
       type: "object",
       properties: {
         project_id: { type: "string" },
         task_id: { type: "string" },
-        lease_ms: { type: "number" },
-      },
-    },
-  },
-  {
-    name: "quad_renew_task",
-    description: "Renew the lease for an in_progress task so it is not reclaimed as stale.",
-    inputSchema: {
-      type: "object",
-      required: ["task_id"],
-      properties: {
-        task_id: { type: "string" },
-        lease_ms: { type: "number" },
       },
     },
   },
@@ -110,54 +90,15 @@ const TOOLS = [
   {
     name: "quad_update_task",
     description:
-      "Update task status, optionally attaching a PR URL. If an external issue is linked and credentials are available, Quad syncs the mapped external state and records sync metadata.",
+      "Update task status, optionally attaching a PR URL. Statuses: picked, in_progress, pr_open, done, wont_do.",
     inputSchema: {
       type: "object",
       required: ["task_id", "status"],
       properties: {
         task_id: { type: "string" },
-        status: { type: "string", enum: TASK_STATUSES },
+        status: { type: "string" },
         pr_url: { type: "string" },
         note: { type: "string" },
-      },
-    },
-  },
-  {
-    name: "quad_list_integrations",
-    description:
-      "List configured issue integrations for accessible projects, including credential source and whether each integration is usable.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        project_id: { type: "string" },
-      },
-    },
-  },
-  {
-    name: "quad_test_integration",
-    description:
-      "Test an issue integration for a project. Optionally checks a specific issue/work item id.",
-    inputSchema: {
-      type: "object",
-      required: ["project_id"],
-      properties: {
-        project_id: { type: "string" },
-        provider: { type: "string", enum: ["azure-devops", "github-issues", "mock"] },
-        issue_id: { type: ["string", "number"] },
-      },
-    },
-  },
-  {
-    name: "quad_link_issue",
-    description:
-      "Link a Quad task to an external issue. Azure DevOps is the current provider; this also moves the external issue to the configured report-submitted state.",
-    inputSchema: {
-      type: "object",
-      required: ["task_id", "issue_id"],
-      properties: {
-        task_id: { type: "string" },
-        provider: { type: "string", enum: ["azure-devops", "github-issues", "mock"] },
-        issue_id: { type: ["string", "number"] },
       },
     },
   },
@@ -238,13 +179,10 @@ const TOOLS = [
 ] as const;
 
 type ListTasksArgs = { project_id?: string; status?: string; query?: string; limit?: number };
-type PickArgs = { project_id?: string; task_id?: string; lease_ms?: number };
+type PickArgs = { project_id?: string; task_id?: string };
 type GetArgs = { task_id: string };
-type RenewArgs = { task_id: string; lease_ms?: number };
 type UpdateArgs = { task_id: string; status: string; pr_url?: string; note?: string };
 type CommentArgs = { task_id: string; body: string; level?: string; video_ms?: number };
-type IntegrationArgs = { project_id?: string; provider?: string; issue_id?: string | number };
-type LinkIssueArgs = { task_id: string; provider?: string; issue_id: string | number };
 
 const server = new Server(
   { name: "quad-mcp", version: VERSION },
@@ -257,10 +195,6 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   const { name, arguments: args = {} } = req.params;
   try {
     switch (name) {
-      case "quad_doctor": {
-        const r = await api<Record<string, unknown>>("/api/mcp/doctor");
-        return text("```json\n" + JSON.stringify(r, null, 2) + "\n```");
-      }
       case "quad_list_tasks": {
         const a = args as ListTasksArgs;
         const qs = new URLSearchParams();
@@ -274,27 +208,12 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       case "quad_pick_task": {
         const r = await api<{ task: Record<string, unknown> | null; error?: string }>(
           "/api/mcp/tasks/pick",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              projectId: (args as PickArgs).project_id,
-              taskId: (args as PickArgs).task_id,
-              leaseMs: (args as PickArgs).lease_ms,
-            }),
-          },
+          { method: "POST", body: JSON.stringify(args as PickArgs) },
         );
-        if (!r.task) return text(`No To Do task available${r.error ? ` (${r.error})` : ""}.`);
+        if (!r.task) return text(`No queued task available${r.error ? ` (${r.error})` : ""}.`);
         // Immediately fetch the full brief so the agent can act in one round.
         const full = await fetchTask(((r.task as { id: string }).id));
         return briefContent(full);
-      }
-      case "quad_renew_task": {
-        const a = args as RenewArgs;
-        const r = await api<Record<string, unknown>>(`/api/mcp/tasks/${a.task_id}/lease`, {
-          method: "POST",
-          body: JSON.stringify({ leaseMs: a.lease_ms }),
-        });
-        return text("```json\n" + JSON.stringify(r, null, 2) + "\n```");
       }
       case "quad_get_task": {
         const a = args as GetArgs;
@@ -303,14 +222,11 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       }
       case "quad_update_task": {
         const a = args as UpdateArgs;
-        const r = await api<Record<string, unknown>>(`/api/mcp/tasks/${a.task_id}/status`, {
+        await api(`/api/mcp/tasks/${a.task_id}/status`, {
           method: "POST",
           body: JSON.stringify({ status: a.status, prUrl: a.pr_url, note: a.note }),
         });
-        return text(
-          `task ${a.task_id} → ${a.status}${a.pr_url ? ` (${a.pr_url})` : ""}\n` +
-            "```json\n" + JSON.stringify(r, null, 2) + "\n```",
-        );
+        return text(`task ${a.task_id} → ${a.status}${a.pr_url ? ` (${a.pr_url})` : ""}`);
       }
       case "quad_post_comment": {
         const a = args as CommentArgs;
@@ -323,36 +239,6 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
           }),
         });
         return text(`comment posted (id: ${r.id})`);
-      }
-      case "quad_list_integrations": {
-        const a = args as IntegrationArgs;
-        const qs = new URLSearchParams();
-        if (a.project_id) qs.set("project_id", a.project_id);
-        const r = await api<Record<string, unknown>>(`/api/mcp/integrations?${qs.toString()}`);
-        return text("```json\n" + JSON.stringify(r, null, 2) + "\n```");
-      }
-      case "quad_test_integration": {
-        const a = args as IntegrationArgs;
-        const r = await api<Record<string, unknown>>("/api/mcp/integrations", {
-          method: "POST",
-          body: JSON.stringify({
-            projectId: a.project_id,
-            provider: a.provider ?? "azure-devops",
-            issueId: a.issue_id,
-          }),
-        });
-        return text("```json\n" + JSON.stringify(r, null, 2) + "\n```");
-      }
-      case "quad_link_issue": {
-        const a = args as LinkIssueArgs;
-        const r = await api<Record<string, unknown>>(`/api/mcp/tasks/${a.task_id}/issue`, {
-          method: "POST",
-          body: JSON.stringify({
-            provider: a.provider ?? "azure-devops",
-            issueId: a.issue_id,
-          }),
-        });
-        return text("```json\n" + JSON.stringify(r, null, 2) + "\n```");
       }
       case "quad_search_tasks": {
         const a = args as { query: string; project_id?: string; limit?: number };

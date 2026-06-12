@@ -8,7 +8,6 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "~/db";
 import { authMcpRequest, projectAllowed } from "~/lib/mcp-auth";
 import { getBytes, presignDownload } from "~/lib/storage";
-import { externalIssuePayload, getTaskExternalIssue } from "~/server/integrations/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,20 +34,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const markdownBytes = await getBytes(task.briefStorageKey);
   const markdown = Buffer.from(markdownBytes).toString("utf8");
 
-  // Frames (kind=frame) and standalone screenshot attachments for the same bug.
-  // Screenshot-only reports do not produce video keyframes, but agents still
-  // need the image content in the MCP response.
+  // Frames (kind=frame) for the same bug
   const atts = await db
     .select()
     .from(schema.attachments)
     .where(eq(schema.attachments.bugReportId, task.bugReportId));
   const frames = atts
-    .filter(
-      (a) =>
-        (a.kind === "frame" ||
-          (a.kind === "screenshot" && a.mime.startsWith("image/"))) &&
-        a.sizeBytes <= MAX_FRAME_BYTES,
-    )
+    .filter((a) => a.kind === "frame" && a.sizeBytes <= MAX_FRAME_BYTES)
     .slice(0, MAX_FRAMES_INLINED);
   const video = atts.find((a) => a.kind === "video");
   const audio = atts.find((a) => a.kind === "audio");
@@ -60,7 +52,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return {
         tMs: f.tMs ?? 0,
         mime: f.mime,
-        kind: f.kind,
         data: Buffer.from(bytes).toString("base64"),
       };
     }),
@@ -71,7 +62,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const timelineText = timeline
     ? Buffer.from(await getBytes(timeline.storageKey)).toString("utf8")
     : undefined;
-  const externalIssue = await getTaskExternalIssue(task.id);
 
   return NextResponse.json({
     task: {
@@ -82,11 +72,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       status: task.status,
       maintainerInstruction: task.maintainerInstruction,
       prUrl: task.prUrl,
-      azureWorkItemId: task.azureWorkItemId,
-      azureWorkItemUrl: task.azureWorkItemUrl,
-      claimedAt: task.claimedAt,
-      leaseExpiresAt: task.leaseExpiresAt,
-      externalIssue: externalIssuePayload(task, externalIssue),
     },
     markdown,
     frames: inlineFrames,

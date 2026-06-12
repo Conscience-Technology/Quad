@@ -6,8 +6,6 @@ import type {
   HTMLAttributes,
   InputHTMLAttributes,
   ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
 } from "react";
 
 const EASE = {
@@ -28,20 +26,20 @@ export function Button({
   size?: "sm" | "md";
 }) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition disabled:opacity-40 disabled:cursor-not-allowed select-none whitespace-nowrap";
+    "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition disabled:opacity-40 disabled:cursor-not-allowed select-none";
   const sizes: Record<typeof size, string> = {
-    sm: "min-h-7 px-2.5 py-1 text-xs",
-    md: "min-h-9 px-3.5 py-2 text-[13px]",
+    sm: "px-2.5 py-1 text-xs",
+    md: "px-3 py-1.5 text-[13px]",
   };
   const styles: Record<typeof variant, string> = {
     primary:
-      "bg-nebula-violet text-space-void hover:bg-nebula-cyan shadow-[0_0_0_1px_var(--color-nebula-violet)]",
+      "bg-nebula-violet text-space-void hover:opacity-90 shadow-[0_0_0_1px_var(--color-nebula-violet)]",
     ghost:
-      "text-star-300 hover:text-star-100 hover:bg-space-hover border border-transparent hover:border-space-border",
+      "text-star-300 hover:text-star-100 hover:bg-space-hover",
     subtle:
-      "text-star-500 hover:text-star-100 hover:bg-space-hover border border-transparent hover:border-space-border",
+      "text-star-500 hover:text-star-100 hover:bg-space-hover",
     danger:
-      "text-nebula-rose hover:bg-nebula-rose/10 border border-transparent hover:border-nebula-rose/30",
+      "text-nebula-rose hover:bg-nebula-rose/10",
   };
   return (
     <button
@@ -63,33 +61,7 @@ export function Input({
   return (
     <input
       {...rest}
-      className={`w-full min-h-9 rounded-md border border-space-border bg-space-void/60 px-3 py-2 text-sm text-star-100 outline-none transition-colors placeholder:text-star-700 hover:border-space-border-strong focus:border-nebula-violet focus:bg-space-void focus:shadow-none ${className}`}
-      style={{ ...EASE, boxShadow: "none", ...(rest.style ?? {}) }}
-    />
-  );
-}
-
-export function Select({
-  className = "",
-  ...rest
-}: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      {...rest}
-      className={`w-full min-h-9 rounded-md border border-space-border bg-space-void/60 px-3 py-2 text-sm text-star-100 outline-none transition-colors hover:border-space-border-strong focus:border-nebula-violet focus:bg-space-void focus:shadow-none ${className}`}
-      style={{ ...EASE, boxShadow: "none", ...(rest.style ?? {}) }}
-    />
-  );
-}
-
-export function Textarea({
-  className = "",
-  ...rest
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      {...rest}
-      className={`w-full min-h-24 resize-y rounded-md border border-space-border bg-space-void/60 p-3 text-sm text-star-100 outline-none transition-colors placeholder:text-star-700 hover:border-space-border-strong focus:border-nebula-violet focus:bg-space-void ${className}`}
+      className={`w-full bg-transparent border-0 border-b border-space-border text-star-100 text-sm py-2 outline-none focus:border-nebula-violet focus:shadow-none transition-colors placeholder:text-star-700 ${className}`}
       style={{ ...EASE, boxShadow: "none", ...(rest.style ?? {}) }}
     />
   );
@@ -129,7 +101,7 @@ export function Surface({
   return (
     <div
       {...rest}
-      className={`bg-space-surface/95 rounded-lg border border-space-border p-5 shadow-[0_1px_0_rgba(255,255,255,0.03),0_12px_32px_rgba(0,0,0,0.16)] ${className}`}
+      className={`bg-space-surface rounded-lg border border-space-border p-5 ${className}`}
     >
       {children}
     </div>
@@ -147,7 +119,7 @@ export function Code({
 }) {
   return (
     <code
-      className={`font-mono text-[12px] leading-relaxed bg-space-void text-star-300 px-1.5 py-0.5 rounded border border-space-border ${className}`}
+      className={`font-mono text-xs bg-space-void text-star-300 px-1.5 py-0.5 rounded border border-space-border ${className}`}
     >
       {children}
     </code>
@@ -158,7 +130,7 @@ export function Code({
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-space-border-strong bg-space-elevated px-1 font-mono text-[11px] text-star-500">
+    <kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-mono bg-space-elevated border border-space-border-strong rounded text-star-500">
       {children}
     </kbd>
   );
@@ -168,13 +140,12 @@ export function Kbd({ children }: { children: ReactNode }) {
 
 export type BugStatus = "new" | "triaging" | "confirmed" | "resolved" | "wont_do";
 export type TaskStatus =
-  | "to_do"
+  | "queued"
+  | "picked"
   | "in_progress"
-  | "reviewed"
-  | "resolved"
-  | "published"
+  | "pr_open"
   | "done"
-  | "canceled";
+  | "wont_do";
 
 const BUG_DOT: Record<BugStatus, { color: string; label: string }> = {
   new: { color: "var(--color-nebula-cyan)", label: "New" },
@@ -184,13 +155,12 @@ const BUG_DOT: Record<BugStatus, { color: string; label: string }> = {
   wont_do: { color: "var(--color-star-500)", label: "Won't do" },
 };
 const TASK_DOT: Record<TaskStatus, { color: string; label: string }> = {
-  to_do: { color: "var(--color-nebula-cyan)", label: "To Do" },
-  in_progress: { color: "var(--color-nebula-amber)", label: "In Progress" },
-  reviewed: { color: "var(--color-nebula-violet)", label: "Reviewed" },
-  resolved: { color: "var(--color-nebula-green)", label: "Resolved" },
-  published: { color: "var(--color-nebula-violet)", label: "Published" },
+  queued: { color: "var(--color-nebula-cyan)", label: "Queued" },
+  picked: { color: "var(--color-nebula-amber)", label: "Picked" },
+  in_progress: { color: "var(--color-nebula-amber)", label: "In progress" },
+  pr_open: { color: "var(--color-nebula-violet)", label: "PR open" },
   done: { color: "var(--color-nebula-green)", label: "Done" },
-  canceled: { color: "var(--color-star-500)", label: "Canceled" },
+  wont_do: { color: "var(--color-star-500)", label: "Won't do" },
 };
 
 export function StatusDot({
@@ -211,7 +181,7 @@ export function StatusDot({
   };
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-star-500 ${className}`}
+      className={`inline-flex items-center gap-1.5 text-2xs uppercase tracking-wider text-star-500 ${className}`}
     >
       <span
         className="inline-block w-1.5 h-1.5 rounded-full"
@@ -331,7 +301,7 @@ export function Pill({
   };
   return (
     <span
-      className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-wider ${tones[tone]}`}
+      className={`inline-flex items-center px-1.5 py-0.5 text-2xs font-mono uppercase tracking-wider rounded border ${tones[tone]}`}
     >
       {children}
     </span>
@@ -415,7 +385,7 @@ export function ShortId({
   prefix?: string;
 }) {
   return (
-    <span className="font-mono text-[11px] text-star-500 uppercase">
+    <span className="font-mono text-2xs text-star-500 uppercase">
       {prefix}-{id.replace(/-/g, "").slice(0, 6).toUpperCase()}
     </span>
   );
@@ -425,7 +395,7 @@ export function ShortId({
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <h2 className="text-[11px] uppercase tracking-wider text-star-500 font-medium">
+    <h2 className="text-2xs uppercase tracking-wider text-star-500 font-medium">
       {children}
     </h2>
   );

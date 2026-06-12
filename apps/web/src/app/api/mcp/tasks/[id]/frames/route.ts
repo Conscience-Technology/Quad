@@ -5,7 +5,7 @@
  *   specific time window.
  */
 import { NextResponse } from "next/server";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { db, schema } from "~/db";
 import { authMcpRequest, projectAllowed } from "~/lib/mcp-auth";
 import { getBytes } from "~/lib/storage";
@@ -39,28 +39,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const frames = await db
     .select()
     .from(schema.attachments)
-    .where(eq(schema.attachments.bugReportId, task.bugReportId))
-    .orderBy(asc(schema.attachments.tMs));
+    .where(
+      and(
+        eq(schema.attachments.bugReportId, task.bugReportId),
+        eq(schema.attachments.kind, "frame"),
+        gte(schema.attachments.tMs, fromMs),
+        lte(schema.attachments.tMs, toMs),
+      ),
+    )
+    .orderBy(asc(schema.attachments.tMs))
+    .limit(limit);
 
   const out = await Promise.all(
     frames
-      .filter(
-        (f) => {
-          const tMs = f.tMs ?? 0;
-          return (
-            (f.kind === "frame" ||
-              (f.kind === "screenshot" && f.mime.startsWith("image/"))) &&
-            f.sizeBytes <= MAX_PER_FRAME &&
-            tMs >= fromMs &&
-            tMs <= toMs
-          );
-        },
-      )
-      .slice(0, limit)
+      .filter((f) => f.sizeBytes <= MAX_PER_FRAME)
       .map(async (f) => ({
         tMs: f.tMs ?? 0,
         mime: f.mime,
-        kind: f.kind,
         data: Buffer.from(await getBytes(f.storageKey)).toString("base64"),
       })),
   );

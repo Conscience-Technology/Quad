@@ -10,7 +10,6 @@ export function McpKeysPanel({
   projects: Array<{ id: string; slug: string; name: string }>;
 }) {
   const list = trpc.apiKeys.listMine.useQuery();
-  const integrations = trpc.integrations.listMine.useQuery();
   const utils = trpc.useUtils();
   const create = trpc.apiKeys.createMcp.useMutation({
     onSuccess: async (res) => {
@@ -26,19 +25,8 @@ export function McpKeysPanel({
   const revoke = trpc.apiKeys.revoke.useMutation({
     onSettled: () => utils.apiKeys.listMine.invalidate(),
   });
-  const saveAzurePat = trpc.integrations.saveAzureDevOpsPat.useMutation({
-    onSuccess: async () => {
-      setAzurePat("");
-      await utils.integrations.listMine.invalidate();
-    },
-  });
-  const deleteAzurePat = trpc.integrations.deleteAzureDevOpsPat.useMutation({
-    onSettled: () => utils.integrations.listMine.invalidate(),
-  });
 
   const [label, setLabel] = useState("");
-  const [azureOrg, setAzureOrg] = useState("");
-  const [azurePat, setAzurePat] = useState("");
   const [selectedProjects, setSelectedProjects] = useState<string[]>(
     projects.map((p) => p.id),
   );
@@ -53,83 +41,6 @@ export function McpKeysPanel({
 
   return (
     <div className="space-y-6">
-      <Surface>
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!azureOrg.trim() || !azurePat.trim()) return;
-            saveAzurePat.mutate({
-              organization: azureOrg.trim(),
-              pat: azurePat.trim(),
-            });
-          }}
-        >
-          <div>
-            <h2 className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">
-              Azure DevOps identity
-            </h2>
-            <p className="mt-1 text-xs text-[var(--color-star-500)]">
-              Used when your Quad comments or MCP actions sync to Azure Boards.
-              The token is encrypted and never shown again.
-            </p>
-          </div>
-          <Field label="Organization">
-            <Input
-              type="text"
-              value={azureOrg}
-              onChange={(e) => setAzureOrg(e.currentTarget.value)}
-              placeholder="SG-Collaboration-Projects"
-            />
-          </Field>
-          <Field label="Personal access token" hint="Minimum scope: Work Items read/write">
-            <Input
-              type="password"
-              value={azurePat}
-              onChange={(e) => setAzurePat(e.currentTarget.value)}
-              placeholder="Azure DevOps PAT"
-            />
-          </Field>
-          {saveAzurePat.error && (
-            <p className="text-sm text-[var(--color-nebula-rose)]">{saveAzurePat.error.message}</p>
-          )}
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={!azureOrg.trim() || !azurePat.trim() || saveAzurePat.isPending}
-          >
-            {saveAzurePat.isPending ? "…" : "Save Azure DevOps PAT"}
-          </Button>
-        </form>
-      </Surface>
-
-      <div className="space-y-2">
-        <h2 className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">
-          My Azure DevOps tokens
-        </h2>
-        {integrations.isLoading && <p className="text-sm text-[var(--color-star-500)]">…</p>}
-        {integrations.data?.length === 0 && (
-          <p className="text-sm text-[var(--color-star-500)]">None yet.</p>
-        )}
-        {integrations.data?.map((i) => (
-          <Surface key={i.id} className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-sm text-[var(--color-star-100)]">{i.organization}</p>
-              <p className="text-xs text-[var(--color-star-500)] font-mono">
-                {i.secretPrefix ? `${i.secretPrefix}…` : "saved"} · updated {i.updatedAt.toISOString().slice(0, 10)}
-              </p>
-            </div>
-            <Button
-              variant="danger"
-              disabled={deleteAzurePat.isPending}
-              onClick={() => deleteAzurePat.mutate({ organization: i.organization })}
-            >
-              delete
-            </Button>
-          </Surface>
-        ))}
-      </div>
-
       <Surface>
         <form
           className="space-y-4"

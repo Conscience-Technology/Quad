@@ -6,11 +6,8 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { schema } from "~/db";
-import { addAzureWorkItemComment, getAzureDevOpsPatForUser } from "~/lib/azure-devops";
 import { buildTaskBrief } from "~/lib/brief";
 import { presignDownload } from "~/lib/storage";
-import { AZURE_DEVOPS_PROVIDER_ID } from "~/server/integrations/azure-devops";
-import { getAzureDevOpsConfig, upsertTaskExternalIssue } from "~/server/integrations/store";
 import { projectMemberProcedure } from "../auth-procedures";
 import { router } from "../trpc";
 
@@ -82,26 +79,14 @@ export const bugsRouter = router({
           .where(eq(schema.bugOccurrences.bugReportId, bug.id)),
       ]);
 
-      // Signed URLs for video / audio / screenshots / frames (10 min);
-      // transcript inlined.
+      // Signed URLs for video / audio / frames (10 min); transcript inlined.
       const video = attachments.find((a) => a.kind === "video");
       const audio = attachments.find((a) => a.kind === "audio");
-      const screenshots = attachments.filter(
-        (a) => a.kind === "screenshot" && a.mime.startsWith("image/"),
-      );
       const frames = attachments.filter((a) => a.kind === "frame");
 
-      const [videoUrl, audioUrl, screenshotUrls, frameUrls] = await Promise.all([
+      const [videoUrl, audioUrl, frameUrls] = await Promise.all([
         video ? presignDownload(video.storageKey, 600) : Promise.resolve(undefined),
         audio ? presignDownload(audio.storageKey, 600) : Promise.resolve(undefined),
-        Promise.all(
-          screenshots.map(async (s) => ({
-            id: s.id,
-            mime: s.mime,
-            sizeBytes: s.sizeBytes,
-            url: await presignDownload(s.storageKey, 600),
-          })),
-        ),
         Promise.all(
           frames.map(async (f) => ({
             id: f.id,
@@ -128,13 +113,7 @@ export const bugsRouter = router({
         attachments,
         comments,
         occurrences,
-        media: {
-          videoUrl,
-          audioUrl,
-          screenshots: screenshotUrls,
-          frames: frameUrls,
-          videoDurationMs: video?.durationMs ?? null,
-        },
+        media: { videoUrl, audioUrl, frames: frameUrls, videoDurationMs: video?.durationMs ?? null },
         transcript,
       };
     }),
@@ -230,66 +209,6 @@ export const bugsRouter = router({
           body: input.body,
         })
         .returning();
-      const [task] = await ctx.db
-        .select()
-        .from(schema.tasks)
-        .where(eq(schema.tasks.bugReportId, input.bugId))
-        .limit(1);
-      if (task?.azureWorkItemId) {
-        const [project] = await ctx.db
-          .select()
-          .from(schema.projects)
-          .where(eq(schema.projects.id, input.projectId))
-          .limit(1);
-        try {
-          const azureDevOpsConfig = project ? await getAzureDevOpsConfig(project) : null;
-          const azurePat = await getAzureDevOpsPatForUser(
-            ctx.user.id,
-            azureDevOpsConfig?.organization,
-          );
-          await addAzureWorkItemComment(
-            azureDevOpsConfig,
-            task.azureWorkItemId,
-            `Quad comment from ${ctx.user.email}:\n\n${input.body}`,
-            azurePat,
-          );
-          await upsertTaskExternalIssue({
-            taskId: task.id,
-            provider: AZURE_DEVOPS_PROVIDER_ID,
-            externalId: task.azureWorkItemId,
-            externalUrl: task.azureWorkItemUrl,
-            syncStatus: "synced",
-            syncError: null,
-          });
-          await ctx.db.insert(schema.taskEvents).values({
-            taskId: task.id,
-            kind: "comment_added",
-            actorUserId: ctx.user.id,
-            payload: { commentId: comment?.id, azureDevOps: { synced: true } },
-          });
-        } catch (err) {
-          await upsertTaskExternalIssue({
-            taskId: task.id,
-            provider: AZURE_DEVOPS_PROVIDER_ID,
-            externalId: task.azureWorkItemId,
-            externalUrl: task.azureWorkItemUrl,
-            syncStatus: "failed",
-            syncError: err instanceof Error ? err.message : String(err),
-          });
-          await ctx.db.insert(schema.taskEvents).values({
-            taskId: task.id,
-            kind: "comment_added",
-            actorUserId: ctx.user.id,
-            payload: {
-              commentId: comment?.id,
-              azureDevOps: {
-                synced: false,
-                error: err instanceof Error ? err.message : String(err),
-              },
-            },
-          });
-        }
-      }
       return comment;
     }),
 });

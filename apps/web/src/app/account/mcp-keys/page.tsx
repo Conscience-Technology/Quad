@@ -15,10 +15,10 @@ export default async function McpKeysPage() {
   return (
     <main className="min-h-screen px-10 py-8 max-w-3xl mx-auto space-y-8">
       <header className="space-y-1">
-        <h1 className="text-2xl tracking-tight">Account integrations</h1>
+        <h1 className="text-2xl tracking-tight">MCP keys</h1>
         <p className="text-sm text-[var(--color-star-500)]">
-          Save your Azure DevOps identity and issue keys used by Claude Code
-          or `@quad/cli`.
+          Keys used by Claude Code or `@quad/cli`. Issued per user;
+          the accessible project list is baked into the key.
         </p>
         <p className="text-xs text-[var(--color-star-500)] font-mono">{user.email}</p>
       </header>

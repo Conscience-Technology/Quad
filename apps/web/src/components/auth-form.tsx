@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { Button, Field, Input } from "~/components/ui";
 import { trpc } from "~/lib/trpc/react";
 
 type Mode = "login" | "signup";
@@ -97,7 +96,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             <Input
               type="text"
               value={name}
-              onChange={(e) => setName(e.currentTarget.value)}
+              onChange={(v) => setName(v)}
               autoComplete="name"
               placeholder="Jane Doe"
             />
@@ -107,7 +106,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           <Input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.currentTarget.value)}
+            onChange={(v) => setEmail(v)}
             required
             autoComplete="email"
             placeholder="you@example.com"
@@ -117,7 +116,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           <Input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.currentTarget.value)}
+            onChange={(v) => setPassword(v)}
             required
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             placeholder={mode === "signup" ? "8+ characters" : ""}
@@ -131,14 +130,17 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </p>
       )}
 
-      <Button
+      <button
         type="submit"
-        variant="primary"
         disabled={submitting}
-        className="w-full"
+        className="w-full py-2.5 text-sm rounded-md bg-[var(--color-nebula-violet)] text-[var(--color-space-void)] hover:opacity-90 disabled:opacity-40 transition-opacity"
+        style={{
+          transitionTimingFunction: "var(--ease-cosmos)",
+          transitionDuration: "160ms",
+        }}
       >
         {submitting ? "..." : mode === "login" ? "Sign in" : "Sign up"}
-      </Button>
+      </button>
 
       <p className="text-center text-xs text-[var(--color-star-500)]">
         {mode === "login" ? (
@@ -158,5 +160,44 @@ export function AuthForm({ mode }: { mode: Mode }) {
         )}
       </p>
     </form>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-xs text-[var(--color-star-500)] tracking-wide uppercase">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function Input({
+  type,
+  value,
+  onChange,
+  ...rest
+}: {
+  type: "text" | "email" | "password";
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  autoComplete?: string;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.currentTarget.value)}
+      className="w-full bg-transparent border-0 border-b border-[var(--color-space-border)] text-[var(--color-star-100)] text-sm py-2 outline-none focus:border-[var(--color-nebula-violet)] transition-colors"
+      style={{
+        transitionTimingFunction: "var(--ease-cosmos)",
+        transitionDuration: "160ms",
+      }}
+      {...rest}
+    />
   );
 }

@@ -14,7 +14,7 @@ export function TopBar({
 }) {
   return (
     <header
-      className="sticky top-0 z-30 flex min-h-12 items-center justify-between gap-4 border-b border-space-border bg-space-bg/90 px-4 py-2.5 backdrop-blur sm:px-6"
+      className="sticky top-0 z-30 flex items-center justify-between gap-4 px-6 py-2.5 border-b border-space-border bg-space-bg/80 backdrop-blur"
     >
       <Breadcrumb items={breadcrumb} />
 
@@ -25,7 +25,7 @@ export function TopBar({
             const ev = new KeyboardEvent("keydown", { key: "k", metaKey: true });
             window.dispatchEvent(ev);
           }}
-          className="hidden min-h-8 items-center gap-2 rounded-md border border-space-border bg-space-surface px-2.5 py-1 text-xs text-star-500 transition-colors hover:border-space-border-strong hover:bg-space-hover hover:text-star-100 sm:flex"
+          className="hidden sm:flex items-center gap-2 px-2.5 py-1 text-xs text-star-500 hover:text-star-100 bg-space-surface hover:bg-space-hover rounded-md border border-space-border transition-colors"
           style={{
             transitionTimingFunction: "var(--ease-cosmos)",
             transitionDuration: "160ms",
@@ -41,7 +41,7 @@ export function TopBar({
         {user && (
           <Link
             href="/account/mcp-keys"
-            className="ml-1 flex min-h-8 items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-space-hover"
+            className="flex items-center gap-2 ml-1 px-1.5 py-1 rounded hover:bg-space-hover transition-colors"
             style={{
               transitionTimingFunction: "var(--ease-cosmos)",
               transitionDuration: "160ms",

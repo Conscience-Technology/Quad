@@ -1,4 +1,4 @@
-import { Q as QuadOptions } from './types-0Tew8_NE.js';
+import { Q as QuadOptions } from './types-CJ24_5ap.js';
 
 type CaptureMode = "screen+mic" | "mic-only";
 
@@ -9,7 +9,6 @@ declare class QuadApi {
     private bugMode?;
     private capture?;
     private reveal?;
-    private optKey;
     private user?;
     private context;
     private consoleRing;
@@ -45,15 +44,6 @@ declare class QuadApi {
     private toggleOverlay;
     private openPinForm;
     private submitOverlay;
-    private reporter;
-    private reporterName;
-    private setReporterName;
-    private getAzureDevOpsPatStatus;
-    private saveAzureDevOpsPat;
-    private deleteAzureDevOpsPat;
-    private searchAzureDevOpsIdentities;
-    private azureContext;
-    private savedAzureContext;
     private snapshotMeta;
     /** Stable anon identifier per-browser, stored as a host-app cookie. */
     private ensureAnonKey;

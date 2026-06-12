@@ -6,7 +6,6 @@
  * report with optional attachments via presigned upload).
  */
 import type { PinPayload, ReportMeta } from "./types";
-import type { AzureDevOpsIdentity } from "./types";
 
 export type ApiConfig = {
   apiKey: string;
@@ -85,67 +84,12 @@ export class Api {
       mode: "cors",
       credentials: "omit",
     });
-    if (!res.ok) throw new Error(`내 제보 목록 불러오기 실패 (${res.status})`);
+    if (!res.ok) throw new Error(`listMyPins ${res.status}`);
     return res.json() as Promise<{ pins: ServerPin[] }>;
   }
 
   async createSession(input: IngestSessionInput): Promise<{ id: string }> {
     return this.postJson("/api/ingest/session", input);
-  }
-
-  async getAzureDevOpsPatStatus(reporterAnonKey: string): Promise<{ configured: boolean; prefix?: string | null }> {
-    const qs = new URLSearchParams({ reporter_anon: reporterAnonKey });
-    const res = await fetch(this.url(`/api/ingest/integrations/azure-devops?${qs.toString()}`), {
-      method: "GET",
-      headers: {
-        "x-quad-key": this.cfg.apiKey,
-        "x-quad-sdk-version": this.cfg.version,
-      },
-      mode: "cors",
-      credentials: "omit",
-    });
-    if (!res.ok) throw new Error(`Azure DevOps PAT 상태 확인 실패 (${res.status})`);
-    return res.json() as Promise<{ configured: boolean; prefix?: string | null }>;
-  }
-
-  async saveAzureDevOpsPat(
-    reporterAnonKey: string,
-    pat: string,
-  ): Promise<{ configured: boolean; prefix?: string | null }> {
-    return this.postJson("/api/ingest/integrations/azure-devops", {
-      reporterAnonKey,
-      pat,
-    });
-  }
-
-  async deleteAzureDevOpsPat(reporterAnonKey: string): Promise<{ configured: boolean }> {
-    const res = await fetch(this.url("/api/ingest/integrations/azure-devops"), {
-      method: "DELETE",
-      headers: this.headers(),
-      body: JSON.stringify({ reporterAnonKey }),
-      credentials: "omit",
-      mode: "cors",
-    });
-    if (!res.ok) throw new Error(`Azure DevOps PAT 삭제 실패 (${res.status})`);
-    return res.json() as Promise<{ configured: boolean }>;
-  }
-
-  async searchAzureDevOpsIdentities(
-    reporterAnonKey: string,
-    query: string,
-  ): Promise<{ identities: AzureDevOpsIdentity[] }> {
-    const qs = new URLSearchParams({ reporter_anon: reporterAnonKey, q: query });
-    const res = await fetch(this.url(`/api/ingest/azure-devops/identities?${qs.toString()}`), {
-      method: "GET",
-      headers: {
-        "x-quad-key": this.cfg.apiKey,
-        "x-quad-sdk-version": this.cfg.version,
-      },
-      mode: "cors",
-      credentials: "omit",
-    });
-    if (!res.ok) throw new Error(`Azure DevOps 사용자 검색 실패 (${res.status})`);
-    return res.json() as Promise<{ identities: AzureDevOpsIdentity[] }>;
   }
 
   async presignUpload(input: {
@@ -175,7 +119,7 @@ export class Api {
     form.append("file", blob, filename);
     const res = await fetch(sign.url, { method: "POST", body: form });
     if (!res.ok) {
-      throw new Error(`파일 업로드 실패 (${res.status})`);
+      throw new Error(`upload failed: ${res.status}`);
     }
     return { key: sign.key, mime, sizeBytes: blob.size };
   }
@@ -196,7 +140,7 @@ export class Api {
     if (!res.ok) {
       let detail = "";
       try { detail = await res.text(); } catch { /* ignore */ }
-      throw new Error(`Quad 요청 실패 (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+      throw new Error(`Quad ${path} ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
     }
     return res.json() as Promise<T>;
   }

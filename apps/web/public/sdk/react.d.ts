@@ -1,6 +1,6 @@
 import * as react from 'react';
 import { ReactNode } from 'react';
-import { Q as QuadOptions } from './types-0Tew8_NE.js';
+import { Q as QuadOptions } from './types-CJ24_5ap.js';
 
 type QuadProviderProps = QuadOptions & {
     children: ReactNode;

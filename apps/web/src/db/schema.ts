@@ -70,13 +70,12 @@ export const attachmentKind = pgEnum("attachment_kind", [
 ]);
 
 export const taskStatus = pgEnum("task_status", [
-  "to_do",
+  "queued",
+  "picked",
   "in_progress",
-  "reviewed",
-  "resolved",
-  "published",
+  "pr_open",
   "done",
-  "canceled",
+  "wont_do",
 ]);
 
 export const taskEventKind = pgEnum("task_event_kind", [
@@ -165,19 +164,6 @@ export type ProjectRepo = {
   pathPrefix?: string;
 };
 
-export type AzureDevOpsConfig = {
-  enabled?: boolean;
-  organization?: string;
-  project?: string;
-  reportState?: string;
-  stateMap?: Partial<Record<
-    "to_do" | "in_progress" | "reviewed" | "resolved" | "published" | "done" | "canceled",
-    string
-  >>;
-};
-
-export type ProjectIntegrationConfig = Record<string, unknown>;
-
 export const projects = pgTable(
   "projects",
   {
@@ -186,7 +172,6 @@ export const projects = pgTable(
     name: text("name").notNull(),
     allowedOrigins: text("allowed_origins").array().notNull().default(sql`'{}'`),
     repo: jsonb("repo").$type<ProjectRepo | null>(),
-    azureDevOps: jsonb("azure_devops").$type<AzureDevOpsConfig | null>(),
     createdByUserId: uuid("created_by_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
@@ -199,28 +184,6 @@ export const projects = pgTable(
   },
   (t) => ({
     slugUq: uniqueIndex("projects_slug_uq").on(t.slug),
-  }),
-);
-
-export const projectIntegrations = pgTable(
-  "project_integrations",
-  {
-    projectId: uuid("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull(),
-    enabled: boolean("enabled").notNull().default(false),
-    config: jsonb("config").$type<ProjectIntegrationConfig>().notNull().default(sql`'{}'::jsonb`),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (t) => ({
-    pk: primaryKey({ columns: [t.projectId, t.provider] }),
-    providerIdx: index("project_integrations_provider_idx").on(t.provider),
   }),
 );
 
@@ -329,72 +292,6 @@ export const mcpKeyProjects = pgTable(
   },
   (t) => ({
     pk: primaryKey({ columns: [t.apiKeyId, t.projectId] }),
-  }),
-);
-
-// ---- User integrations -------------------------------------------------------
-
-export const userIntegrations = pgTable(
-  "user_integrations",
-  {
-    id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull(),
-    organization: text("organization").notNull(),
-    secretEncrypted: text("secret_encrypted").notNull(),
-    secretPrefix: text("secret_prefix"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (t) => ({
-    userProviderOrgUq: uniqueIndex("user_integrations_user_provider_org_uq").on(
-      t.userId,
-      t.provider,
-      t.organization,
-    ),
-    userProviderIdx: index("user_integrations_user_provider_idx").on(
-      t.userId,
-      t.provider,
-    ),
-  }),
-);
-
-export const sdkReporterIntegrations = pgTable(
-  "sdk_reporter_integrations",
-  {
-    id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    projectId: uuid("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull(),
-    organization: text("organization").notNull(),
-    reporterAnonKey: text("reporter_anon_key").notNull(),
-    secretEncrypted: text("secret_encrypted").notNull(),
-    secretPrefix: text("secret_prefix"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (t) => ({
-    reporterProviderOrgUq: uniqueIndex("sdk_reporter_integrations_reporter_provider_org_uq").on(
-      t.projectId,
-      t.provider,
-      t.organization,
-      t.reporterAnonKey,
-    ),
-    projectProviderIdx: index("sdk_reporter_integrations_project_provider_idx").on(
-      t.projectId,
-      t.provider,
-    ),
   }),
 );
 
@@ -591,7 +488,7 @@ export const tasks = pgTable(
     bugReportId: uuid("bug_report_id")
       .notNull()
       .references(() => bugReports.id, { onDelete: "cascade" }),
-    status: taskStatus("status").notNull().default("to_do"),
+    status: taskStatus("status").notNull().default("queued"),
     title: text("title").notNull(),
     maintainerInstruction: text("maintainer_instruction"),
     briefStorageKey: text("brief_storage_key").notNull(),
@@ -611,11 +508,7 @@ export const tasks = pgTable(
     claimedByApiKeyId: uuid("claimed_by_api_key_id").references(() => apiKeys.id, {
       onDelete: "set null",
     }),
-    claimedAt: timestamp("claimed_at", { withTimezone: true }),
-    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
     prUrl: text("pr_url"),
-    azureWorkItemId: integer("azure_work_item_id"),
-    azureWorkItemUrl: text("azure_work_item_url"),
     confirmedByUserId: uuid("confirmed_by_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
@@ -631,41 +524,7 @@ export const tasks = pgTable(
       t.projectId,
       t.status,
     ),
-    azureWorkItemIdx: index("tasks_azure_work_item_idx").on(
-      t.projectId,
-      t.azureWorkItemId,
-    ),
     bugUq: uniqueIndex("tasks_bug_uq").on(t.bugReportId),
-  }),
-);
-
-export const taskExternalIssues = pgTable(
-  "task_external_issues",
-  {
-    taskId: uuid("task_id")
-      .notNull()
-      .references(() => tasks.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull(),
-    externalId: text("external_id").notNull(),
-    externalUrl: text("external_url"),
-    title: text("title"),
-    state: text("state"),
-    syncStatus: text("sync_status").notNull().default("unknown"),
-    syncError: text("sync_error"),
-    meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (t) => ({
-    pk: primaryKey({ columns: [t.taskId, t.provider] }),
-    providerExternalIdx: index("task_external_issues_provider_external_idx").on(
-      t.provider,
-      t.externalId,
-    ),
   }),
 );
 
@@ -721,18 +580,14 @@ export const auditLog = pgTable(
 export type Instance = typeof instance.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Project = typeof projects.$inferSelect;
-export type ProjectIntegration = typeof projectIntegrations.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
-export type UserIntegration = typeof userIntegrations.$inferSelect;
-export type SdkReporterIntegration = typeof sdkReporterIntegrations.$inferSelect;
 export type BugReport = typeof bugReports.$inferSelect;
 export type BugOccurrence = typeof bugOccurrences.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type Transcript = typeof transcripts.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
-export type TaskExternalIssue = typeof taskExternalIssues.$inferSelect;
 export type TaskEvent = typeof taskEvents.$inferSelect;
 export type AuditLog = typeof auditLog.$inferSelect;

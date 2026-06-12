@@ -154,26 +154,10 @@ In the host app:
 > if you prefer the OS-modifier style.
 
 Example:
-1. `Alt+Shift+B` (Bug Mode on) — cursor switches to a crosshair, no big section outline
-2. Click the broken element directly → *"Pay button leads to a blank screen"* → Submit
+1. `Alt+Shift+B` (Bug Mode on)
+2. `Option+Click` the broken element → *"Pay button leads to a blank screen"* → Submit
 3. `Alt+Shift+R` → choose **screen + voice** → reproduce while narrating
 4. **■ Stop** → uploads automatically
-
-### Make reports readable: label the elements that matter
-
-Quad auto-resolves a human label for each pinned element so the maintainer
-inbox doesn't read like `div.css-1q2w3e:nth-child(4)`. Resolution order:
-
-1. `data-quad-label="결제 버튼"` &nbsp;← explicit, recommended for critical surfaces
-2. `aria-label`
-3. `data-testid`
-4. trimmed `textContent` of `button` / `a` / `h1-h6` / `label` / `summary`
-5. `placeholder` / `name` on inputs, then `title`
-
-The resolved label becomes the report's title prefix (e.g. `결제 버튼 — Pay
-button leads to a blank screen`) and shows on the bug detail page next to
-the selector. No SDK config needed; just adding `data-quad-label` to the
-elements you care about is enough.
 
 ---
 

@@ -20,16 +20,6 @@ export type QuadOptions = {
   captureNetwork?: boolean; // default true
   video?: { enabled?: boolean; maxDurationMs?: number };
   voice?: { enabled?: boolean };
-  azureDevOps?: {
-    enabled?: boolean;
-    /**
-     * Optional static mention directory for SDK comment autocomplete.
-     * The SDK filters this list locally when a reporter types "@".
-     * On submit, Quad resolves selected emails against Azure DevOps and
-     * writes real Azure mentions into the work item comment.
-     */
-    mentionUsers?: AzureDevOpsMentionUser[];
-  };
   mask?: string[]; // CSS selectors to mask in screenshots/recordings
   commitSha?: string; // host app's git commit SHA (for source-map resolution)
   position?: "right" | "left"; // default "right"
@@ -48,26 +38,6 @@ export type ConsoleEntry = {
   tMs: number;
   level: "log" | "info" | "warn" | "error" | "debug";
   message: string;
-};
-
-export type AzureDevOpsIdentity = {
-  id: string;
-  displayName: string;
-  uniqueName?: string;
-  imageUrl?: string;
-};
-
-export type AzureDevOpsMention = {
-  id: string;
-  displayName?: string;
-  uniqueName?: string;
-};
-
-export type AzureDevOpsMentionUser = {
-  email: string;
-  displayName?: string;
-  subtitle?: string;
-  initials?: string;
 };
 
 export type NetworkEntry = {
@@ -94,9 +64,6 @@ export type PinPayload = {
   pageUrl: string;
   outerHtmlPreview: string;
   body: string;
-  /** Human label for the pinned element (data-quad-label, aria-label,
-   * testid, button text, etc). Used to make reports readable at a glance. */
-  label?: string;
 };
 
 export type ReportMeta = {

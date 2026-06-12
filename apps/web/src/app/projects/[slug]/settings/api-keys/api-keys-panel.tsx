@@ -28,7 +28,7 @@ export function ApiKeysPanel({
   const [lastIssued, setLastIssued] = useState<{ plain: string; prefix: string } | null>(null);
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="space-y-6">
       <Surface>
         <form
           onSubmit={(e) => {
@@ -57,8 +57,8 @@ export function ApiKeysPanel({
       {lastIssued && (
         <Surface className="border border-[var(--color-nebula-violet)]/30">
           <div className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-[var(--color-nebula-violet)] uppercase tracking-wide">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[var(--color-nebula-violet)] uppercase tracking-wide">
                 New key (shown once)
               </p>
               <CopyButton text={lastIssued.plain} />
@@ -69,7 +69,7 @@ export function ApiKeysPanel({
               <summary className="cursor-pointer text-[var(--color-star-500)] hover:text-[var(--color-star-100)]">
                 Install (Next.js / React)
               </summary>
-              <pre className="mt-3 max-w-full overflow-x-auto rounded bg-[var(--color-space-void)] p-4 font-mono text-[12px] leading-relaxed">
+              <pre className="mt-3 p-4 bg-[var(--color-space-void)] rounded text-xs overflow-x-auto font-mono">
 {`npm i @quad/sdk
 
 // app/layout.tsx
@@ -88,7 +88,7 @@ import { QuadProvider } from "@quad/sdk/react";
               <summary className="cursor-pointer text-[var(--color-star-500)] hover:text-[var(--color-star-100)]">
                 Install via &lt;script&gt; (no npm — served from your Quad instance)
               </summary>
-              <pre className="mt-3 max-w-full overflow-x-auto rounded bg-[var(--color-space-void)] p-4 font-mono text-[12px] leading-relaxed">
+              <pre className="mt-3 p-4 bg-[var(--color-space-void)] rounded text-xs overflow-x-auto font-mono">
 {`<!-- Drop this anywhere in your <head> -->
 <script type="module">
   import { quad } from "${typeof window !== "undefined" ? window.location.origin : "https://your-quad.example.com"}/sdk/index.js";
@@ -110,16 +110,16 @@ import { QuadProvider } from "@quad/sdk/react";
       )}
 
       <div className="space-y-2">
-        <h2 className="text-sm uppercase tracking-wide text-[var(--color-star-500)]">Active keys</h2>
+        <h2 className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">Active keys</h2>
         {list.isLoading && <p className="text-sm text-[var(--color-star-500)]">Loading…</p>}
         {list.data?.length === 0 && (
           <p className="text-sm text-[var(--color-star-500)]">No keys issued yet.</p>
         )}
         {list.data?.map((k) => (
-          <Surface key={k.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 space-y-1">
+          <Surface key={k.id} className="flex items-center justify-between">
+            <div className="space-y-1">
               <Code>{k.prefix}…</Code>
-              {k.label && <p className="break-words text-sm text-[var(--color-star-500)]">{k.label}</p>}
+              {k.label && <p className="text-xs text-[var(--color-star-500)]">{k.label}</p>}
               {k.revokedAt && (
                 <p className="text-xs text-[var(--color-nebula-rose)]">revoked</p>
               )}

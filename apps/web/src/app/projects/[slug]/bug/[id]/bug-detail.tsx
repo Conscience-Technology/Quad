@@ -34,9 +34,6 @@ export function BugDetail({
   if (q.isLoading) return <p className="text-sm text-[var(--color-star-500)]">Loading…</p>;
   if (!q.data) return null;
   const { bug, attachments, comments, occurrences, media, transcript } = q.data;
-  const requestedAzureWorkItemId = readAzureWorkItemId(bug.meta);
-  const azureDevOpsSync = readAzureDevOpsSync(bug.meta);
-  const syncMessage = azureDevOpsSync ? describeExternalSync(azureDevOpsSync) : null;
 
   const status = bug.status;
   const videoComments = comments
@@ -44,12 +41,12 @@ export function BugDetail({
     .map((c) => ({ id: c.id, videoMs: c.videoMs ?? 0, authorKind: c.authorKind, body: c.body }));
 
   return (
-    <div className="grid max-w-7xl gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid grid-cols-[1fr_320px] gap-8 max-w-6xl">
       <div className="space-y-6 min-w-0">
         <header className="space-y-2">
           <p className="text-xs text-[var(--color-star-500)] uppercase tracking-wide">{bug.kind} · {status}</p>
-          <h1 className="max-w-4xl text-2xl tracking-tight break-words">{bug.title}</h1>
-          <p className="text-xs text-[var(--color-star-500)] font-mono break-all">{bug.targetRoute ?? "/"} · {bug.pageUrl}</p>
+          <h1 className="text-2xl tracking-tight">{bug.title}</h1>
+          <p className="text-xs text-[var(--color-star-500)] font-mono truncate">{bug.targetRoute ?? "/"} · {bug.pageUrl}</p>
         </header>
 
         {media.videoUrl && (
@@ -71,33 +68,6 @@ export function BugDetail({
           />
         )}
 
-        {media.screenshots.length > 0 && (
-          <Surface className="space-y-3">
-            <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">
-              Screenshots · {media.screenshots.length}
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {media.screenshots.map((s) => (
-                <a
-                  key={s.id}
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block overflow-hidden rounded border border-[var(--color-space-border)] bg-[var(--color-space-surface)]"
-                  title={`${s.mime} · ${s.sizeBytes}B`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={s.url}
-                    alt="Bug report screenshot"
-                    className="block max-h-[420px] w-full object-contain"
-                  />
-                </a>
-              ))}
-            </div>
-          </Surface>
-        )}
-
         {bug.body && (
           <Surface>
             <p className="text-sm text-[var(--color-star-300)] whitespace-pre-wrap">{bug.body}</p>
@@ -107,18 +77,12 @@ export function BugDetail({
         {bug.targetSelector && (
           <Surface className="space-y-2">
             <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">Target element</p>
-            {typeof bug.meta?.customContext?.quadLabel === "string" && (
-              <p className="text-sm text-[var(--color-star-100)]">
-                <span className="text-[var(--color-nebula-violet)]">●</span>{" "}
-                {String(bug.meta.customContext.quadLabel)}
-              </p>
-            )}
             <Code className="block break-all">{bug.targetSelector}</Code>
             {bug.targetComponentPath && (
-              <p className="text-xs text-[var(--color-star-500)] font-mono break-all">{bug.targetComponentPath}</p>
+              <p className="text-xs text-[var(--color-star-500)] font-mono">{bug.targetComponentPath}</p>
             )}
             {bug.targetSourceLocation?.file && (
-              <p className="text-xs text-[var(--color-nebula-cyan)] font-mono break-all">
+              <p className="text-xs text-[var(--color-nebula-cyan)] font-mono">
                 {bug.targetSourceLocation.file}
                 {bug.targetSourceLocation.line ? `:${bug.targetSourceLocation.line}` : ""}
               </p>
@@ -178,30 +142,7 @@ export function BugDetail({
         </section>
       </div>
 
-      <aside className="space-y-4 xl:sticky xl:top-16 xl:self-start">
-        {requestedAzureWorkItemId && (
-          <Surface className="space-y-2">
-            <p className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">External Issue</p>
-            <p className="text-sm text-[var(--color-star-300)]">
-              Azure DevOps work item #{requestedAzureWorkItemId}
-            </p>
-            {syncMessage ? (
-              <div className="space-y-1">
-                <p className={`text-xs ${syncMessage.ok ? "text-[var(--color-nebula-cyan)]" : "text-[var(--color-nebula-rose)]"}`}>
-                  {syncMessage.title}
-                </p>
-                {syncMessage.detail && (
-                  <p className="text-xs text-[var(--color-star-500)]">{syncMessage.detail}</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-[var(--color-star-500)]">
-                Pending. Quad has the issue number but no sync result has been recorded yet.
-              </p>
-            )}
-          </Surface>
-        )}
-
+      <aside className="space-y-4">
         {status === "confirmed" ? (
           <Surface>
             <p className="text-sm text-[var(--color-star-300)]">
@@ -230,7 +171,7 @@ export function BugDetail({
               disabled={confirm.isPending}
               className="w-full"
             >
-              {confirm.isPending ? "…" : "Create Task"}
+              {confirm.isPending ? "…" : "Confirm → Task"}
             </Button>
             {confirm.error && (
               <p className="text-xs text-[var(--color-nebula-rose)]">{confirm.error.message}</p>
@@ -255,66 +196,4 @@ export function BugDetail({
       </aside>
     </div>
   );
-}
-
-function readAzureWorkItemId(meta: unknown): number | null {
-  return readAzureWorkItemIds(meta)[0] ?? null;
-}
-
-function readAzureWorkItemIds(meta: unknown): number[] {
-  if (!meta || typeof meta !== "object") return [];
-  const customContext = (meta as { customContext?: unknown }).customContext;
-  if (!customContext || typeof customContext !== "object") return [];
-  const ctx = customContext as {
-    azureWorkItemId?: unknown;
-    azureWorkItemIds?: unknown;
-    userStoryWorkItemId?: unknown;
-    taskWorkItemId?: unknown;
-  };
-  const raw = [ctx.azureWorkItemId, ctx.azureWorkItemIds, ctx.userStoryWorkItemId, ctx.taskWorkItemId]
-    .flatMap((value) => Array.isArray(value) ? value : value == null ? [] : [value]);
-  return Array.from(
-    new Set(
-      raw
-        .map((item) => (typeof item === "number" ? item : Number.parseInt(String(item).replace(/^#/, ""), 10)))
-        .filter((n) => Number.isFinite(n) && n > 0)
-        .map((n) => Math.trunc(n)),
-    ),
-  );
-}
-
-function readAzureDevOpsSync(meta: unknown): { synced?: boolean; state?: string; error?: string } | null {
-  if (!meta || typeof meta !== "object") return null;
-  const customContext = (meta as { customContext?: unknown }).customContext;
-  if (!customContext || typeof customContext !== "object") return null;
-  const sync = (customContext as { azureDevOps?: unknown }).azureDevOps;
-  if (!sync || typeof sync !== "object") return null;
-  return {
-    synced: typeof (sync as { synced?: unknown }).synced === "boolean" ? (sync as { synced: boolean }).synced : undefined,
-    state: typeof (sync as { state?: unknown }).state === "string" ? (sync as { state: string }).state : undefined,
-    error: typeof (sync as { error?: unknown }).error === "string" ? (sync as { error: string }).error : undefined,
-  };
-}
-
-function describeExternalSync(sync: { synced?: boolean; state?: string; error?: string }): {
-  ok: boolean;
-  title: string;
-  detail?: string;
-} {
-  if (sync.synced) {
-    return {
-      ok: true,
-      title: sync.state ? `Synced to ${sync.state}` : "Synced",
-      detail: "Quad updated Azure DevOps and added a report comment.",
-    };
-  }
-  const error = sync.error ?? "Sync skipped";
-  const missingCredential = /PAT|credential|missing|not configured/i.test(error);
-  return {
-    ok: false,
-    title: error,
-    detail: missingCredential
-      ? "Add AZURE_DEVOPS_PAT on the server or save a personal Azure DevOps PAT in Account → MCP keys."
-      : "Check the project integration settings and run Test connection.",
-  };
 }

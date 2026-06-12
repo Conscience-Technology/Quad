@@ -11,7 +11,7 @@ import { installNetworkTap } from "./network-tap";
 import { buildPin } from "./pin";
 import { RevealLayer } from "./reveal";
 import { matchesKey, parse } from "./shortcuts";
-import { Widget, type AzureSubmitOptions } from "./widget";
+import { Widget } from "./widget";
 import {
   Ring,
   isBrowser,
@@ -29,8 +29,6 @@ export type { QuadOptions } from "./types";
 
 const VERSION = "0.0.0";
 const ANON_COOKIE = "quad_anon";
-const REPORTER_NAME_KEY = "quad.reporter_name.v1";
-const AZURE_TARGETS_KEY = "quad.azure_targets.v1";
 
 class QuadApi {
   private opts: Required<Pick<QuadOptions, "apiKey" | "endpoint">> &
@@ -84,21 +82,10 @@ class QuadApi {
     };
 
     // Widget + bug mode
-    this.widget = new Widget(
-      {
-        onToggleOverlay: () => this.toggleOverlay(),
-        getReporterName: () => this.reporterName(),
-        onReporterNameChange: (name) => this.setReporterName(name),
-        getAzureDevOpsPatStatus: () => this.getAzureDevOpsPatStatus(),
-        onSaveAzureDevOpsPat: (pat) => this.saveAzureDevOpsPat(pat),
-        onDeleteAzureDevOpsPat: () => this.deleteAzureDevOpsPat(),
-        onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options),
-      },
-      {
-        azureDevOpsEnabled: opts.azureDevOps?.enabled === true,
-        mentionUsers: opts.azureDevOps?.mentionUsers ?? [],
-      },
-    );
+    this.widget = new Widget({
+      onToggleOverlay: () => this.toggleOverlay(),
+      onSubmitOverlay: (body, files) => this.submitOverlay(body, files),
+    });
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
       onPin: (el, x, y) => this.openPinForm(el, x, y),
     });
@@ -121,33 +108,24 @@ class QuadApi {
       onComplete: async (input) => {
         await this.api!.createSession({
           title: input.title,
-          body: "(캡처 세션)",
-          meta: this.snapshotMeta(this.savedAzureContext()),
-          reporter: this.reporter(),
+          body: "(Capture session)",
+          meta: this.snapshotMeta(),
+          reporter: this.user,
           reporterAnonKey: this.ensureAnonKey(),
           attachments: input.attachments,
         });
-        this.widget?.toast(`증거 저장 완료 · ${Math.round(input.durationMs / 1000)}초`);
+        this.widget?.toast(`Capture saved · ${Math.round(input.durationMs / 1000)}s`);
       },
       onPin: () => {
         // Toggle bug mode on so the next Option+Click captures the pin; the
         // pin is then attached to the bug_report independently from the capture.
         if (!this.bugMode?.isOn()) this.toggleBugMode();
-        this.widget?.toast(`${this.optKey}+클릭으로 요소를 지정하세요`);
+        this.widget?.toast(`${this.optKey}+Click an element to pin it`);
       },
     });
 
     // Global keydown
     const onKey = (e: KeyboardEvent) => {
-      const shortcut =
-        matchesKey(shortcuts.bugMode, e) ||
-        matchesKey(shortcuts.overlay, e) ||
-        matchesKey(shortcuts.capture, e) ||
-        matchesKey(shortcuts.voice, e);
-      if (shortcut && e.repeat) {
-        e.preventDefault();
-        return;
-      }
       if (matchesKey(shortcuts.bugMode, e)) {
         e.preventDefault();
         this.toggleBugMode();
@@ -195,7 +173,6 @@ class QuadApi {
 
   identify(user: { id: string; email?: string; name?: string }): void {
     this.user = user;
-    if (user.name) this.setReporterName(user.name);
   }
 
   setContext(ctx: Record<string, unknown>): void {
@@ -219,7 +196,7 @@ class QuadApi {
         title: input.title,
         body: input.body ?? "",
         meta: this.snapshotMeta(),
-        reporter: this.reporter(),
+        reporter: this.user,
         reporterAnonKey: this.ensureAnonKey(),
       });
     } catch (err) {
@@ -237,9 +214,9 @@ class QuadApi {
     const mode: CaptureMode = opts.mode ?? "screen+mic";
     try {
       await this.capture.start(mode);
-      this.widget?.toast(mode === "screen+mic" ? "화면 녹화 + 음성 기록 시작" : "음성 기록 시작");
+      this.widget?.toast(mode === "screen+mic" ? "Recording + STT started" : "Voice recording started");
     } catch (err) {
-      this.widget?.toast(err instanceof Error ? err.message : "기록을 시작하지 못했습니다");
+      this.widget?.toast(err instanceof Error ? err.message : "Failed to start recording");
     }
   }
 
@@ -292,7 +269,7 @@ class QuadApi {
   /** Minimal native confirm so we don't ship a custom modal just for this. */
   private async askCaptureMode(): Promise<CaptureMode | null> {
     if (typeof confirm === "function") {
-      return confirm("화면과 음성을 함께 녹화할까요? 취소를 누르면 음성만 녹음합니다.")
+      return confirm("Record screen + voice? Cancel records voice only.")
         ? "screen+mic"
         : "mic-only";
     }
@@ -305,7 +282,7 @@ class QuadApi {
     if (!this.bugMode) return;
     this.bugMode.setOn(!this.bugMode.isOn());
     this.widget?.toast(
-      this.bugMode.isOn() ? `버그 모드 켜짐 - ${this.optKey}+클릭으로 요소 지정` : "버그 모드 꺼짐",
+      this.bugMode.isOn() ? `Bug Mode ON — ${this.optKey}+Click to pin` : "Bug Mode OFF",
     );
   }
 
@@ -317,13 +294,13 @@ class QuadApi {
   private openPinForm(el: Element, x: number, y: number): void {
     if (!this.widget) return;
     this.widget.openPinForm(x, y, selectorFor(el), {
-      onSubmit: async (body, options) => {
+      onSubmit: async (body) => {
         if (!this.api) return;
         const pin = buildPin(el, body);
         const result = await this.api.createPin({
           pin,
-          meta: this.snapshotMeta(this.azureContext(options)),
-          reporter: this.reporter(),
+          meta: this.snapshotMeta(),
+          reporter: this.user,
           reporterAnonKey: this.ensureAnonKey(),
         });
         // Cache locally so the reporter can find / reveal it later, but
@@ -345,12 +322,8 @@ class QuadApi {
     });
   }
 
-  private async submitOverlay(
-    body: string,
-    files: File[],
-    options: AzureSubmitOptions = {},
-  ): Promise<void> {
-    if (!this.api) throw new Error("Quad가 초기화되지 않았습니다");
+  private async submitOverlay(body: string, files: File[]): Promise<void> {
+    if (!this.api) throw new Error("Quad: not initialized");
     const attachments: Array<{
       key: string;
       mime: string;
@@ -366,87 +339,18 @@ class QuadApi {
       const up = await this.api.uploadFile(f, kind);
       attachments.push({ ...up, kind });
     }
-    const title = body.slice(0, 80) || "(첨부 증거)";
-    const meta = this.snapshotMeta(this.azureContext(options));
+    const title = body.slice(0, 80) || "(attachment report)";
     await this.api.createSession({
       title,
       body,
-      meta,
-      reporter: this.reporter(),
+      meta: this.snapshotMeta(),
+      reporter: this.user,
       reporterAnonKey: this.ensureAnonKey(),
       attachments,
     });
   }
 
-  private reporter(): QuadOptions["user"] | undefined {
-    const name = this.reporterName();
-    if (this.user) return name ? { ...this.user, name } : this.user;
-    return name ? { id: this.ensureAnonKey(), name } : undefined;
-  }
-
-  private reporterName(): string | undefined {
-    const explicit = this.user?.name?.trim();
-    if (explicit) return explicit;
-    try {
-      return localStorage.getItem(REPORTER_NAME_KEY)?.trim() || undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  private setReporterName(name: string): void {
-    const normalized = name.trim().slice(0, 120);
-    if (this.user) this.user = { ...this.user, name: normalized || this.user.name };
-    try {
-      if (normalized) localStorage.setItem(REPORTER_NAME_KEY, normalized);
-      else localStorage.removeItem(REPORTER_NAME_KEY);
-    } catch {
-      /* ignore storage failures */
-    }
-  }
-
-  private async getAzureDevOpsPatStatus(): Promise<{ configured: boolean; prefix?: string | null }> {
-    if (!this.api) return { configured: false };
-    return this.api.getAzureDevOpsPatStatus(this.ensureAnonKey());
-  }
-
-  private async saveAzureDevOpsPat(pat: string): Promise<{ configured: boolean; prefix?: string | null }> {
-    if (!this.api) throw new Error("Quad가 초기화되지 않았습니다");
-    return this.api.saveAzureDevOpsPat(this.ensureAnonKey(), pat);
-  }
-
-  private async deleteAzureDevOpsPat(): Promise<void> {
-    if (!this.api) return;
-    await this.api.deleteAzureDevOpsPat(this.ensureAnonKey());
-  }
-
-  private async searchAzureDevOpsIdentities(query: string) {
-    if (!this.api) return [];
-    const res = await this.api.searchAzureDevOpsIdentities(this.ensureAnonKey(), query);
-    return res.identities;
-  }
-
-  private azureContext(options: AzureSubmitOptions = {}): Record<string, unknown> {
-    return {
-      azureWorkItemIds: options.azureWorkItemIds,
-      userStoryWorkItemId: options.userStoryWorkItemId,
-      taskWorkItemId: options.taskWorkItemId,
-      azureMentions: options.azureMentions,
-      azureMentionEmails: options.azureMentionEmails,
-    };
-  }
-
-  private savedAzureContext(): Record<string, unknown> {
-    try {
-      const raw = localStorage.getItem(AZURE_TARGETS_KEY);
-      if (!raw) return {};
-      return this.azureContext(JSON.parse(raw) as AzureSubmitOptions);
-    } catch {
-      return {};
-    }
-  }
-
-  private snapshotMeta(extraContext: Record<string, unknown> = {}): ReportMeta {
+  private snapshotMeta(): ReportMeta {
     return {
       userAgent: navigator.userAgent,
       viewport: { w: window.innerWidth, h: window.innerHeight },
@@ -456,12 +360,7 @@ class QuadApi {
       commitSha: this.opts.commitSha,
       consoleLogs: this.consoleRing.snapshot(),
       networkErrors: this.networkRing.snapshot(),
-      customContext: {
-        pageUrl: location.href,
-        path: location.pathname,
-        ...this.context,
-        ...extraContext,
-      },
+      customContext: this.context,
     };
   }
 

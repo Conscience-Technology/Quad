@@ -37,56 +37,11 @@ var Api = class {
       mode: "cors",
       credentials: "omit"
     });
-    if (!res.ok) throw new Error(`\uB0B4 \uC81C\uBCF4 \uBAA9\uB85D \uBD88\uB7EC\uC624\uAE30 \uC2E4\uD328 (${res.status})`);
+    if (!res.ok) throw new Error(`listMyPins ${res.status}`);
     return res.json();
   }
   async createSession(input) {
     return this.postJson("/api/ingest/session", input);
-  }
-  async getAzureDevOpsPatStatus(reporterAnonKey) {
-    const qs = new URLSearchParams({ reporter_anon: reporterAnonKey });
-    const res = await fetch(this.url(`/api/ingest/integrations/azure-devops?${qs.toString()}`), {
-      method: "GET",
-      headers: {
-        "x-quad-key": this.cfg.apiKey,
-        "x-quad-sdk-version": this.cfg.version
-      },
-      mode: "cors",
-      credentials: "omit"
-    });
-    if (!res.ok) throw new Error(`Azure DevOps PAT \uC0C1\uD0DC \uD655\uC778 \uC2E4\uD328 (${res.status})`);
-    return res.json();
-  }
-  async saveAzureDevOpsPat(reporterAnonKey, pat) {
-    return this.postJson("/api/ingest/integrations/azure-devops", {
-      reporterAnonKey,
-      pat
-    });
-  }
-  async deleteAzureDevOpsPat(reporterAnonKey) {
-    const res = await fetch(this.url("/api/ingest/integrations/azure-devops"), {
-      method: "DELETE",
-      headers: this.headers(),
-      body: JSON.stringify({ reporterAnonKey }),
-      credentials: "omit",
-      mode: "cors"
-    });
-    if (!res.ok) throw new Error(`Azure DevOps PAT \uC0AD\uC81C \uC2E4\uD328 (${res.status})`);
-    return res.json();
-  }
-  async searchAzureDevOpsIdentities(reporterAnonKey, query) {
-    const qs = new URLSearchParams({ reporter_anon: reporterAnonKey, q: query });
-    const res = await fetch(this.url(`/api/ingest/azure-devops/identities?${qs.toString()}`), {
-      method: "GET",
-      headers: {
-        "x-quad-key": this.cfg.apiKey,
-        "x-quad-sdk-version": this.cfg.version
-      },
-      mode: "cors",
-      credentials: "omit"
-    });
-    if (!res.ok) throw new Error(`Azure DevOps \uC0AC\uC6A9\uC790 \uAC80\uC0C9 \uC2E4\uD328 (${res.status})`);
-    return res.json();
   }
   async presignUpload(input) {
     return this.postJson("/api/ingest/presign", input);
@@ -105,7 +60,7 @@ var Api = class {
     form.append("file", blob, filename);
     const res = await fetch(sign.url, { method: "POST", body: form });
     if (!res.ok) {
-      throw new Error(`\uD30C\uC77C \uC5C5\uB85C\uB4DC \uC2E4\uD328 (${res.status})`);
+      throw new Error(`upload failed: ${res.status}`);
     }
     return { key: sign.key, mime, sizeBytes: blob.size };
   }
@@ -127,108 +82,9 @@ var Api = class {
         detail = await res.text();
       } catch {
       }
-      throw new Error(`Quad \uC694\uCCAD \uC2E4\uD328 (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+      throw new Error(`Quad ${path} ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
     }
     return res.json();
-  }
-};
-
-// src/shortcuts.ts
-var IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-function parse(combo) {
-  const parts = combo.toLowerCase().split("+").map((s) => s.trim());
-  const out = { alt: false, shift: false, ctrl: false, meta: false, key: "" };
-  for (const p of parts) {
-    if (p === "alt" || p === "option") out.alt = true;
-    else if (p === "shift") out.shift = true;
-    else if (p === "ctrl" || p === "control") out.ctrl = true;
-    else if (p === "cmd" || p === "command" || p === "meta") out.meta = true;
-    else if (p === "mod") {
-      if (IS_MAC) out.meta = true;
-      else out.ctrl = true;
-    } else {
-      out.key = p;
-    }
-  }
-  return out;
-}
-function matchesKey(combo, e) {
-  if (!isComboKey(combo)) return false;
-  if (combo.alt !== e.altKey) return false;
-  if (combo.shift !== e.shiftKey) return false;
-  if (combo.ctrl !== e.ctrlKey) return false;
-  if (combo.meta !== e.metaKey) return false;
-  const k = e.key.toLowerCase();
-  if (k === combo.key) return true;
-  return matchesPhysicalKey(combo.key, e.code);
-}
-function matchesMouse(combo, e, kind = "click") {
-  if (combo.key !== kind) return false;
-  if (combo.alt !== e.altKey) return false;
-  if (combo.shift !== e.shiftKey) return false;
-  if (combo.ctrl !== e.ctrlKey) return false;
-  if (combo.meta !== e.metaKey) return false;
-  return true;
-}
-function isComboKey(c) {
-  return c.key !== "" && c.key !== "click" && c.key !== "dblclick";
-}
-function matchesPhysicalKey(key, code) {
-  if (/^[a-z]$/.test(key)) return code === `Key${key.toUpperCase()}`;
-  if (/^[0-9]$/.test(key)) return code === `Digit${key}`;
-  return false;
-}
-
-// src/bug-mode.ts
-var BugMode = class {
-  constructor(widget, hostNode, pinCombo, handlers) {
-    this.widget = widget;
-    this.hostNode = hostNode;
-    this.handlers = handlers;
-    this.pinCombo = pinCombo;
-  }
-  widget;
-  hostNode;
-  handlers;
-  on = false;
-  pinCombo;
-  destroy() {
-    this.setOn(false);
-  }
-  setOn(on) {
-    if (on === this.on) {
-      this.widget.setBugMode(on);
-      return;
-    }
-    this.on = on;
-    this.widget.setBugMode(on);
-    if (on) {
-      document.addEventListener("click", this.onClick, true);
-    } else {
-      document.removeEventListener("click", this.onClick, true);
-    }
-  }
-  isOn() {
-    return this.on;
-  }
-  onClick = (e) => {
-    if (!this.on) return;
-    if (!matchesMouse(this.pinCombo, e, "click")) return;
-    const el = this.pickElement(e);
-    if (!el) return;
-    e.preventDefault();
-    e.stopPropagation();
-    this.handlers.onPin(el, e.clientX, e.clientY);
-  };
-  /** Find the element under the cursor while ignoring our own widget. */
-  pickElement(e) {
-    const path = e.composedPath?.() ?? [];
-    for (const node of path) {
-      if (!(node instanceof Element)) continue;
-      if (this.hostNode.contains(node)) continue;
-      return node;
-    }
-    return null;
   }
 };
 
@@ -302,42 +158,6 @@ function cssEscape(s) {
   }
   return s.replace(/([!"#$%&'()*+,./:;<=>?@\[\\\]^`{|}~])/g, "\\$1");
 }
-function labelFor(el, max = 80) {
-  let cur = el;
-  for (let i = 0; i < 2 && cur; i++) {
-    const v = readLabelAttrs(cur, max);
-    if (v) return v;
-    cur = cur.parentElement;
-  }
-  return void 0;
-}
-function readLabelAttrs(el, max) {
-  if (el instanceof HTMLElement) {
-    const explicit = el.dataset.quadLabel;
-    if (explicit) return clip(explicit, max);
-  }
-  const aria = el.getAttribute("aria-label");
-  if (aria && aria.trim()) return clip(aria, max);
-  if (el instanceof HTMLElement && el.dataset.testid) {
-    return clip(el.dataset.testid, max);
-  }
-  const tag = el.tagName.toLowerCase();
-  if (tag === "button" || tag === "a" || tag === "summary" || /^h[1-6]$/.test(tag) || tag === "label") {
-    const text = (el.textContent ?? "").trim().replace(/\s+/g, " ");
-    if (text) return clip(text, max);
-  }
-  if (el instanceof HTMLInputElement) {
-    if (el.placeholder) return clip(`placeholder \u201C${el.placeholder}\u201D`, max);
-    if (el.name) return clip(`input[name=${el.name}]`, max);
-  }
-  const title = el.getAttribute("title");
-  if (title && title.trim()) return clip(title, max);
-  return void 0;
-}
-function clip(s, max) {
-  s = s.trim();
-  return s.length <= max ? s : `${s.slice(0, max)}\u2026`;
-}
 function outerHtmlPreview(el, max = 200) {
   const html = el.outerHTML ?? "";
   return html.length <= max ? html : `${html.slice(0, max)}\u2026`;
@@ -403,6 +223,107 @@ function probe(el) {
     } : path[path.length - 1] ? { function: path[path.length - 1] } : void 0
   };
 }
+
+// src/shortcuts.ts
+var IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+function parse(combo) {
+  const parts = combo.toLowerCase().split("+").map((s) => s.trim());
+  const out = { alt: false, shift: false, ctrl: false, meta: false, key: "" };
+  for (const p of parts) {
+    if (p === "alt" || p === "option") out.alt = true;
+    else if (p === "shift") out.shift = true;
+    else if (p === "ctrl" || p === "control") out.ctrl = true;
+    else if (p === "cmd" || p === "command" || p === "meta") out.meta = true;
+    else if (p === "mod") {
+      if (IS_MAC) out.meta = true;
+      else out.ctrl = true;
+    } else {
+      out.key = p;
+    }
+  }
+  return out;
+}
+function matchesKey(combo, e) {
+  if (!isComboKey(combo)) return false;
+  if (combo.alt !== e.altKey) return false;
+  if (combo.shift !== e.shiftKey) return false;
+  if (combo.ctrl !== e.ctrlKey) return false;
+  if (combo.meta !== e.metaKey) return false;
+  const k = e.key.toLowerCase();
+  return k === combo.key;
+}
+function matchesMouse(combo, e, kind = "click") {
+  if (combo.key !== kind) return false;
+  if (combo.alt !== e.altKey) return false;
+  if (combo.shift !== e.shiftKey) return false;
+  if (combo.ctrl !== e.ctrlKey) return false;
+  if (combo.meta !== e.metaKey) return false;
+  return true;
+}
+function isComboKey(c) {
+  return c.key !== "" && c.key !== "click" && c.key !== "dblclick";
+}
+
+// src/bug-mode.ts
+var BugMode = class {
+  constructor(widget, hostNode, pinCombo, handlers) {
+    this.widget = widget;
+    this.hostNode = hostNode;
+    this.handlers = handlers;
+    this.pinCombo = pinCombo;
+    document.addEventListener("mousemove", this.onMove, true);
+    document.addEventListener("click", this.onClick, true);
+  }
+  widget;
+  hostNode;
+  handlers;
+  on = false;
+  hovered = null;
+  pinCombo;
+  destroy() {
+    document.removeEventListener("mousemove", this.onMove, true);
+    document.removeEventListener("click", this.onClick, true);
+  }
+  setOn(on) {
+    this.on = on;
+    this.widget.setBugMode(on);
+    if (!on) {
+      this.hovered = null;
+      this.widget.hideOutline();
+    }
+  }
+  isOn() {
+    return this.on;
+  }
+  onMove = (e) => {
+    if (!this.on) return;
+    const el = this.pickElement(e);
+    if (!el || el === this.hovered) return;
+    this.hovered = el;
+    const reactInfo = probe(el);
+    const label = reactInfo.componentPath ? `${reactInfo.componentPath.split(" > ").pop()} \xB7 ${selectorFor(el).slice(0, 60)}` : selectorFor(el).slice(0, 80);
+    this.widget.showOutline(el.getBoundingClientRect(), label);
+  };
+  onClick = (e) => {
+    if (!this.on) return;
+    if (!matchesMouse(this.pinCombo, e, "click")) return;
+    const el = this.pickElement(e);
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.handlers.onPin(el, e.clientX, e.clientY);
+  };
+  /** Find the element under the cursor while ignoring our own widget. */
+  pickElement(e) {
+    const path = e.composedPath?.() ?? [];
+    for (const node of path) {
+      if (!(node instanceof Element)) continue;
+      if (this.hostNode.contains(node)) continue;
+      return node;
+    }
+    return null;
+  }
+};
 
 // src/event-trail.ts
 var EventTrail = class {
@@ -549,7 +470,7 @@ var CaptureSession = class {
     try {
       if (mode === "screen+mic") {
         if (typeof navigator.mediaDevices?.getDisplayMedia !== "function") {
-          throw new Error("\uC774 \uBE0C\uB77C\uC6B0\uC800\uB294 \uD654\uBA74 \uB179\uD654\uB97C \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uBAA8\uBC14\uC77C\uC5D0\uC11C\uB294 \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+          throw new Error("This browser does not support screen recording (mobile is unsupported)");
         }
         this.screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: { frameRate: 24 },
@@ -617,7 +538,7 @@ var CaptureSession = class {
     }
     const trailUpload = await this.cb.onUploadTrail(trailJson);
     await this.cb.onComplete({
-      title: title?.trim() || `\uCEA1\uCC98 \xB7 ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
+      title: title?.trim() || `Capture \xB7 ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
       durationMs,
       attachments,
       trailKey: trailUpload.key
@@ -636,17 +557,15 @@ var CaptureSession = class {
       position: fixed;
       top: 16px;
       right: 16px;
-      max-width: calc(100vw - 32px);
       background: var(--elevated);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 8px 10px;
+      border-radius: 999px;
+      padding: 8px 14px;
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       font-family: ui-monospace, monospace;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--star-300);
       z-index: 2147483604;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -654,9 +573,9 @@ var CaptureSession = class {
     bar.innerHTML = `
       <span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--rose);box-shadow:0 0 8px var(--rose);animation:q-pulse 1.4s ease-in-out infinite"></span>
       <span class="t">00:00</span>
-      <button class="stop" title="\uC911\uC9C0" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u25A0</button>
-      <button class="mute" title="\uB9C8\uC774\uD06C \uCF1C\uAE30/\uB044\uAE30" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u{1F3A4}</button>
-      <button class="pin" title="\uD604\uC7AC \uC694\uC18C \uC9C0\uC815" style="min-height:28px;background:transparent;border:1px solid var(--border);border-radius:999px;color:var(--star-300);cursor:pointer;font-size:13px;padding:3px 8px">\uC9C0\uC815</button>
+      <button class="stop" title="Stop" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">\u25A0</button>
+      <button class="mute" title="Toggle mic" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:13px">\u{1F3A4}</button>
+      <button class="pin" title="Pin current element" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:13px">+Pin</button>
     `;
     if (!this.shadow.querySelector("style[data-q-pulse]")) {
       const s = document.createElement("style");
@@ -882,7 +801,6 @@ function buildPin(el, body) {
     route: location.pathname,
     pageUrl: location.href,
     outerHtmlPreview: outerHtmlPreview(el, 200),
-    label: labelFor(el),
     body
   };
 }
@@ -891,10 +809,13 @@ function buildPin(el, body) {
 var RevealLayer = class {
   constructor(shadow) {
     this.shadow = shadow;
-    this.unsubLocal = subscribe(() => this.syncActive());
-    window.addEventListener("scroll", this.schedule, { capture: true, passive: true });
-    window.addEventListener("resize", this.schedule, { passive: true });
-    this.syncActive();
+    this.unsubLocal = subscribe(() => this.schedule());
+    window.addEventListener("scroll", this.schedule, true);
+    window.addEventListener("resize", this.schedule);
+    setInterval(() => this.schedule(), 800);
+    this.mo = new MutationObserver(() => this.schedule());
+    this.mo.observe(document.body, { childList: true, subtree: true });
+    this.schedule();
   }
   shadow;
   outlines = /* @__PURE__ */ new Map();
@@ -902,45 +823,16 @@ var RevealLayer = class {
   mo = null;
   unsubLocal;
   openPopover = null;
-  pollId = null;
-  active = false;
   destroy() {
     this.unsubLocal();
     window.removeEventListener("scroll", this.schedule, true);
     window.removeEventListener("resize", this.schedule);
-    this.deactivate();
+    this.mo?.disconnect();
     for (const { outline, tag } of this.outlines.values()) {
       outline.remove();
       tag.remove();
     }
     this.outlines.clear();
-  }
-  /**
-   * Attach/detach the expensive observers (MutationObserver, route poll)
-   * based on whether the user actually has any pins revealed. Most host
-   * pages have zero, so this keeps Quad from interfering with the host's
-   * render loop in the common case.
-   */
-  syncActive() {
-    const hasVisible = visibleIds().length > 0;
-    if (hasVisible && !this.active) {
-      this.active = true;
-      this.mo = new MutationObserver(() => this.schedule());
-      this.mo.observe(document.body, { childList: true, subtree: true });
-      this.pollId = setInterval(() => this.schedule(), 800);
-    } else if (!hasVisible && this.active) {
-      this.deactivate();
-    }
-    this.schedule();
-  }
-  deactivate() {
-    this.active = false;
-    this.mo?.disconnect();
-    this.mo = null;
-    if (this.pollId != null) {
-      clearInterval(this.pollId);
-      this.pollId = null;
-    }
   }
   schedule = () => {
     if (this.rafId != null) return;
@@ -951,7 +843,6 @@ var RevealLayer = class {
   };
   render() {
     const visible = new Set(visibleIds());
-    if (visible.size === 0 && this.outlines.size === 0) return;
     const route = location.pathname;
     const pins = list().filter(
       (p) => visible.has(p.id) && p.route === route
@@ -1016,7 +907,7 @@ var RevealLayer = class {
     tag.innerHTML = `
       <span class="dot">\u2726</span>
       <span class="body">${escapeHtml(pin.body.slice(0, 60))}</span>
-      <button class="x" title="\uC228\uAE30\uAE30">\xD7</button>
+      <button class="x" title="Hide">\xD7</button>
     `;
     const x = tag.querySelector("button.x");
     x?.addEventListener("click", (e) => {
@@ -1043,17 +934,17 @@ var RevealLayer = class {
     pop.dataset.id = pin.id;
     pop.innerHTML = `
       <div class="head">
-        <span class="who">\uB0B4 \uC81C\uBCF4</span>
+        <span class="who">your report</span>
         <span class="when">${formatAgo(pin.createdAt)}</span>
       </div>
       <p class="body">${escapeHtml(pin.body)}</p>
       <div class="meta">
-        ${pin.componentPath ? `<div><span>\uCEF4\uD3EC\uB10C\uD2B8</span><code>${escapeHtml(pin.componentPath)}</code></div>` : ""}
-        <div><span>\uC120\uD0DD\uC790</span><code>${escapeHtml(pin.selector)}</code></div>
-        <div><span>\uACBD\uB85C</span><code>${escapeHtml(pin.route)}</code></div>
+        ${pin.componentPath ? `<div><span>component</span><code>${escapeHtml(pin.componentPath)}</code></div>` : ""}
+        <div><span>selector</span><code>${escapeHtml(pin.selector)}</code></div>
+        <div><span>route</span><code>${escapeHtml(pin.route)}</code></div>
       </div>
       <div class="actions">
-        <button class="hide">\uD398\uC774\uC9C0\uC5D0\uC11C \uC228\uAE30\uAE30</button>
+        <button class="hide">Hide on page</button>
       </div>
     `;
     const rect = anchor.getBoundingClientRect();
@@ -1084,12 +975,12 @@ var RevealLayer = class {
 };
 function formatAgo(ts) {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1e3));
-  if (s < 60) return `${s}\uCD08 \uC804`;
+  if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}\uBD84 \uC804`;
+  if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}\uC2DC\uAC04 \uC804`;
-  return `${Math.floor(h / 24)}\uC77C \uC804`;
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -1119,20 +1010,6 @@ var WIDGET_CSS = (
   color: var(--star-100);
   font-size: 14px;
   line-height: 1.55;
-}
-:host *,
-:host *::before,
-:host *::after {
-  box-sizing: border-box;
-}
-:host button,
-:host input,
-:host textarea {
-  font: inherit;
-  min-width: 0;
-}
-:host button {
-  min-height: 32px;
 }
 
 /* Right-edge toggle: 4 dots, the brand mark */
@@ -1175,8 +1052,7 @@ var WIDGET_CSS = (
   right: 0;
   top: 0;
   bottom: 0;
-  width: min(420px, calc(100vw - 16px));
-  max-width: 100vw;
+  width: 380px;
   background: var(--elevated);
   border-left: 1px solid var(--border);
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
@@ -1190,7 +1066,6 @@ var WIDGET_CSS = (
   transform: translateX(0);
 }
 .q-panel header {
-  min-width: 0;
   padding: 16px 18px;
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -1198,403 +1073,103 @@ var WIDGET_CSS = (
   align-items: center;
 }
 .q-panel header h1 {
-  flex: 1;
-  min-width: 0;
   margin: 0;
-  font-size: 16px;
-  letter-spacing: 0;
-  color: var(--star-100);
-  overflow-wrap: anywhere;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  color: var(--star-300);
 }
 .q-panel header button {
   background: none;
   border: none;
   color: var(--star-500);
   cursor: pointer;
-  font-size: 22px;
-  line-height: 1;
-  padding: 0 6px;
-}
-.q-panel header button.q-settings-open {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--star-300);
-  font-size: 12px;
-  line-height: 1;
-  min-height: 30px;
-  padding: 6px 9px;
-}
-.q-panel header button.q-settings-open:hover {
-  border-color: var(--violet);
-  color: var(--star-100);
+  font-size: 18px;
+  padding: 0 4px;
 }
 .q-panel header button:hover { color: var(--star-100); }
 .q-panel .body {
   flex: 1;
-  min-width: 0;
   overflow-y: auto;
   padding: 18px;
 }
 .q-panel .body p {
   margin: 0 0 12px;
   color: var(--star-300);
-  font-size: 14px;
-  overflow-wrap: anywhere;
+  font-size: 13px;
 }
 .q-panel .body small {
   color: var(--star-500);
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11px;
 }
 .q-panel .drop {
-  margin: 2px 0 14px;
-  padding: 26px 14px;
-  border: 1.5px dashed rgba(139, 124, 246, 0.55);
-  border-radius: 8px;
-  background: rgba(139, 124, 246, 0.08);
+  margin: 14px 0;
+  padding: 24px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
   text-align: center;
-  color: var(--star-200);
-  font-size: 14px;
-  overflow-wrap: anywhere;
+  color: var(--star-500);
+  font-size: 12px;
   transition: border 160ms var(--ease), background 160ms var(--ease);
 }
 .q-panel .drop[data-over="true"] {
   border-color: var(--violet);
-  background: rgba(139, 124, 246, 0.16);
-  color: var(--star-100);
-}
-.q-field {
-  display: block;
-  margin: 14px 0;
-}
-.q-field span {
-  display: block;
-  margin: 0 0 6px;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--star-500);
-}
-.q-reporter-setup {
-  margin: 14px 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-}
-.q-azure-pat {
-  margin: 14px 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-}
-.q-azure-pat-current {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  min-width: 0;
-}
-.q-azure-pat-current span {
-  flex: 0 0 auto;
-  color: var(--star-500);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.q-azure-pat-current strong {
-  flex: 1;
-  min-width: 0;
-  color: var(--star-100);
-  font-size: 14px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.q-azure-pat-current button,
-.q-azure-pat-delete {
-  flex: 0 0 auto;
-  min-height: 34px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
+  background: rgba(139, 124, 246, 0.06);
   color: var(--star-300);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
-  padding: 6px 10px;
 }
-.q-azure-pat-current button:hover,
-.q-azure-pat-delete:hover {
-  border-color: var(--violet);
-  color: var(--star-100);
-}
-.q-azure-pat-delete {
-  margin-top: 8px;
-  width: 100%;
-}
-.q-azure-pat-editor {
-  display: none;
-  margin: 0;
-  padding: 12px;
-}
-.q-azure-pat-status {
-  margin: 0;
-  padding: 0 12px 10px;
-  color: var(--star-500);
-  font-size: 12px;
-}
-.q-azure-pat-status.error { color: var(--rose); }
-.q-azure-pat[data-configured="false"] .q-azure-pat-current,
-.q-azure-pat[data-editing="true"] .q-azure-pat-current {
-  display: none;
-}
-.q-azure-pat[data-editing="true"] .q-azure-pat-editor {
-  display: block;
-}
-.q-reporter-current {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  min-width: 0;
-}
-.q-reporter-current span {
-  flex: 0 0 auto;
-  color: var(--star-500);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.q-reporter-current strong {
-  flex: 1;
-  min-width: 0;
-  color: var(--star-100);
-  font-size: 14px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.q-reporter-current button,
-.q-reporter-row button {
-  flex: 0 0 auto;
-  min-height: 34px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--star-300);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
-  padding: 6px 10px;
-}
-.q-reporter-current button:hover,
-.q-reporter-row button:hover {
-  border-color: var(--violet);
-  color: var(--star-100);
-}
-.q-reporter-editor {
-  display: none;
-  margin: 0;
-  padding: 12px;
-}
-.q-reporter-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-}
-.q-reporter-row input.q-reporter-name,
-.q-reporter-row input.q-azure-pat-input {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-}
-.q-reporter-setup[data-empty="true"] .q-reporter-current,
-.q-reporter-setup[data-editing="true"] .q-reporter-current {
-  display: none;
-}
-.q-reporter-setup[data-editing="true"] .q-reporter-editor {
-  display: block;
-}
-.q-panel input.q-reporter-name,
-.q-panel input.q-azure-pat-input,
-.q-panel input.q-user-story-work-item,
-.q-panel input.q-task-work-item,
 .q-panel textarea {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 4px;
   color: var(--star-100);
   font-family: inherit;
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 13px;
   padding: 10px 12px;
   resize: vertical;
   min-height: 90px;
   outline: none;
 }
-.q-panel input.q-reporter-name,
-.q-panel input.q-azure-pat-input,
-.q-panel input.q-user-story-work-item,
-.q-panel input.q-task-work-item {
-  margin: 0 0 10px;
-  min-height: 40px;
-}
-.q-reporter-row input.q-reporter-name {
-  margin: 0;
-}
-.q-panel input.q-reporter-name:focus,
-.q-panel input.q-azure-pat-input:focus,
-.q-panel input.q-user-story-work-item:focus,
-.q-panel input.q-task-work-item:focus,
 .q-panel textarea:focus { border-color: var(--violet); }
-.q-comment-wrap {
-  position: relative;
-}
-.q-mention-menu {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 2147483606;
-  display: none;
-  max-height: 256px;
-  overflow-y: auto;
-  background: var(--elevated);
-  border: 1px solid rgba(139, 124, 246, 0.5);
-  border-radius: 8px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-  padding: 4px;
-}
-.q-mention-menu[data-open="true"] {
-  display: block;
-}
-.q-mention-option {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--star-200);
-  cursor: pointer;
-  padding: 8px;
-  text-align: left;
-}
-.q-mention-option:hover,
-.q-mention-option[aria-selected="true"] {
-  background: rgba(139, 124, 246, 0.18);
-  color: var(--star-100);
-}
-.q-mention-avatar {
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(139, 124, 246, 0.28);
-  color: var(--star-100);
-  font-size: 11px;
-  font-weight: 700;
-}
-.q-mention-main {
-  min-width: 0;
-  display: grid;
-  gap: 1px;
-}
-.q-mention-main strong,
-.q-mention-email,
-.q-mention-subtitle {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.q-mention-main strong {
-  color: var(--star-100);
-  font-size: 13px;
-  font-weight: 650;
-}
-.q-mention-email,
-.q-mention-subtitle {
-  color: var(--star-500);
-  font-size: 12px;
-}
-.q-settings-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483605;
-  display: none;
-}
-.q-settings-modal[data-open="true"] {
-  display: block;
-}
-.q-settings-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.42);
-}
-.q-settings-card {
-  position: absolute;
-  top: 52px;
-  left: 18px;
-  right: 18px;
-  max-height: calc(100vh - 104px);
-  overflow-y: auto;
-  background: var(--elevated);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
-  padding: 0 14px 14px;
-}
-.q-settings-card header {
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 12px;
-}
-.q-settings-card header h2 {
-  margin: 0;
-  color: var(--star-100);
-  font-size: 15px;
-  letter-spacing: 0;
-}
-.q-settings-card header button {
-  background: transparent;
-  border: 0;
-  color: var(--star-500);
-  cursor: pointer;
-  font-size: 20px;
-}
 .q-panel .primary {
   margin-top: 14px;
   width: 100%;
   background: var(--violet);
   color: var(--void);
   border: 0;
-  border-radius: 8px;
-  padding: 11px 12px;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 13px;
   cursor: pointer;
   transition: opacity 160ms var(--ease);
 }
 .q-panel .primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .q-panel .primary:hover:not(:disabled) { opacity: 0.9; }
-.q-status {
-  margin-top: 10px;
-  font-size: 13px;
-  color: var(--star-500);
-  overflow-wrap: anywhere;
+
+/* Hover outline (bug mode) */
+.q-outline {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483599;
+  border: 2px solid var(--violet);
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(139, 124, 246, 0.35);
+  transition: all 80ms linear;
 }
-.q-status.error { color: var(--rose); }
+.q-outline-label {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483599;
+  background: var(--violet);
+  color: var(--void);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  border-radius: 2px;
+  white-space: nowrap;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Floating pin form */
 .q-pin-form {
@@ -1602,15 +1177,14 @@ var WIDGET_CSS = (
   z-index: 2147483602;
   background: var(--elevated);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 14px;
-  width: min(320px, calc(100vw - 16px));
-  max-width: calc(100vw - 16px);
+  width: 280px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 24px rgba(139, 124, 246, 0.15);
 }
 .q-pin-form .selector {
   font-family: ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--star-500);
   margin-bottom: 8px;
   white-space: nowrap;
@@ -1621,36 +1195,14 @@ var WIDGET_CSS = (
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 3px;
   color: var(--star-100);
   font-family: inherit;
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 13px;
   padding: 8px;
   resize: vertical;
   min-height: 60px;
   outline: none;
-}
-.q-pin-azure {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: minmax(0, 1fr);
-  margin-bottom: 8px;
-}
-.q-pin-azure input {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--star-100);
-  font-family: inherit;
-  font-size: 13px;
-  outline: none;
-  padding: 8px;
-}
-.q-pin-azure input:focus {
-  border-color: var(--violet);
 }
 .q-pin-form textarea:focus { border-color: var(--violet); }
 .q-pin-form .actions {
@@ -1663,9 +1215,9 @@ var WIDGET_CSS = (
   background: var(--violet);
   color: var(--void);
   border: 0;
-  border-radius: 8px;
-  padding: 9px;
-  font-size: 14px;
+  border-radius: 3px;
+  padding: 7px;
+  font-size: 12px;
   cursor: pointer;
 }
 .q-pin-form button.ghost {
@@ -1674,7 +1226,7 @@ var WIDGET_CSS = (
   border: 1px solid var(--border);
 }
 .q-pin-form .status {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--star-500);
   margin-top: 8px;
 }
@@ -1684,16 +1236,14 @@ var WIDGET_CSS = (
 .q-toast {
   position: fixed;
   bottom: 24px;
-  right: 16px;
-  max-width: min(360px, calc(100vw - 32px));
+  right: 24px;
   background: var(--elevated);
   border: 1px solid var(--border);
   border-left: 2px solid var(--violet);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--star-300);
-  overflow-wrap: anywhere;
   z-index: 2147483603;
   animation: q-fadein 160ms var(--ease);
 }
@@ -1716,14 +1266,14 @@ var WIDGET_CSS = (
   gap: 8px;
 }
 .q-reports .label {
-  font-size: 12px;
+  font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--star-500);
 }
 .q-reports .right { display: inline-flex; align-items: center; gap: 8px; }
 .q-reports .count {
-  font-size: 12px;
+  font-size: 10px;
   font-family: ui-monospace, monospace;
   color: var(--star-500);
 }
@@ -1731,9 +1281,9 @@ var WIDGET_CSS = (
   background: transparent;
   border: 1px solid var(--border);
   color: var(--star-500);
-  padding: 5px 8px;
-  font-size: 12px;
-  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
+  border-radius: 4px;
   cursor: pointer;
   transition: color 120ms var(--ease), border-color 120ms var(--ease), background 120ms var(--ease);
 }
@@ -1748,7 +1298,7 @@ var WIDGET_CSS = (
 }
 .q-reports .show-all:disabled { cursor: not-allowed; }
 .q-reports .empty {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--star-500);
   padding: 12px 0;
 }
@@ -1768,14 +1318,14 @@ var WIDGET_CSS = (
   gap: 2px;
 }
 .q-reports .item .text {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--star-100);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .q-reports .item .meta {
-  font-size: 12px;
+  font-size: 10px;
   font-family: ui-monospace, monospace;
   color: var(--star-500);
   white-space: nowrap;
@@ -1783,8 +1333,8 @@ var WIDGET_CSS = (
   text-overflow: ellipsis;
 }
 .q-reports .item .eye {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   border: 0;
   background: transparent;
   color: var(--star-500);
@@ -1821,12 +1371,12 @@ var WIDGET_CSS = (
   border-left: 2px solid var(--violet);
   border-radius: 4px;
   padding: 3px 6px 3px 8px;
-  max-width: min(360px, calc(100vw - 16px));
+  max-width: 360px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  font-size: 13px;
+  font-size: 11px;
   color: var(--star-300);
 }
-.q-reveal-tag .dot { color: var(--violet); font-size: 12px; }
+.q-reveal-tag .dot { color: var(--violet); font-size: 10px; }
 .q-reveal-tag .body {
   flex: 1;
   min-width: 0;
@@ -1849,15 +1399,14 @@ var WIDGET_CSS = (
 .q-reveal-popover {
   position: fixed;
   z-index: 2147483597;
-  width: min(340px, calc(100vw - 16px));
-  max-width: calc(100vw - 16px);
+  width: 320px;
   background: var(--elevated);
   border: 1px solid var(--border);
   border-left: 2px solid var(--violet);
   border-radius: 6px;
   padding: 12px 14px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-  font-size: 14px;
+  font-size: 12px;
   color: var(--star-300);
   animation: q-fadein 140ms var(--ease);
 }
@@ -1868,13 +1417,13 @@ var WIDGET_CSS = (
   margin-bottom: 6px;
 }
 .q-reveal-popover .who {
-  font-size: 12px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--violet);
 }
 .q-reveal-popover .when {
-  font-size: 12px;
+  font-size: 10px;
   font-family: ui-monospace, monospace;
   color: var(--star-500);
 }
@@ -1890,7 +1439,7 @@ var WIDGET_CSS = (
   gap: 4px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
-  font-size: 12px;
+  font-size: 11px;
 }
 .q-reveal-popover .meta > div {
   display: flex;
@@ -1899,7 +1448,7 @@ var WIDGET_CSS = (
 }
 .q-reveal-popover .meta span {
   width: 70px;
-  font-size: 12px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--star-500);
@@ -1908,7 +1457,7 @@ var WIDGET_CSS = (
 .q-reveal-popover .meta code {
   flex: 1;
   font-family: ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--star-300);
   word-break: break-all;
   background: var(--void);
@@ -1925,7 +1474,7 @@ var WIDGET_CSS = (
   border: 1px solid var(--border);
   color: var(--star-500);
   padding: 4px 10px;
-  font-size: 13px;
+  font-size: 11px;
   border-radius: 4px;
   cursor: pointer;
   transition: color 120ms var(--ease), border-color 120ms var(--ease);
@@ -1934,33 +1483,13 @@ var WIDGET_CSS = (
   color: var(--star-100);
   border-color: var(--star-500);
 }
-@media (max-width: 480px) {
-  .q-toggle {
-    padding: 12px 7px;
-  }
-  .q-panel {
-    width: 100vw;
-  }
-  .q-panel header,
-  .q-panel .body {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-  .q-reports {
-    margin-left: -14px;
-    margin-right: -14px;
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-}
 `
 );
 
 // src/widget.ts
 var Widget = class {
-  constructor(cb, options = {}) {
+  constructor(cb) {
     this.cb = cb;
-    this.options = options;
     this.host = document.createElement("quad-widget");
     this.host.style.cssText = "all: initial; position: static;";
     this.root = this.host.attachShadow({ mode: "closed" });
@@ -1970,31 +1499,32 @@ var Widget = class {
     this.toggleEl = this.makeToggle();
     this.panelEl = this.makePanel();
     this.bodyEl = this.panelEl.querySelector(".body");
+    this.outlineEl = this.makeOutline();
+    this.labelEl = this.makeOutlineLabel();
     this.root.appendChild(this.toggleEl);
     this.root.appendChild(this.panelEl);
     document.body.appendChild(this.host);
   }
   cb;
-  options;
   host;
   root;
   toggleEl;
   panelEl;
   bodyEl;
-  cursorStyle = null;
+  outlineEl;
+  labelEl;
   pinFormEl = null;
   toastEl = null;
   overlayOpen = false;
   bugModeOn = false;
   destroy() {
-    this.setBugMode(false);
     this.host.remove();
   }
   // ---- Right-edge toggle ----------------------------------------------------
   makeToggle() {
     const d = document.createElement("div");
     d.className = "q-toggle";
-    d.title = "Quad - QA \uC81C\uBCF4 (Alt+Shift+Q)";
+    d.title = "Quad \u2014 report a bug (Cmd+Shift+Q)";
     for (let i = 0; i < 4; i++) {
       const dot = document.createElement("span");
       dot.className = "dot";
@@ -2004,28 +1534,9 @@ var Widget = class {
     return d;
   }
   setBugMode(on) {
-    if (this.bugModeOn === on) return;
     this.bugModeOn = on;
     this.toggleEl.setAttribute("data-bug-mode", on ? "on" : "off");
-    this.setCrosshair(on);
-  }
-  /**
-   * Toggle a global crosshair cursor by injecting / removing a tiny
-   * stylesheet at the document head. Figma-style intent: the cursor itself
-   * tells the reporter "click anywhere to drop a pin" — no expensive
-   * hover preview, no whole-section outline.
-   */
-  setCrosshair(on) {
-    if (on && !this.cursorStyle) {
-      const s = document.createElement("style");
-      s.setAttribute("data-quad", "cursor");
-      s.textContent = "html, body, *, *::before, *::after { cursor: crosshair !important; }";
-      document.head.appendChild(s);
-      this.cursorStyle = s;
-    } else if (!on && this.cursorStyle) {
-      this.cursorStyle.remove();
-      this.cursorStyle = null;
-    }
+    if (!on) this.hideOutline();
   }
   // ---- Overlay panel --------------------------------------------------------
   makePanel() {
@@ -2034,326 +1545,42 @@ var Widget = class {
     p.setAttribute("data-open", "false");
     const header = document.createElement("header");
     const h1 = document.createElement("h1");
-    h1.textContent = "QA \uC81C\uBCF4";
-    const settings = document.createElement("button");
-    settings.textContent = "\uC124\uC815";
-    settings.className = "q-settings-open";
-    settings.title = "\uC791\uC131\uC790 \uBC0F Azure PAT \uC124\uC815";
-    settings.addEventListener("click", () => this.setSettingsOpen(true));
+    h1.textContent = "Report a bug";
     const close = document.createElement("button");
     close.textContent = "\xD7";
-    close.title = "\uB2EB\uAE30 (Esc)";
+    close.title = "Close (Esc)";
     close.addEventListener("click", () => this.cb.onToggleOverlay());
     header.appendChild(h1);
-    header.appendChild(settings);
     header.appendChild(close);
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
+      <p>To point at a specific element, use <strong>Bug Mode + Option/Alt+Click</strong>.</p>
+      <p>This panel is for freeform reports. Drop videos/screenshots below or paste (Cmd+V).</p>
       <div class="drop" data-over="false">
-        \uD30C\uC77C\uC744 \uC5EC\uAE30\uC5D0 \uB193\uAC70\uB098 \uD074\uB9AD\uD574\uC11C \uC120\uD0DD<br/>
-        <small>macOS\uB294 \u2318\u21E75, Windows\uB294 Win+G\uB85C \uB179\uD654\uD55C \uB4A4 \uC5EC\uAE30\uC5D0 \uB193\uC73C\uC138\uC694</small>
+        Drop a file here or click to select<br/>
+        <small>Record with Cmd+Shift+5 (Mac) or Win+G (Windows), then drop here</small>
       </div>
       <input type="file" multiple accept="video/*,audio/*,image/*" style="display:none" />
-      ${this.options.azureDevOpsEnabled ? '<input class="q-user-story-work-item" type="number" inputmode="numeric" min="1" placeholder="User Story \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
-      ${this.options.azureDevOpsEnabled ? '<input class="q-task-work-item" type="number" inputmode="numeric" min="1" placeholder="Task \uBC88\uD638 (\uC120\uD0DD)" />' : ""}
-      <div class="q-comment-wrap">
-        <textarea class="q-comment-body" placeholder="\uBB34\uC5C7\uC774 \uBB38\uC81C\uC600\uB098\uC694?${this.options.azureDevOpsEnabled ? " @\uB85C \uB2F4\uB2F9\uC790\uB97C \uD0DC\uADF8\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4" : ""}"></textarea>
-        ${this.options.azureDevOpsEnabled ? '<div class="q-mention-menu" data-open="false"></div>' : ""}
-      </div>
-      <button class="primary">\uBCF4\uB0B4\uAE30</button>
-      <p class="q-status"></p>
+      <textarea placeholder="What went wrong?"></textarea>
+      <button class="primary">Submit</button>
+      <p class="q-status" style="margin-top:10px; font-size:11px; color:var(--star-500);"></p>
       <section class="q-reports">
         <div class="header">
-          <span class="label">\uB0B4 \uC81C\uBCF4</span>
+          <span class="label">Your reports</span>
           <span class="right">
-            <button class="show-all" type="button" aria-pressed="false">\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uBAA8\uB450 \uBCF4\uAE30</button>
+            <button class="show-all" type="button" aria-pressed="false">Show all on this page</button>
             <span class="count"></span>
           </span>
         </div>
         <div class="list"></div>
       </section>
-      <div class="q-settings-modal" data-open="false">
-        <div class="q-settings-backdrop"></div>
-        <section class="q-settings-card">
-          <header>
-            <h2>\uC124\uC815</h2>
-            <button class="q-settings-close" type="button" title="\uC124\uC815 \uB2EB\uAE30">\xD7</button>
-          </header>
-          <div class="q-reporter-setup" data-empty="true" data-editing="true">
-            <div class="q-reporter-current">
-              <span>\uC791\uC131\uC790</span>
-              <strong class="q-reporter-display"></strong>
-              <button class="q-reporter-edit" type="button">\uBCC0\uACBD</button>
-            </div>
-            <label class="q-field q-reporter-editor">
-              <span>\uC791\uC131\uC790 \uC774\uB984</span>
-              <div class="q-reporter-row">
-                <input class="q-reporter-name" type="text" autocomplete="name" placeholder="\uC608: \uC774\uD559\uC900 TPM" />
-                <button class="q-reporter-save" type="button">\uC800\uC7A5</button>
-              </div>
-              <small>\uD55C \uBC88 \uC800\uC7A5\uD558\uBA74 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uACC4\uC18D \uC0AC\uC6A9\uB429\uB2C8\uB2E4.</small>
-            </label>
-          </div>
-          ${this.options.azureDevOpsEnabled ? `
-          <div class="q-azure-pat" data-configured="false" data-editing="true">
-            <div class="q-azure-pat-current">
-              <span>Azure PAT</span>
-              <strong class="q-azure-pat-label">\uBBF8\uC124\uC815</strong>
-              <button class="q-azure-pat-edit" type="button">\uC218\uC815</button>
-            </div>
-            <label class="q-field q-azure-pat-editor">
-              <span>Azure DevOps PAT</span>
-              <div class="q-reporter-row">
-                <input class="q-azure-pat-input" type="password" autocomplete="off" placeholder="\uAC1C\uC778 Azure DevOps PAT" />
-                <button class="q-azure-pat-save" type="button">\uC800\uC7A5</button>
-              </div>
-              <small>\uC0C1\uD0DC \uBCC0\uACBD\uACFC \uB313\uAE00\uC740 \uC774 PAT \uACC4\uC815\uC73C\uB85C \uC218\uD589\uB429\uB2C8\uB2E4.</small>
-              <button class="q-azure-pat-delete" type="button">\uC800\uC7A5\uB41C PAT \uC0AD\uC81C</button>
-            </label>
-            <p class="q-azure-pat-status"></p>
-          </div>` : ""}
-        </section>
-      </div>
     `;
     p.appendChild(header);
     p.appendChild(body);
     this.wireOverlayBody(body);
-    this.wireSettingsModal(body);
-    this.syncReporterIdentity(body);
-    if (this.options.azureDevOpsEnabled) {
-      this.syncAzurePatSetup(body);
-      this.wireAzureTargets(body);
-      this.wireCommentMentions(body);
-    }
     this.wireReportsList(body);
     return p;
-  }
-  wireSettingsModal(body) {
-    const modal = body.querySelector(".q-settings-modal");
-    const close = body.querySelector(".q-settings-close");
-    const backdrop = body.querySelector(".q-settings-backdrop");
-    if (!modal || !close || !backdrop) return;
-    close.addEventListener("click", () => this.setSettingsOpen(false));
-    backdrop.addEventListener("click", () => this.setSettingsOpen(false));
-  }
-  setSettingsOpen(open) {
-    const modal = this.bodyEl?.querySelector(".q-settings-modal");
-    if (!modal) return;
-    modal.dataset.open = open ? "true" : "false";
-  }
-  syncReporterIdentity(body) {
-    const setup = body.querySelector(".q-reporter-setup");
-    const reporterInput = body.querySelector("input.q-reporter-name");
-    const display = body.querySelector(".q-reporter-display");
-    const editBtn = body.querySelector(".q-reporter-edit");
-    const saveBtn = body.querySelector(".q-reporter-save");
-    if (!setup || !reporterInput || !display || !editBtn || !saveBtn) return;
-    const render = (editing) => {
-      const name = this.cb.getReporterName()?.trim() ?? "";
-      const isEmpty = !name;
-      setup.dataset.empty = isEmpty ? "true" : "false";
-      setup.dataset.editing = editing ?? isEmpty ? "true" : "false";
-      display.textContent = name || "\uBBF8\uC124\uC815";
-      reporterInput.value = name;
-    };
-    const save = () => {
-      const name = reporterInput.value.trim();
-      this.cb.onReporterNameChange(name);
-      render(!name);
-      if (name) this.toast("\uC791\uC131\uC790 \uC774\uB984\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4");
-    };
-    editBtn.addEventListener("click", () => {
-      render(true);
-      reporterInput.focus();
-      reporterInput.select();
-    });
-    saveBtn.addEventListener("click", save);
-    reporterInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        save();
-      }
-    });
-    reporterInput.addEventListener("blur", (e) => {
-      if (e.relatedTarget === saveBtn) return;
-      if (setup.dataset.empty === "true" && reporterInput.value.trim()) save();
-    });
-    render();
-  }
-  focusReporterSetup() {
-    const setup = this.bodyEl.querySelector(".q-reporter-setup");
-    const reporterInput = this.bodyEl.querySelector("input.q-reporter-name");
-    if (!setup || !reporterInput) return;
-    setup.dataset.editing = "true";
-    this.setOverlayOpen(true);
-    this.setSettingsOpen(true);
-    reporterInput.focus();
-  }
-  syncAzurePatSetup(body) {
-    const setup = body.querySelector(".q-azure-pat");
-    const label = body.querySelector(".q-azure-pat-label");
-    const editBtn = body.querySelector(".q-azure-pat-edit");
-    const saveBtn = body.querySelector(".q-azure-pat-save");
-    const deleteBtn = body.querySelector(".q-azure-pat-delete");
-    const input = body.querySelector(".q-azure-pat-input");
-    const status = body.querySelector(".q-azure-pat-status");
-    if (!setup || !label || !editBtn || !saveBtn || !deleteBtn || !input || !status) return;
-    const render = (configured, prefix, editing) => {
-      setup.dataset.configured = configured ? "true" : "false";
-      setup.dataset.editing = editing ?? !configured ? "true" : "false";
-      label.textContent = configured ? `\uC800\uC7A5\uB428 ${prefix ?? ""}`.trim() : "\uBBF8\uC124\uC815";
-      input.value = "";
-    };
-    void this.cb.getAzureDevOpsPatStatus().then((res) => render(res.configured, res.prefix)).catch(() => {
-      status.className = "q-azure-pat-status error";
-      status.textContent = "Azure PAT \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4";
-    });
-    editBtn.addEventListener("click", () => {
-      render(setup.dataset.configured === "true", label.textContent, true);
-      input.focus();
-    });
-    saveBtn.addEventListener("click", async () => {
-      const pat = input.value.trim();
-      if (!pat) {
-        status.className = "q-azure-pat-status error";
-        status.textContent = "PAT\uB97C \uC785\uB825\uD574 \uC8FC\uC138\uC694";
-        return;
-      }
-      saveBtn.disabled = true;
-      status.className = "q-azure-pat-status";
-      status.textContent = "\uAC80\uC99D \uBC0F \uC800\uC7A5 \uC911\u2026";
-      try {
-        const res = await this.cb.onSaveAzureDevOpsPat(pat);
-        render(res.configured, res.prefix, false);
-        status.textContent = "Azure PAT\uAC00 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4";
-      } catch (err) {
-        status.className = "q-azure-pat-status error";
-        status.textContent = err instanceof Error ? err.message : "Azure PAT \uC800\uC7A5 \uC2E4\uD328";
-      } finally {
-        saveBtn.disabled = false;
-      }
-    });
-    deleteBtn.addEventListener("click", async () => {
-      deleteBtn.disabled = true;
-      status.className = "q-azure-pat-status";
-      status.textContent = "\uC0AD\uC81C \uC911\u2026";
-      try {
-        await this.cb.onDeleteAzureDevOpsPat();
-        render(false, null, true);
-        status.textContent = "\uC800\uC7A5\uB41C PAT\uB97C \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4";
-      } catch (err) {
-        status.className = "q-azure-pat-status error";
-        status.textContent = err instanceof Error ? err.message : "Azure PAT \uC0AD\uC81C \uC2E4\uD328";
-      } finally {
-        deleteBtn.disabled = false;
-      }
-    });
-  }
-  wireAzureTargets(body) {
-    const userStoryInput = body.querySelector("input.q-user-story-work-item");
-    const taskInput = body.querySelector("input.q-task-work-item");
-    if (!userStoryInput && !taskInput) return;
-    const saved = readSavedAzureTargets();
-    if (userStoryInput && saved.userStoryWorkItemId) userStoryInput.value = String(saved.userStoryWorkItemId);
-    if (taskInput && saved.taskWorkItemId) taskInput.value = String(saved.taskWorkItemId);
-    const save = () => {
-      const next = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "");
-      writeSavedAzureTargets(next);
-    };
-    userStoryInput?.addEventListener("change", save);
-    taskInput?.addEventListener("change", save);
-  }
-  wireCommentMentions(body) {
-    const textarea = body.querySelector("textarea.q-comment-body");
-    const menu = body.querySelector(".q-mention-menu");
-    if (!textarea || !menu) return;
-    const users = normalizeMentionUsers(this.options.mentionUsers ?? []);
-    const selectedEmails = [];
-    let activeIndex = 0;
-    let activeMatch = null;
-    textarea.quadMentionEmails = selectedEmails;
-    const close = () => {
-      menu.dataset.open = "false";
-      menu.innerHTML = "";
-      activeMatch = null;
-      activeIndex = 0;
-    };
-    const choose = (user) => {
-      const match = activeMatch ?? findMentionMatch(textarea);
-      if (!match) return;
-      const label = user.displayName?.trim() || user.email;
-      const before = textarea.value.slice(0, match.start);
-      const after = textarea.value.slice(match.end);
-      const insert = `${match.prefix}@${label} `;
-      textarea.value = `${before}${insert}${after}`;
-      const nextCursor = before.length + insert.length;
-      textarea.setSelectionRange(nextCursor, nextCursor);
-      if (!selectedEmails.some((email) => email.toLowerCase() === user.email.toLowerCase())) {
-        selectedEmails.push(user.email);
-      }
-      close();
-      textarea.focus();
-    };
-    const render = () => {
-      const match = findMentionMatch(textarea);
-      if (!match || users.length === 0) {
-        close();
-        return;
-      }
-      const q = match.query.toLowerCase();
-      const candidates = users.filter((user) => mentionSearchText(user).includes(q)).slice(0, 7);
-      if (candidates.length === 0) {
-        close();
-        return;
-      }
-      activeMatch = match;
-      activeIndex = Math.min(activeIndex, candidates.length - 1);
-      menu.dataset.open = "true";
-      menu.innerHTML = candidates.map((user, index) => `
-        <button class="q-mention-option" type="button" data-index="${index}" aria-selected="${index === activeIndex ? "true" : "false"}">
-          <span class="q-mention-avatar">${escapeHtml2(mentionInitials(user))}</span>
-          <span class="q-mention-main">
-            <strong>${escapeHtml2(user.displayName?.trim() || user.email)}</strong>
-            <span class="q-mention-email">${escapeHtml2(user.email)}</span>
-            ${user.subtitle ? `<span class="q-mention-subtitle">${escapeHtml2(user.subtitle)}</span>` : ""}
-          </span>
-        </button>
-      `).join("");
-      menu.querySelectorAll(".q-mention-option").forEach((button) => {
-        button.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          const index = Number.parseInt(button.dataset.index ?? "", 10);
-          const user = candidates[index];
-          if (user) choose(user);
-        });
-      });
-    };
-    textarea.addEventListener("input", () => {
-      if (!textarea.value.includes("@")) selectedEmails.splice(0, selectedEmails.length);
-      activeIndex = 0;
-      render();
-    });
-    textarea.addEventListener("click", render);
-    textarea.addEventListener("blur", () => {
-      window.setTimeout(close, 120);
-    });
-    textarea.addEventListener("keydown", (e) => {
-      if (menu.dataset.open !== "true") return;
-      const options = Array.from(menu.querySelectorAll(".q-mention-option"));
-      if (options.length === 0) return;
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        activeIndex = e.key === "ArrowDown" ? (activeIndex + 1) % options.length : (activeIndex - 1 + options.length) % options.length;
-        render();
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        options[activeIndex]?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        close();
-      }
-    });
   }
   // ---- Reports list -------------------------------------------------------
   wireReportsList(body) {
@@ -2369,18 +1596,18 @@ var Widget = class {
       countEl.textContent = String(all.length);
       const allRevealed = hereOnly.length > 0 && hereOnly.every((p) => isVisible(p.id));
       showAllBtn.setAttribute("aria-pressed", allRevealed ? "true" : "false");
-      showAllBtn.textContent = allRevealed ? "\uBAA8\uB450 \uC228\uAE30\uAE30" : "\uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uBAA8\uB450 \uBCF4\uAE30";
+      showAllBtn.textContent = allRevealed ? "Hide all" : "Show all on this page";
       showAllBtn.disabled = hereOnly.length === 0;
       showAllBtn.style.opacity = hereOnly.length === 0 ? "0.4" : "1";
       if (all.length === 0) {
-        listEl.innerHTML = `<p class="empty">\uC544\uC9C1 \uC81C\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uC694\uC18C\uB97C \uC9C0\uC815\uD558\uAC70\uB098 \uC704\uC5D0\uC11C \uC99D\uAC70\uB97C \uBCF4\uB0B4\uC138\uC694.</p>`;
+        listEl.innerHTML = `<p class="empty">No reports yet. Pin an element or submit one above.</p>`;
         return;
       }
       const rowHtml = (p, sameRoute) => {
         const visible = isVisible(p.id);
         const eyeLabel = sameRoute ? visible ? "\u25CF" : "\u25CB" : "\u2197";
-        const eyeTitle = sameRoute ? visible ? "\uD398\uC774\uC9C0\uC5D0\uC11C \uC228\uAE30\uAE30" : "\uD398\uC774\uC9C0\uC5D0\uC11C \uBCF4\uAE30" : `${p.route}\uC5D0 \uC788\uC74C`;
-        const text = (p.body || "(\uCF54\uBA58\uD2B8 \uC5C6\uC74C)").replace(/[<>]/g, "");
+        const eyeTitle = sameRoute ? visible ? "Hide on page" : "Show on page" : `On ${p.route}`;
+        const text = (p.body || "(no comment)").replace(/[<>]/g, "");
         return `
           <div class="item">
             <div class="body">
@@ -2425,14 +1652,12 @@ var Widget = class {
   wireOverlayBody(body) {
     const drop = body.querySelector(".drop");
     const fileInput = body.querySelector("input[type=file]");
-    const userStoryInput = body.querySelector("input.q-user-story-work-item");
-    const taskInput = body.querySelector("input.q-task-work-item");
-    const ta = body.querySelector("textarea.q-comment-body");
+    const ta = body.querySelector("textarea");
     const btn = body.querySelector(".primary");
     const status = body.querySelector(".q-status");
     let staged = [];
     const renderStaged = () => {
-      status.textContent = staged.length ? `${staged.length}\uAC1C \uCCA8\uBD80\uB428: ${staged.map((f) => f.name).join(", ")}` : "";
+      status.textContent = staged.length ? `${staged.length} attached: ${staged.map((f) => f.name).join(", ")}` : "";
     };
     const acceptFiles = (files) => {
       const arr = Array.from(files);
@@ -2474,46 +1699,26 @@ var Widget = class {
     });
     btn.addEventListener("click", async () => {
       const body2 = ta.value.trim();
-      if (!this.cb.getReporterName()?.trim()) {
-        status.textContent = "\uC791\uC131\uC790 \uC774\uB984\uC744 \uBA3C\uC800 \uC800\uC7A5\uD574 \uC8FC\uC138\uC694";
-        status.className = "q-status error";
-        this.focusReporterSetup();
-        return;
-      }
       if (!body2 && staged.length === 0) {
-        status.textContent = "\uC124\uBA85\uC774\uB098 \uCCA8\uBD80 \uD30C\uC77C\uC774 \uD544\uC694\uD569\uB2C8\uB2E4";
+        status.textContent = "A short description or an attachment is required";
         status.className = "q-status error";
         return;
       }
-      const azureTargets = parseAzureTargets(
-        userStoryInput?.value ?? "",
-        taskInput?.value ?? ""
-      );
-      if ((userStoryInput?.value.trim() || taskInput?.value.trim()) && (azureTargets.azureWorkItemIds?.length ?? 0) === 0) {
-        status.textContent = "User Story \uB610\uB294 Task \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
-        status.className = "q-status error";
-        return;
-      }
-      writeSavedAzureTargets(azureTargets);
       btn.disabled = true;
       status.className = "q-status";
-      status.textContent = "\uC804\uC1A1 \uC911\u2026";
+      status.textContent = "Sending\u2026";
       try {
-        await this.cb.onSubmitOverlay(body2, staged, {
-          ...azureTargets,
-          azureMentionEmails: ta.quadMentionEmails ?? []
-        });
+        await this.cb.onSubmitOverlay(body2, staged);
         ta.value = "";
-        ta.quadMentionEmails?.splice(0, ta.quadMentionEmails.length);
         staged = [];
         renderStaged();
-        status.textContent = "\uC804\uC1A1 \uC644\uB8CC";
+        status.textContent = "Sent";
         setTimeout(() => {
           status.textContent = "";
         }, 2e3);
       } catch (err) {
         status.className = "q-status error";
-        status.textContent = err instanceof Error ? err.message : "\uC804\uC1A1 \uC2E4\uD328";
+        status.textContent = err instanceof Error ? err.message : "Send failed";
       } finally {
         btn.disabled = false;
       }
@@ -2526,71 +1731,79 @@ var Widget = class {
   isOverlayOpen() {
     return this.overlayOpen;
   }
+  // ---- Hover outline --------------------------------------------------------
+  makeOutline() {
+    const o = document.createElement("div");
+    o.className = "q-outline";
+    o.style.display = "none";
+    this.root.appendChild(o);
+    return o;
+  }
+  makeOutlineLabel() {
+    const l = document.createElement("div");
+    l.className = "q-outline-label";
+    l.style.display = "none";
+    this.root.appendChild(l);
+    return l;
+  }
+  showOutline(rect, label) {
+    this.outlineEl.style.display = "block";
+    this.outlineEl.style.left = `${rect.left}px`;
+    this.outlineEl.style.top = `${rect.top}px`;
+    this.outlineEl.style.width = `${rect.width}px`;
+    this.outlineEl.style.height = `${rect.height}px`;
+    this.labelEl.style.display = "block";
+    this.labelEl.textContent = label;
+    const labelTop = rect.top - 22;
+    this.labelEl.style.left = `${rect.left}px`;
+    this.labelEl.style.top = `${labelTop < 0 ? rect.bottom + 4 : labelTop}px`;
+  }
+  hideOutline() {
+    this.outlineEl.style.display = "none";
+    this.labelEl.style.display = "none";
+  }
   // ---- Floating pin form ----------------------------------------------------
   openPinForm(x, y, selector, cb) {
     this.closePinForm();
     const form = document.createElement("div");
     form.className = "q-pin-form";
-    const savedTargets = readSavedAzureTargets();
     form.innerHTML = `
       <div class="selector">${escapeHtml2(selector)}</div>
-      ${this.options.azureDevOpsEnabled ? `
-        <div class="q-pin-azure">
-          <input class="q-pin-user-story" type="number" inputmode="numeric" min="1" placeholder="User Story \uBC88\uD638 (\uC120\uD0DD)" value="${savedTargets.userStoryWorkItemId ?? ""}" />
-          <input class="q-pin-task" type="number" inputmode="numeric" min="1" placeholder="Task \uBC88\uD638 (\uC120\uD0DD)" value="${savedTargets.taskWorkItemId ?? ""}" />
-        </div>
-      ` : ""}
-      <textarea placeholder="\uC5EC\uAE30\uC11C \uBB34\uC5C7\uC774 \uBB38\uC81C\uC600\uB098\uC694? (Cmd/Ctrl+Enter\uB85C \uC81C\uCD9C)"></textarea>
+      <textarea placeholder="What went wrong here? (Cmd/Ctrl+Enter to submit)"></textarea>
       <div class="actions">
-        <button class="ghost" type="button">\uCDE8\uC18C</button>
-        <button class="submit" type="button">\uBCF4\uB0B4\uAE30</button>
+        <button class="ghost" type="button">Cancel</button>
+        <button class="submit" type="button">Submit</button>
       </div>
       <div class="status"></div>
     `;
-    this.root.appendChild(form);
-    this.pinFormEl = form;
-    const rect = form.getBoundingClientRect();
-    const px = Math.min(x, window.innerWidth - rect.width - 8);
-    const py = Math.min(y, window.innerHeight - rect.height - 8);
+    const px = Math.min(x, window.innerWidth - 300);
+    const py = Math.min(y, window.innerHeight - 200);
     form.style.left = `${Math.max(8, px)}px`;
     form.style.top = `${Math.max(8, py)}px`;
+    this.root.appendChild(form);
+    this.pinFormEl = form;
     const ta = form.querySelector("textarea");
     const submitBtn = form.querySelector(".submit");
     const cancelBtn = form.querySelector(".ghost");
     const status = form.querySelector(".status");
-    const userStoryInput = form.querySelector("input.q-pin-user-story");
-    const taskInput = form.querySelector("input.q-pin-task");
     ta.focus();
     const doSubmit = async () => {
       const body = ta.value.trim();
-      if (!this.cb.getReporterName()?.trim()) {
-        status.className = "status error";
-        status.textContent = "\uC791\uC131\uC790 \uC774\uB984\uC744 \uBA3C\uC800 \uC800\uC7A5\uD574 \uC8FC\uC138\uC694";
-        this.focusReporterSetup();
-        return;
-      }
       if (!body) {
         status.className = "status error";
-        status.textContent = "\uCF54\uBA58\uD2B8\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4";
+        status.textContent = "A comment is required";
         return;
       }
-      const azureTargets = parseAzureTargets(userStoryInput?.value ?? "", taskInput?.value ?? "");
-      if ((userStoryInput?.value.trim() || taskInput?.value.trim()) && (azureTargets.azureWorkItemIds?.length ?? 0) === 0) {
-        status.className = "status error";
-        status.textContent = "User Story \uB610\uB294 Task \uBC88\uD638\uB294 \uC591\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4";
-        return;
-      }
-      writeSavedAzureTargets({ ...readSavedAzureTargets(), ...azureTargets });
       submitBtn.disabled = true;
       status.className = "status";
-      status.textContent = "\uC804\uC1A1 \uC911\u2026";
+      status.textContent = "Sending\u2026";
       try {
-        await cb.onSubmit(body, azureTargets);
+        await cb.onSubmit(body);
         this.closePinForm();
-        this.toast("\uD540 \uC800\uC7A5\uB428");
+        this.toast("Pin saved");
       } catch (err) {
         status.className = "status error";
-        status.textContent = err instanceof Error ? err.message : "\uC804\uC1A1 \uC2E4\uD328";
+        status.textContent = err instanceof Error ? err.message : "Send failed";
         submitBtn.disabled = false;
       }
     };
@@ -2633,112 +1846,20 @@ var Widget = class {
 function escapeHtml2(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function findMentionMatch(textarea) {
-  const cursor = textarea.selectionStart ?? textarea.value.length;
-  const beforeCursor = textarea.value.slice(0, cursor);
-  const match = /(^|[\s([{])@([^\s@]*)$/.exec(beforeCursor);
-  if (!match) return null;
-  const prefix = match[1] ?? "";
-  const query = match[2] ?? "";
-  return {
-    start: beforeCursor.length - match[0].length,
-    end: cursor,
-    prefix,
-    query
-  };
-}
-function normalizeMentionUsers(users) {
-  const seen = /* @__PURE__ */ new Set();
-  const normalized = [];
-  for (const user of users) {
-    const email = user.email?.trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
-    const key = email.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    normalized.push({
-      email,
-      displayName: user.displayName?.trim() || void 0,
-      subtitle: user.subtitle?.trim() || void 0,
-      initials: user.initials?.trim() || void 0
-    });
-  }
-  return normalized;
-}
-function mentionSearchText(user) {
-  return [
-    user.displayName,
-    user.email,
-    user.subtitle,
-    user.initials
-  ].filter(Boolean).join(" ").toLowerCase();
-}
-function mentionInitials(user) {
-  if (user.initials?.trim()) return user.initials.trim().slice(0, 2).toUpperCase();
-  const source = user.displayName?.trim() || user.email.split("@")[0] || "?";
-  const parts = source.split(/[\s._-]+/).filter(Boolean);
-  if (parts.length >= 2) return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
-  return source.slice(0, 2).toUpperCase();
-}
-var AZURE_TARGETS_KEY = "quad.azure_targets.v1";
-function parseAzureTargets(userStoryRaw, taskRaw) {
-  const userStoryWorkItemId = parseSingleWorkItem(userStoryRaw);
-  const taskWorkItemId = parseSingleWorkItem(taskRaw);
-  const azureWorkItemIds = Array.from(
-    new Set([userStoryWorkItemId, taskWorkItemId].filter((n) => Boolean(n)))
-  );
-  return {
-    azureWorkItemIds,
-    userStoryWorkItemId,
-    taskWorkItemId
-  };
-}
-function parseSingleWorkItem(raw) {
-  const trimmed = raw.trim().replace(/^#/, "");
-  if (!trimmed) return void 0;
-  const n = Number.parseInt(trimmed, 10);
-  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : void 0;
-}
-function readSavedAzureTargets() {
-  try {
-    const raw = localStorage.getItem(AZURE_TARGETS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return {
-      userStoryWorkItemId: typeof parsed.userStoryWorkItemId === "number" ? parsed.userStoryWorkItemId : void 0,
-      taskWorkItemId: typeof parsed.taskWorkItemId === "number" ? parsed.taskWorkItemId : void 0,
-      azureWorkItemIds: Array.isArray(parsed.azureWorkItemIds) ? parsed.azureWorkItemIds.filter((n) => typeof n === "number") : void 0
-    };
-  } catch {
-    return {};
-  }
-}
-function writeSavedAzureTargets(targets) {
-  try {
-    localStorage.setItem(AZURE_TARGETS_KEY, JSON.stringify({
-      userStoryWorkItemId: targets.userStoryWorkItemId,
-      taskWorkItemId: targets.taskWorkItemId,
-      azureWorkItemIds: targets.azureWorkItemIds
-    }));
-  } catch {
-  }
-}
 function formatAgo2(ts) {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1e3));
-  if (s < 60) return `${s}\uCD08 \uC804`;
+  if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}\uBD84 \uC804`;
+  if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}\uC2DC\uAC04 \uC804`;
+  if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
-  return `${d}\uC77C \uC804`;
+  return `${d}d ago`;
 }
 
 // src/index.ts
 var VERSION = "0.0.0";
 var ANON_COOKIE = "quad_anon";
-var REPORTER_NAME_KEY = "quad.reporter_name.v1";
-var AZURE_TARGETS_KEY2 = "quad.azure_targets.v1";
 var QuadApi = class {
   opts = {
     apiKey: "",
@@ -2749,7 +1870,6 @@ var QuadApi = class {
   bugMode;
   capture;
   reveal;
-  optKey = "Alt";
   user;
   context = {};
   consoleRing = new Ring(50);
@@ -2774,31 +1894,19 @@ var QuadApi = class {
       );
     }
     const shortcuts = {
-      bugMode: parse(opts.shortcut?.bugMode ?? "alt+shift+b"),
+      bugMode: parse(opts.shortcut?.bugMode ?? "mod+shift+b"),
       pin: parse(opts.shortcut?.pin ?? "alt+click"),
-      overlay: parse(opts.shortcut?.overlay ?? "alt+shift+q"),
-      capture: parse(opts.shortcut?.capture ?? "alt+shift+r"),
-      voice: parse(opts.shortcut?.voice ?? "alt+shift+v")
+      overlay: parse(opts.shortcut?.overlay ?? "mod+shift+q"),
+      capture: parse(opts.shortcut?.capture ?? "mod+shift+r"),
+      voice: parse(opts.shortcut?.voice ?? "mod+shift+v")
     };
-    this.widget = new Widget(
-      {
-        onToggleOverlay: () => this.toggleOverlay(),
-        getReporterName: () => this.reporterName(),
-        onReporterNameChange: (name) => this.setReporterName(name),
-        getAzureDevOpsPatStatus: () => this.getAzureDevOpsPatStatus(),
-        onSaveAzureDevOpsPat: (pat) => this.saveAzureDevOpsPat(pat),
-        onDeleteAzureDevOpsPat: () => this.deleteAzureDevOpsPat(),
-        onSubmitOverlay: (body, files, options) => this.submitOverlay(body, files, options)
-      },
-      {
-        azureDevOpsEnabled: opts.azureDevOps?.enabled === true,
-        mentionUsers: opts.azureDevOps?.mentionUsers ?? []
-      }
-    );
+    this.widget = new Widget({
+      onToggleOverlay: () => this.toggleOverlay(),
+      onSubmitOverlay: (body, files) => this.submitOverlay(body, files)
+    });
     this.bugMode = new BugMode(this.widget, this.widget.host, shortcuts.pin, {
       onPin: (el, x, y) => this.openPinForm(el, x, y)
     });
-    this.optKey = /Mac|iPhone|iPad/i.test(navigator?.platform ?? "") ? "Option" : "Alt";
     this.reveal = new RevealLayer(this.widget.root);
     void this.bootstrapPins();
     this.capture = new CaptureSession(this.widget.root, this.widget.host, {
@@ -2813,25 +1921,20 @@ var QuadApi = class {
       onComplete: async (input) => {
         await this.api.createSession({
           title: input.title,
-          body: "(\uCEA1\uCC98 \uC138\uC158)",
-          meta: this.snapshotMeta(this.savedAzureContext()),
-          reporter: this.reporter(),
+          body: "(Capture session)",
+          meta: this.snapshotMeta(),
+          reporter: this.user,
           reporterAnonKey: this.ensureAnonKey(),
           attachments: input.attachments
         });
-        this.widget?.toast(`\uC99D\uAC70 \uC800\uC7A5 \uC644\uB8CC \xB7 ${Math.round(input.durationMs / 1e3)}\uCD08`);
+        this.widget?.toast(`Capture saved \xB7 ${Math.round(input.durationMs / 1e3)}s`);
       },
       onPin: () => {
         if (!this.bugMode?.isOn()) this.toggleBugMode();
-        this.widget?.toast(`${this.optKey}+\uD074\uB9AD\uC73C\uB85C \uC694\uC18C\uB97C \uC9C0\uC815\uD558\uC138\uC694`);
+        this.widget?.toast("Option+Click an element to pin it");
       }
     });
     const onKey = (e) => {
-      const shortcut = matchesKey(shortcuts.bugMode, e) || matchesKey(shortcuts.overlay, e) || matchesKey(shortcuts.capture, e) || matchesKey(shortcuts.voice, e);
-      if (shortcut && e.repeat) {
-        e.preventDefault();
-        return;
-      }
       if (matchesKey(shortcuts.bugMode, e)) {
         e.preventDefault();
         this.toggleBugMode();
@@ -2879,7 +1982,6 @@ var QuadApi = class {
   }
   identify(user) {
     this.user = user;
-    if (user.name) this.setReporterName(user.name);
   }
   setContext(ctx) {
     this.context = { ...this.context, ...ctx };
@@ -2899,7 +2001,7 @@ var QuadApi = class {
         title: input.title,
         body: input.body ?? "",
         meta: this.snapshotMeta(),
-        reporter: this.reporter(),
+        reporter: this.user,
         reporterAnonKey: this.ensureAnonKey()
       });
     } catch (err) {
@@ -2914,9 +2016,9 @@ var QuadApi = class {
     const mode = opts.mode ?? "screen+mic";
     try {
       await this.capture.start(mode);
-      this.widget?.toast(mode === "screen+mic" ? "\uD654\uBA74 \uB179\uD654 + \uC74C\uC131 \uAE30\uB85D \uC2DC\uC791" : "\uC74C\uC131 \uAE30\uB85D \uC2DC\uC791");
+      this.widget?.toast(mode === "screen+mic" ? "Recording + STT started" : "Voice recording started");
     } catch (err) {
-      this.widget?.toast(err instanceof Error ? err.message : "\uAE30\uB85D\uC744 \uC2DC\uC791\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4");
+      this.widget?.toast(err instanceof Error ? err.message : "Failed to start recording");
     }
   }
   async stopRecord() {
@@ -2963,7 +2065,7 @@ var QuadApi = class {
   /** Minimal native confirm so we don't ship a custom modal just for this. */
   async askCaptureMode() {
     if (typeof confirm === "function") {
-      return confirm("\uD654\uBA74\uACFC \uC74C\uC131\uC744 \uD568\uAED8 \uB179\uD654\uD560\uAE4C\uC694? \uCDE8\uC18C\uB97C \uB204\uB974\uBA74 \uC74C\uC131\uB9CC \uB179\uC74C\uD569\uB2C8\uB2E4.") ? "screen+mic" : "mic-only";
+      return confirm("Record screen + voice? Cancel records voice only.") ? "screen+mic" : "mic-only";
     }
     return "screen+mic";
   }
@@ -2971,9 +2073,7 @@ var QuadApi = class {
   toggleBugMode() {
     if (!this.bugMode) return;
     this.bugMode.setOn(!this.bugMode.isOn());
-    this.widget?.toast(
-      this.bugMode.isOn() ? `\uBC84\uADF8 \uBAA8\uB4DC \uCF1C\uC9D0 - ${this.optKey}+\uD074\uB9AD\uC73C\uB85C \uC694\uC18C \uC9C0\uC815` : "\uBC84\uADF8 \uBAA8\uB4DC \uAEBC\uC9D0"
-    );
+    this.widget?.toast(this.bugMode.isOn() ? "Bug Mode ON \u2014 Option+Click to pin" : "Bug Mode OFF");
   }
   toggleOverlay() {
     if (!this.widget) return;
@@ -2982,13 +2082,13 @@ var QuadApi = class {
   openPinForm(el, x, y) {
     if (!this.widget) return;
     this.widget.openPinForm(x, y, selectorFor(el), {
-      onSubmit: async (body, options) => {
+      onSubmit: async (body) => {
         if (!this.api) return;
         const pin = buildPin(el, body);
         const result = await this.api.createPin({
           pin,
-          meta: this.snapshotMeta(this.azureContext(options)),
-          reporter: this.reporter(),
+          meta: this.snapshotMeta(),
+          reporter: this.user,
           reporterAnonKey: this.ensureAnonKey()
         });
         add({
@@ -3006,84 +2106,25 @@ var QuadApi = class {
       }
     });
   }
-  async submitOverlay(body, files, options = {}) {
-    if (!this.api) throw new Error("Quad\uAC00 \uCD08\uAE30\uD654\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4");
+  async submitOverlay(body, files) {
+    if (!this.api) throw new Error("Quad: not initialized");
     const attachments = [];
     for (const f of files) {
       const kind = f.type.startsWith("video/") ? "video" : f.type.startsWith("audio/") ? "audio" : "screenshot";
       const up = await this.api.uploadFile(f, kind);
       attachments.push({ ...up, kind });
     }
-    const title = body.slice(0, 80) || "(\uCCA8\uBD80 \uC99D\uAC70)";
-    const meta = this.snapshotMeta(this.azureContext(options));
+    const title = body.slice(0, 80) || "(attachment report)";
     await this.api.createSession({
       title,
       body,
-      meta,
-      reporter: this.reporter(),
+      meta: this.snapshotMeta(),
+      reporter: this.user,
       reporterAnonKey: this.ensureAnonKey(),
       attachments
     });
   }
-  reporter() {
-    const name = this.reporterName();
-    if (this.user) return name ? { ...this.user, name } : this.user;
-    return name ? { id: this.ensureAnonKey(), name } : void 0;
-  }
-  reporterName() {
-    const explicit = this.user?.name?.trim();
-    if (explicit) return explicit;
-    try {
-      return localStorage.getItem(REPORTER_NAME_KEY)?.trim() || void 0;
-    } catch {
-      return void 0;
-    }
-  }
-  setReporterName(name) {
-    const normalized = name.trim().slice(0, 120);
-    if (this.user) this.user = { ...this.user, name: normalized || this.user.name };
-    try {
-      if (normalized) localStorage.setItem(REPORTER_NAME_KEY, normalized);
-      else localStorage.removeItem(REPORTER_NAME_KEY);
-    } catch {
-    }
-  }
-  async getAzureDevOpsPatStatus() {
-    if (!this.api) return { configured: false };
-    return this.api.getAzureDevOpsPatStatus(this.ensureAnonKey());
-  }
-  async saveAzureDevOpsPat(pat) {
-    if (!this.api) throw new Error("Quad\uAC00 \uCD08\uAE30\uD654\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4");
-    return this.api.saveAzureDevOpsPat(this.ensureAnonKey(), pat);
-  }
-  async deleteAzureDevOpsPat() {
-    if (!this.api) return;
-    await this.api.deleteAzureDevOpsPat(this.ensureAnonKey());
-  }
-  async searchAzureDevOpsIdentities(query) {
-    if (!this.api) return [];
-    const res = await this.api.searchAzureDevOpsIdentities(this.ensureAnonKey(), query);
-    return res.identities;
-  }
-  azureContext(options = {}) {
-    return {
-      azureWorkItemIds: options.azureWorkItemIds,
-      userStoryWorkItemId: options.userStoryWorkItemId,
-      taskWorkItemId: options.taskWorkItemId,
-      azureMentions: options.azureMentions,
-      azureMentionEmails: options.azureMentionEmails
-    };
-  }
-  savedAzureContext() {
-    try {
-      const raw = localStorage.getItem(AZURE_TARGETS_KEY2);
-      if (!raw) return {};
-      return this.azureContext(JSON.parse(raw));
-    } catch {
-      return {};
-    }
-  }
-  snapshotMeta(extraContext = {}) {
+  snapshotMeta() {
     return {
       userAgent: navigator.userAgent,
       viewport: { w: window.innerWidth, h: window.innerHeight },
@@ -3093,12 +2134,7 @@ var QuadApi = class {
       commitSha: this.opts.commitSha,
       consoleLogs: this.consoleRing.snapshot(),
       networkErrors: this.networkRing.snapshot(),
-      customContext: {
-        pageUrl: location.href,
-        path: location.pathname,
-        ...this.context,
-        ...extraContext
-      }
+      customContext: this.context
     };
   }
   /** Stable anon identifier per-browser, stored as a host-app cookie. */

@@ -56,16 +56,11 @@ export function ProjectsPanel({
         }
       />
 
-      <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8 max-w-5xl w-full mx-auto space-y-8">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <main className="flex-1 px-8 py-8 max-w-4xl w-full mx-auto space-y-8">
+        <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <BrandMark />
-            <div>
-              <h1 className="text-xl tracking-tight">Projects</h1>
-              <p className="text-xs text-star-500">
-                Select a workspace to review reports, tasks, and integrations.
-              </p>
-            </div>
+            <h1 className="text-xl tracking-tight">Projects</h1>
           </div>
           {!open && (
             <Button variant="primary" onClick={() => setOpen(true)}>
@@ -112,7 +107,7 @@ export function ProjectsPanel({
           </Surface>
         )}
 
-        <div className="grid gap-2">
+        <div className="space-y-1">
           {list.isLoading && (
             <p className="text-sm text-star-500 px-3">Loading…</p>
           )}
@@ -131,17 +126,17 @@ export function ProjectsPanel({
             <Link
               key={p.id}
               href={`/projects/${p.slug}`}
-              className="group flex flex-col gap-3 rounded-lg border border-space-border bg-space-surface/70 px-4 py-4 transition-colors hover:border-space-border-strong hover:bg-space-hover sm:flex-row sm:items-center sm:gap-4"
+              className="group flex items-center gap-4 px-3 py-2.5 rounded-md border border-transparent hover:border-space-border hover:bg-space-hover transition-colors"
               style={{
                 transitionTimingFunction: "var(--ease-cosmos)",
                 transitionDuration: "140ms",
               }}
             >
-              <div className="flex-1 min-w-0">
-                <p className="text-[14px] text-star-100 truncate">{p.name}</p>
-                <p className="mt-0.5 text-2xs text-star-500 font-mono truncate">{p.slug}</p>
+              <div className="flex-1 min-w-0 flex items-center gap-3">
+                <p className="text-[13px] text-star-100 truncate">{p.name}</p>
+                <p className="text-2xs text-star-500 font-mono truncate">{p.slug}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-2xs text-star-500 font-mono shrink-0">
+              <div className="hidden md:flex items-center gap-4 text-2xs text-star-500 font-mono shrink-0">
                 <span>{p.memberCount} members</span>
                 <span className="flex items-center gap-1">
                   {p.openBugCount > 0 && (

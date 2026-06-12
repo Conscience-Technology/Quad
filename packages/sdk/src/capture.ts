@@ -57,7 +57,7 @@ export class CaptureSession {
     try {
       if (mode === "screen+mic") {
         if (typeof navigator.mediaDevices?.getDisplayMedia !== "function") {
-          throw new Error("이 브라우저는 화면 녹화를 지원하지 않습니다. 모바일에서는 사용할 수 없습니다.");
+          throw new Error("This browser does not support screen recording (mobile is unsupported)");
         }
         this.screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: { frameRate: 24 },
@@ -147,7 +147,7 @@ export class CaptureSession {
     const trailUpload = await this.cb.onUploadTrail(trailJson);
 
     await this.cb.onComplete({
-      title: title?.trim() || `캡처 · ${new Date().toLocaleString()}`,
+      title: title?.trim() || `Capture · ${new Date().toLocaleString()}`,
       durationMs,
       attachments,
       trailKey: trailUpload.key,
@@ -170,17 +170,15 @@ export class CaptureSession {
       position: fixed;
       top: 16px;
       right: 16px;
-      max-width: calc(100vw - 32px);
       background: var(--elevated);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 8px 10px;
+      border-radius: 999px;
+      padding: 8px 14px;
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       font-family: ui-monospace, monospace;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--star-300);
       z-index: 2147483604;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -188,9 +186,9 @@ export class CaptureSession {
     bar.innerHTML = `
       <span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--rose);box-shadow:0 0 8px var(--rose);animation:q-pulse 1.4s ease-in-out infinite"></span>
       <span class="t">00:00</span>
-      <button class="stop" title="중지" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">■</button>
-      <button class="mute" title="마이크 켜기/끄기" style="min-height:28px;background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">🎤</button>
-      <button class="pin" title="현재 요소 지정" style="min-height:28px;background:transparent;border:1px solid var(--border);border-radius:999px;color:var(--star-300);cursor:pointer;font-size:13px;padding:3px 8px">지정</button>
+      <button class="stop" title="Stop" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:14px">■</button>
+      <button class="mute" title="Toggle mic" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:13px">🎤</button>
+      <button class="pin" title="Pin current element" style="background:transparent;border:0;color:var(--star-300);cursor:pointer;font-size:13px">+Pin</button>
     `;
     // Inject the pulse keyframes if not already present.
     if (!this.shadow.querySelector("style[data-q-pulse]")) {

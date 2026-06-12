@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Code, CopyButton, Field, Input, Select, Surface } from "~/components/ui";
+import { Button, Code, CopyButton, Field, Input, Surface } from "~/components/ui";
 import { trpc } from "~/lib/trpc/react";
 
 type Role = "owner" | "admin" | "member";
@@ -43,7 +43,7 @@ export function MembersPanel({ projectId }: { projectId: string }) {
     : null;
 
   return (
-    <div className="max-w-5xl space-y-8">
+    <div className="space-y-8">
       <Surface>
         <form
           onSubmit={(e) => {
@@ -62,14 +62,15 @@ export function MembersPanel({ projectId }: { projectId: string }) {
             />
           </Field>
           <Field label="Role">
-            <Select
+            <select
               value={role}
               onChange={(e) => setRole(e.currentTarget.value as Role)}
+              className="w-full bg-transparent border-0 border-b border-[var(--color-space-border)] text-[var(--color-star-100)] text-sm py-2 outline-none focus:border-[var(--color-nebula-violet)] transition-colors"
             >
               <option value="member">member</option>
               <option value="admin">admin</option>
               <option value="owner">owner</option>
-            </Select>
+            </select>
           </Field>
           {invite.error && (
             <p className="text-sm text-[var(--color-nebula-rose)]">{invite.error.message}</p>
@@ -82,8 +83,8 @@ export function MembersPanel({ projectId }: { projectId: string }) {
 
       {inviteUrl && lastInvite && (
         <Surface className="border border-[var(--color-nebula-violet)]/30 space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="break-words text-sm text-[var(--color-nebula-violet)] uppercase tracking-wide">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-[var(--color-nebula-violet)] uppercase tracking-wide">
               Invite link ({lastInvite.email})
             </p>
             <CopyButton text={inviteUrl} label="Copy link" />
@@ -101,10 +102,10 @@ export function MembersPanel({ projectId }: { projectId: string }) {
         <h2 className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">Active / Pending</h2>
         {list.isLoading && <p className="text-sm text-[var(--color-star-500)]">Loading…</p>}
         {list.data?.map((m) => (
-          <Surface key={m.userId} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 space-y-1">
-              <p className="break-words text-sm text-[var(--color-star-100)]">{m.name ?? m.email}</p>
-              <p className="break-all text-xs text-[var(--color-star-500)] font-mono">{m.email}</p>
+          <Surface key={m.userId} className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm text-[var(--color-star-100)]">{m.name ?? m.email}</p>
+              <p className="text-xs text-[var(--color-star-500)] font-mono">{m.email}</p>
               <div className="flex gap-2 text-xs text-[var(--color-star-500)] uppercase tracking-wide pt-1">
                 <span>{m.role}</span>
                 <span>·</span>
@@ -113,7 +114,7 @@ export function MembersPanel({ projectId }: { projectId: string }) {
                 </span>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               {m.status === "pending" && (
                 <>
                   <Button
@@ -132,7 +133,7 @@ export function MembersPanel({ projectId }: { projectId: string }) {
               )}
               {m.status === "active" && (
                 <>
-                  <Select
+                  <select
                     value={m.role}
                     onChange={(e) =>
                       changeRole.mutate({
@@ -141,12 +142,12 @@ export function MembersPanel({ projectId }: { projectId: string }) {
                         role: e.currentTarget.value as Role,
                       })
                     }
-                    className="w-auto min-w-32"
+                    className="bg-transparent text-xs text-[var(--color-star-300)] border-b border-[var(--color-space-border)] py-1 outline-none"
                   >
                     <option value="member">member</option>
                     <option value="admin">admin</option>
                     <option value="owner">owner</option>
-                  </Select>
+                  </select>
                   <Button
                     variant="danger"
                     onClick={() => remove.mutate({ projectId, userId: m.userId })}

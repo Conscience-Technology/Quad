@@ -32,7 +32,7 @@ export default async function PrivacySettings({
              screenshots and DOM captures.
             <Code>{'<input type="password">'}</Code> is masked automatically.
           </p>
-          <pre className="max-w-full overflow-x-auto rounded bg-[var(--color-space-void)] p-4 font-mono text-[12px] leading-relaxed text-[var(--color-star-300)]">
+          <pre className="font-mono text-xs bg-[var(--color-space-void)] text-[var(--color-star-300)] p-4 rounded overflow-x-auto">
 {`<QuadProvider
   apiKey={process.env.NEXT_PUBLIC_QUAD_KEY!}
   options={{
@@ -65,26 +65,24 @@ export default async function PrivacySettings({
           Data retention
         </h2>
         <Surface>
-          <div className="max-w-full overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
-              <thead className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">
-                <tr>
-                  <th className="text-left py-2">Data</th>
-                  <th className="text-left">Hot</th>
-                  <th className="text-left">Archive</th>
-                </tr>
-              </thead>
-              <tbody className="text-[var(--color-star-300)]">
-                <Row d="Bug metadata + comments" h="forever" a="—" />
-                <Row d="Video" h="30d" a="1y cold → deleted" />
-                <Row d="Audio" h="30d" a="1y cold → deleted" />
-                <Row d="Transcript text" h="forever" a="—" />
-                <Row d="Screenshots / keyframes" h="90d" a="Delete" />
-                <Row d="Task Brief (frozen)" h="forever" a="—" />
-                <Row d="Resolved bug attachments" h="90d" a="Delete" />
-              </tbody>
-            </table>
-          </div>
+          <table className="w-full text-sm">
+            <thead className="text-xs uppercase tracking-wide text-[var(--color-star-500)]">
+              <tr>
+                <th className="text-left py-2">Data</th>
+                <th className="text-left">Hot</th>
+                <th className="text-left">Archive</th>
+              </tr>
+            </thead>
+            <tbody className="text-[var(--color-star-300)]">
+              <Row d="Bug metadata + comments" h="forever" a="—" />
+              <Row d="Video" h="30d" a="1y cold → deleted" />
+              <Row d="Audio" h="30d" a="1y cold → deleted" />
+              <Row d="Transcript text" h="forever" a="—" />
+              <Row d="Screenshots / keyframes" h="90d" a="Delete" />
+              <Row d="Task Brief (frozen)" h="forever" a="—" />
+              <Row d="Resolved bug attachments" h="90d" a="Delete" />
+            </tbody>
+          </table>
           <p className="text-xs text-[var(--color-star-500)] mt-3">
             Currently an instance-wide default. Per-project override is Phase 2.
           </p>

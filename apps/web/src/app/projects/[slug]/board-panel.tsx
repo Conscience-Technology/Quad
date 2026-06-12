@@ -50,13 +50,8 @@ export function BoardPanel({
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl tracking-tight">Board</h1>
-          <p className="mt-1 text-xs text-star-500">
-            Review incoming reports, triage confirmed bugs, and track resolved work.
-          </p>
-        </div>
+      <header className="flex items-center justify-between">
+        <h1 className="text-xl tracking-tight">Board</h1>
         <div className="flex items-center gap-2 text-2xs text-star-500">
           <Kbd>h</Kbd>
           <Kbd>j</Kbd>
@@ -68,27 +63,25 @@ export function BoardPanel({
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-4 gap-3">
         {COLUMNS.map((col, i) => {
           const data = cells[i] ?? [];
           const isCol = sel.col === i;
           return (
             <section
               key={col.key}
-              className={`min-w-0 bg-space-bg rounded-lg border flex flex-col transition-colors overflow-hidden ${
+              className={`min-w-0 bg-space-bg rounded-lg border flex flex-col transition-colors ${
                 isCol ? "border-space-border-strong" : "border-space-border"
               }`}
             >
-              <header className="flex items-center justify-between px-3 py-3 border-b border-space-border bg-space-surface/45">
+              <header className="flex items-center justify-between px-3 py-2.5 border-b border-space-border">
                 <div className="flex items-center gap-2">
                   <StatusDot status={col.key} />
                   <span className="text-[13px] text-star-100">{col.label}</span>
                 </div>
-                <span className="rounded border border-space-border bg-space-void px-1.5 py-0.5 text-2xs text-star-500 font-mono">
-                  {data.length}
-                </span>
+                <span className="text-2xs text-star-500 font-mono">{data.length}</span>
               </header>
-              <div className="flex-1 p-2 space-y-1 min-h-[220px]">
+              <div className="flex-1 p-1.5 space-y-0.5 min-h-[200px]">
                 {queries[i]?.isLoading && (
                   <p className="text-2xs text-star-700 px-2 py-2">Loading…</p>
                 )}
@@ -102,7 +95,7 @@ export function BoardPanel({
                       key={b.id}
                       href={`/projects/${projectSlug}/bug/${b.id}`}
                       onMouseEnter={() => setSel({ col: i, idx })}
-                      className={`block px-2.5 py-2 rounded-md border transition-colors ${
+                      className={`block px-2 py-1.5 rounded-md border transition-colors ${
                         isSel
                           ? "border-nebula-violet/30 bg-space-hover"
                           : "border-transparent hover:border-space-border hover:bg-space-hover"
@@ -112,14 +105,14 @@ export function BoardPanel({
                         transitionDuration: "120ms",
                       }}
                     >
-                      <div className="flex items-center gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 mb-1">
                         <ShortId id={b.id} />
                         <span className="text-2xs font-mono text-star-700 uppercase">{b.kind}</span>
                       </div>
                       <p className="text-[13px] text-star-100 line-clamp-2 leading-snug">
                         {b.title}
                       </p>
-                      <div className="flex items-center justify-between mt-2 text-2xs text-star-700 font-mono">
+                      <div className="flex items-center justify-between mt-1.5 text-2xs text-star-700 font-mono">
                         <span className="truncate">{b.targetRoute ?? "/"}</span>
                         <span className="shrink-0 ml-2">{relativeTime(b.updatedAt)}</span>
                       </div>

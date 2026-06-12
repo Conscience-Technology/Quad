@@ -12,7 +12,7 @@ export default async function ProjectSettings({
   const trpc = await serverTrpc();
   const project = await trpc.projects.bySlug({ slug });
   return (
-    <div className="max-w-6xl space-y-8">
+    <div className="max-w-3xl space-y-8">
       <header className="space-y-1">
         <h1 className="text-2xl tracking-tight">Settings</h1>
         <p className="text-sm text-[var(--color-star-500)] font-mono">{project.slug}</p>
@@ -22,7 +22,6 @@ export default async function ProjectSettings({
         initialName={project.name}
         initialOrigins={project.allowedOrigins}
         initialRepo={project.repo}
-        initialAzureDevOps={project.azureDevOps}
       />
     </div>
   );

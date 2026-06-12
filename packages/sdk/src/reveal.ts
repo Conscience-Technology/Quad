@@ -148,7 +148,7 @@ export class RevealLayer {
     tag.innerHTML = `
       <span class="dot">✦</span>
       <span class="body">${escapeHtml(pin.body.slice(0, 60))}</span>
-      <button class="x" title="숨기기">×</button>
+      <button class="x" title="Hide">×</button>
     `;
     const x = tag.querySelector("button.x");
     x?.addEventListener("click", (e) => {
@@ -179,17 +179,17 @@ export class RevealLayer {
     pop.dataset.id = pin.id;
     pop.innerHTML = `
       <div class="head">
-        <span class="who">내 제보</span>
+        <span class="who">your report</span>
         <span class="when">${formatAgo(pin.createdAt)}</span>
       </div>
       <p class="body">${escapeHtml(pin.body)}</p>
       <div class="meta">
-        ${pin.componentPath ? `<div><span>컴포넌트</span><code>${escapeHtml(pin.componentPath)}</code></div>` : ""}
-        <div><span>선택자</span><code>${escapeHtml(pin.selector)}</code></div>
-        <div><span>경로</span><code>${escapeHtml(pin.route)}</code></div>
+        ${pin.componentPath ? `<div><span>component</span><code>${escapeHtml(pin.componentPath)}</code></div>` : ""}
+        <div><span>selector</span><code>${escapeHtml(pin.selector)}</code></div>
+        <div><span>route</span><code>${escapeHtml(pin.route)}</code></div>
       </div>
       <div class="actions">
-        <button class="hide">페이지에서 숨기기</button>
+        <button class="hide">Hide on page</button>
       </div>
     `;
     const rect = anchor.getBoundingClientRect();
@@ -225,12 +225,12 @@ export class RevealLayer {
 
 function formatAgo(ts: number): string {
   const s = Math.max(1, Math.floor((Date.now() - ts) / 1000));
-  if (s < 60) return `${s}초 전`;
+  if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}분 전`;
+  if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  return `${Math.floor(h / 24)}일 전`;
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
 function escapeHtml(s: string): string {
